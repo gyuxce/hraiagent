@@ -143,7 +143,7 @@ export default async function CandidateDetailPage({ params }: Props) {
 
   // Identity columns need migration 00011. Fall back if missing so the section
   // doesn't silently render "Belum ada sesi".
-  let asyncSessions = sessionsFull.data;
+  let asyncSessions: unknown[] = sessionsFull.data || [];
   let asyncSessionsError: string | null = sessionsFull.error?.message || null;
 
   if (sessionsFull.error) {
@@ -156,7 +156,7 @@ export default async function CandidateDetailPage({ params }: Props) {
       .order("created_at", { ascending: false });
 
     if (!sessionsBasic.error) {
-      asyncSessions = sessionsBasic.data as typeof sessionsFull.data;
+      asyncSessions = sessionsBasic.data || [];
       asyncSessionsError =
         "Beberapa kolom identitas belum ada di database. Jalankan migration 00011_interview_identity_guards.sql di Supabase agar selfie/face match tampil penuh.";
     } else {

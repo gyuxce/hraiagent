@@ -36,7 +36,8 @@ export const metadata: Metadata = {
     images: [BRAND.assets.og],
   },
   icons: {
-    icon: BRAND.assets.logoMark,
+    icon: [{ url: "/brand/logo.svg", type: "image/svg+xml" }],
+    apple: BRAND.assets.logoRaster,
   },
 };
 

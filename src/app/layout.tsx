@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Syne } from "next/font/google";
 import { BRAND } from "@/lib/brand";
+import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
 const body = Plus_Jakarta_Sans({
@@ -32,7 +33,7 @@ export default function RootLayout({
       style={{ colorScheme: "light" }}
     >
       <body className="min-h-full flex flex-col bg-mist text-ink font-sans">
-        {children}
+        <ToastProvider>{children}</ToastProvider>
       </body>
     </html>
   );

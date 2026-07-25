@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
+import { isValidEmail, normalizeEmail } from "@/lib/validation/email";
 import type { UserRole } from "@/types/database";
 
 function formatError(error: unknown): string {
@@ -36,18 +37,30 @@ async function requireAdmin() {
   return { supabase, error: null as null, profile: ensured.profile };
 }
 
+async function assertClientInAgency(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  agencyId: string,
+  clientId: string
+) {
+  const { data: client } = await supabase
+    .from("client_companies")
+    .select("id")
+    .eq("id", clientId)
+    .eq("agency_id", agencyId)
+    .maybeSingle();
+  return Boolean(client);
+}
+
 export async function createTeamInvite(formData: FormData) {
   const { supabase, error: authError, profile } = await requireAdmin();
   if (authError || !profile) return { error: authError || "Unauthorized" };
 
-  const email = String(formData.get("email") || "")
-    .trim()
-    .toLowerCase();
+  const email = normalizeEmail(String(formData.get("email") || ""));
   const role = String(formData.get("role") || "recruiter").trim() as UserRole;
   const clientId = String(formData.get("client_id") || "").trim() || null;
 
-  if (!email || !email.includes("@")) {
-    return { error: "Email undangan tidak valid" };
+  if (!isValidEmail(email)) {
+    return { error: "Format email undangan tidak valid" };
   }
 
   if (!["admin_agency", "recruiter", "client_viewer"].includes(role)) {
@@ -63,13 +76,40 @@ export async function createTeamInvite(formData: FormData) {
   }
 
   if (clientId) {
-    const { data: client } = await supabase
-      .from("client_companies")
-      .select("id")
-      .eq("id", clientId)
-      .eq("agency_id", profile.agency_id)
-      .maybeSingle();
-    if (!client) return { error: "Client tidak ditemukan" };
+    const ok = await assertClientInAgency(
+      supabase,
+      profile.agency_id,
+      clientId
+    );
+    if (!ok) return { error: "Client tidak ditemukan di agency Anda" };
+  }
+
+  const { data: existingInvites } = await supabase
+    .from("team_invites")
+    .select("id, accepted_at, expires_at")
+    .eq("agency_id", profile.agency_id)
+    .eq("email", email)
+    .order("created_at", { ascending: false });
+
+  const pending = (existingInvites || []).find(
+    (i) =>
+      !i.accepted_at &&
+      i.expires_at &&
+      new Date(i.expires_at).getTime() > Date.now()
+  );
+  if (pending) {
+    return {
+      error:
+        "Sudah ada undangan aktif untuk email ini. Salin link pending atau batalkan dulu.",
+    };
+  }
+
+  const alreadyJoined = (existingInvites || []).some((i) => i.accepted_at);
+  if (alreadyJoined) {
+    return {
+      error:
+        "Email ini sudah pernah bergabung ke agency. Minta mereka login, atau ubah role di daftar anggota.",
+    };
   }
 
   const {
@@ -113,16 +153,24 @@ export async function createTeamInvite(formData: FormData) {
 }
 
 export async function revokeTeamInvite(id: string) {
-  const { supabase, error: authError } = await requireAdmin();
-  if (authError) return { error: authError };
+  const { supabase, error: authError, profile } = await requireAdmin();
+  if (authError || !profile) return { error: authError || "Unauthorized" };
 
-  const { error } = await supabase
+  if (!id) return { error: "Undangan tidak valid" };
+
+  const { data, error } = await supabase
     .from("team_invites")
     .delete()
     .eq("id", id)
-    .is("accepted_at", null);
+    .eq("agency_id", profile.agency_id)
+    .is("accepted_at", null)
+    .select("id");
 
   if (error) return { error: formatError(error) };
+  if (!data?.length) {
+    return { error: "Undangan tidak ditemukan atau sudah diterima" };
+  }
+
   revalidatePath("/team");
   return { success: true };
 }
@@ -142,31 +190,56 @@ export async function updateTeamMemberRole(formData: FormData) {
   if (role === "client_viewer" && !clientId) {
     return { error: "Client viewer wajib punya client company" };
   }
+  if (role !== "client_viewer" && clientId) {
+    return { error: "Hanya client viewer yang punya client company" };
+  }
 
   if (userId === profile.id && role !== "admin_agency") {
     return { error: "Tidak bisa menurunkan role akun admin sendiri" };
   }
 
-  const { error } = await supabase
+  if (clientId) {
+    const ok = await assertClientInAgency(
+      supabase,
+      profile.agency_id,
+      clientId
+    );
+    if (!ok) return { error: "Client tidak ditemukan di agency Anda" };
+  }
+
+  const { data, error } = await supabase
     .from("users")
     .update({
       role,
       client_id: role === "client_viewer" ? clientId : null,
     })
     .eq("id", userId)
-    .eq("agency_id", profile.agency_id);
+    .eq("agency_id", profile.agency_id)
+    .select("id");
 
   if (error) return { error: formatError(error) };
+  if (!data?.length) return { error: "Anggota tidak ditemukan" };
+
   revalidatePath("/team");
   return { success: true };
 }
 
 export async function getInvitePreview(token: string) {
   const supabase = await createClient();
+  const cleaned = String(token || "").trim();
+  if (!cleaned || cleaned.length < 10) {
+    return { error: "Link undangan tidak valid", data: null };
+  }
+
   const { data, error } = await supabase.rpc("get_team_invite_by_token", {
-    p_token: token,
+    p_token: cleaned,
   });
   if (error) return { error: formatError(error), data: null };
-  if (!data) return { error: "Undangan tidak valid / kadaluarsa", data: null };
+  if (!data) {
+    return {
+      error: "Undangan tidak valid, sudah dipakai, atau kadaluarsa",
+      data: null,
+    };
+  }
   return { error: null, data };
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { overrideCandidateScore } from "@/lib/actions/candidates";
 import type { ScoreBreakdown } from "@/lib/ai/openrouter";
+import { useToast } from "@/components/ui/toast";
 
 type Props = {
   candidateId: string;
@@ -42,6 +43,7 @@ export function ScorePanel({
   canWrite,
 }: Props) {
   const router = useRouter();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const effective = manualScore ?? aiScore;
@@ -54,8 +56,10 @@ export function ScorePanel({
     setLoading(false);
     if (result.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success("Override skor disimpan");
     router.refresh();
   }
 
@@ -69,8 +73,10 @@ export function ScorePanel({
     setLoading(false);
     if (result.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success("Kembali ke skor AI");
     router.refresh();
   }
 

@@ -33,7 +33,10 @@ function RegisterForm() {
       if (cancelled) return;
       setInviteLoading(false);
       if (result.error || !result.data) {
-        setError(result.error || "Undangan tidak valid");
+        setError(
+          result.error ||
+            "Undangan tidak valid, sudah dipakai, atau kadaluarsa"
+        );
         setInvite(null);
         return;
       }

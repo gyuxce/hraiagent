@@ -15,6 +15,7 @@ import {
 import { ImportCandidatesModal } from "./import-candidates-modal";
 import { EmptyState } from "@/components/onboarding/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import { effectiveScore } from "@/lib/candidates/score";
 
 export type CandidateRow = {
@@ -76,6 +77,7 @@ export function CandidatesTable({
   canWrite = true,
 }: Props) {
   const router = useRouter();
+  const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -92,8 +94,10 @@ export function CandidatesTable({
     setBusyId(null);
     if (result?.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success("Status kandidat diperbarui");
     router.refresh();
   }
 
@@ -104,14 +108,16 @@ export function CandidatesTable({
     setBusyId(null);
     if (result?.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success("AI screening selesai");
     router.refresh();
   }
 
   async function confirmDelete() {
     if (!pendingDelete) return;
-    const { id } = pendingDelete;
+    const { id, name } = pendingDelete;
     setBusyId(id);
     setError(null);
     const result = await deleteCandidate(id);
@@ -119,8 +125,10 @@ export function CandidatesTable({
     setPendingDelete(null);
     if (result?.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success(`Kandidat "${name}" dihapus`);
     router.refresh();
   }
 

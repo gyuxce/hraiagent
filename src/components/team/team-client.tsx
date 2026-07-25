@@ -10,6 +10,7 @@ import {
 import { roleLabel } from "@/lib/auth/roles";
 import type { ClientCompany, UserRole } from "@/types/database";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 
 export type TeamMember = {
   id: string;
@@ -65,27 +66,37 @@ export function TeamClient({
   currentUserId,
 }: Props) {
   const router = useRouter();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [inviting, setInviting] = useState(false);
+  const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
   const [role, setRole] = useState<UserRole>("recruiter");
   const [pendingRevokeId, setPendingRevokeId] = useState<string | null>(null);
+  const [revoking, setRevoking] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   async function handleInvite(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setBusy(true);
+    setInviting(true);
     setError(null);
     setInviteUrl(null);
     const formData = new FormData(e.currentTarget);
     const result = await createTeamInvite(formData);
-    setBusy(false);
+    setInviting(false);
     if (result.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
     if (result.inviteUrl) {
       setInviteUrl(result.inviteUrl);
-      await copyText(result.inviteUrl);
+      const ok = await copyText(result.inviteUrl);
+      toast.success(
+        ok
+          ? "Undangan dibuat — link sudah disalin"
+          : "Undangan dibuat — salin link di bawah"
+      );
     }
     e.currentTarget.reset();
     setRole("recruiter");
@@ -94,29 +105,47 @@ export function TeamClient({
 
   async function confirmRevoke() {
     if (!pendingRevokeId) return;
-    setBusy(true);
+    setRevoking(true);
     const result = await revokeTeamInvite(pendingRevokeId);
-    setBusy(false);
+    setRevoking(false);
     setPendingRevokeId(null);
     if (result.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success("Undangan dibatalkan");
     router.refresh();
   }
 
-  async function handleRoleUpdate(e: React.FormEvent<HTMLFormElement>) {
+  async function handleRoleUpdate(
+    e: React.FormEvent<HTMLFormElement>,
+    userId: string
+  ) {
     e.preventDefault();
-    setBusy(true);
+    setSavingRoleId(userId);
     setError(null);
     const formData = new FormData(e.currentTarget);
     const result = await updateTeamMemberRole(formData);
-    setBusy(false);
+    setSavingRoleId(null);
     if (result.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success("Role anggota diperbarui");
     router.refresh();
+  }
+
+  async function handleCopy(id: string, url: string) {
+    const ok = await copyText(url);
+    if (ok) {
+      setCopiedId(id);
+      toast.success("Link undangan disalin");
+      window.setTimeout(() => setCopiedId(null), 2000);
+    } else {
+      toast.error("Gagal menyalin — salin manual dari browser");
+    }
   }
 
   const pending = invites.filter((i) => !i.accepted_at);
@@ -138,12 +167,12 @@ export function TeamClient({
       )}
 
       {inviteUrl && (
-        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-          <p className="font-medium">Link undangan siap (disalin jika bisa):</p>
+        <div className="rounded-lg border border-teal/25 bg-teal-soft p-4 text-sm text-teal">
+          <p className="font-medium">Link undangan siap:</p>
           <input
             readOnly
             value={inviteUrl}
-            className="mt-2 w-full rounded border border-green-200 bg-white px-3 py-2 text-xs text-gray-700"
+            className="mt-2 w-full rounded border border-teal/20 bg-white px-3 py-2 text-xs text-ink"
             onFocus={(e) => e.currentTarget.select()}
           />
         </div>
@@ -151,31 +180,32 @@ export function TeamClient({
 
       <form
         onSubmit={handleInvite}
-        className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-4"
+        className="surface-panel space-y-4 p-6"
       >
-        <h2 className="text-sm font-semibold text-gray-900">Undang anggota</h2>
+        <h2 className="text-sm font-semibold text-ink">Undang anggota</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-ink-soft">
               Email
             </label>
             <input
               name="email"
               type="email"
               required
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              autoComplete="email"
+              className="field-input"
               placeholder="recruiter@agency.com"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-ink-soft">
               Role
             </label>
             <select
               name="role"
               value={role}
               onChange={(e) => setRole(e.target.value as UserRole)}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             >
               <option value="recruiter">Recruiter</option>
               <option value="admin_agency">Admin Agency</option>
@@ -184,13 +214,13 @@ export function TeamClient({
           </div>
           {role === "client_viewer" && (
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-medium text-ink-soft">
                 Client Company
               </label>
               <select
                 name="client_id"
                 required
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="field-input"
                 defaultValue=""
               >
                 <option value="" disabled>
@@ -202,65 +232,72 @@ export function TeamClient({
                   </option>
                 ))}
               </select>
+              {clients.length === 0 && (
+                <p className="mt-1 text-xs text-bad">
+                  Belum ada client — buat client dulu sebelum undang viewer.
+                </p>
+              )}
             </div>
           )}
         </div>
         <button
           type="submit"
-          disabled={busy || (role === "client_viewer" && clients.length === 0)}
+          disabled={
+            inviting || (role === "client_viewer" && clients.length === 0)
+          }
           className="btn-primary disabled:opacity-50"
         >
-          {busy ? "..." : "Buat Undangan"}
+          {inviting ? "Membuat..." : "Buat Undangan"}
         </button>
       </form>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-sm font-semibold text-gray-900">Anggota aktif</h2>
+      <div className="surface-panel overflow-hidden">
+        <div className="border-b border-line px-6 py-4">
+          <h2 className="text-sm font-semibold text-ink">Anggota aktif</h2>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-line">
+            <thead className="bg-mist/70">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
                   Nama
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
                   Role
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="hidden px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted sm:table-cell">
                   Client
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
                   Ubah
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-line">
               {members.map((m) => (
-                <tr key={m.id}>
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                <tr key={m.id} className="hover:bg-mist/40">
+                  <td className="px-6 py-4 text-sm text-ink">
                     {m.full_name}
                     {m.id === currentUserId && (
-                      <span className="ml-2 text-xs text-gray-400">(kamu)</span>
+                      <span className="ml-2 text-xs text-muted">(kamu)</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-6 py-4 text-sm text-muted">
                     {roleLabel(m.role)}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="hidden px-6 py-4 text-sm text-muted sm:table-cell">
                     {m.client_companies?.name || "—"}
                   </td>
                   <td className="px-6 py-4 text-sm">
                     <form
-                      onSubmit={handleRoleUpdate}
+                      onSubmit={(e) => handleRoleUpdate(e, m.id)}
                       className="flex flex-wrap items-center gap-2"
                     >
                       <input type="hidden" name="user_id" value={m.id} />
                       <select
                         name="role"
                         defaultValue={m.role}
-                        className="rounded border border-gray-300 px-2 py-1 text-xs"
+                        className="rounded border border-line px-2 py-1 text-xs"
                         onChange={(e) => {
                           const form = e.currentTarget.form;
                           if (!form) return;
@@ -281,7 +318,7 @@ export function TeamClient({
                         name="client_id"
                         defaultValue={m.client_id || ""}
                         disabled={m.role !== "client_viewer"}
-                        className="rounded border border-gray-300 px-2 py-1 text-xs disabled:bg-gray-50"
+                        className="rounded border border-line px-2 py-1 text-xs disabled:bg-mist"
                       >
                         <option value="">—</option>
                         {clients.map((c) => (
@@ -292,10 +329,10 @@ export function TeamClient({
                       </select>
                       <button
                         type="submit"
-                        disabled={busy}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-500"
+                        disabled={savingRoleId === m.id}
+                        className="text-xs font-semibold text-accent hover:text-accent-hover disabled:opacity-50"
                       >
-                        Simpan
+                        {savingRoleId === m.id ? "..." : "Simpan"}
                       </button>
                     </form>
                   </td>
@@ -306,16 +343,16 @@ export function TeamClient({
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-sm font-semibold text-gray-900">
-            Undangan pending
-          </h2>
+      <div className="surface-panel overflow-hidden">
+        <div className="border-b border-line px-6 py-4">
+          <h2 className="text-sm font-semibold text-ink">Undangan pending</h2>
         </div>
         {pending.length === 0 ? (
-          <p className="px-6 py-8 text-sm text-gray-500">Tidak ada undangan aktif.</p>
+          <p className="px-6 py-8 text-sm text-muted">
+            Tidak ada undangan aktif.
+          </p>
         ) : (
-          <ul className="divide-y divide-gray-200">
+          <ul className="divide-y divide-line">
             {pending.map((inv) => {
               const base =
                 typeof window !== "undefined"
@@ -328,10 +365,8 @@ export function TeamClient({
                   className="flex flex-wrap items-center justify-between gap-3 px-6 py-4"
                 >
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {inv.email}
-                    </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-sm font-medium text-ink">{inv.email}</p>
+                    <p className="text-xs text-muted">
                       {roleLabel(inv.role)}
                       {inv.client_companies?.name
                         ? ` · ${inv.client_companies.name}`
@@ -343,16 +378,16 @@ export function TeamClient({
                   <div className="flex gap-3">
                     <button
                       type="button"
-                      onClick={() => copyText(url)}
-                      className="text-sm font-medium text-blue-600"
+                      onClick={() => handleCopy(inv.id, url)}
+                      className="text-sm font-medium text-accent"
                     >
-                      Salin link
+                      {copiedId === inv.id ? "Tersalin" : "Salin link"}
                     </button>
                     <button
                       type="button"
-                      disabled={busy}
+                      disabled={revoking}
                       onClick={() => setPendingRevokeId(inv.id)}
-                      className="text-sm font-medium text-red-600"
+                      className="text-sm font-medium text-bad disabled:opacity-50"
                     >
                       Batalkan
                     </button>
@@ -369,9 +404,9 @@ export function TeamClient({
         title="Batalkan undangan?"
         description="Link undangan ini tidak akan bisa dipakai lagi setelah dibatalkan."
         confirmLabel="Ya, batalkan"
-        loading={busy && Boolean(pendingRevokeId)}
+        loading={revoking}
         onCancel={() => {
-          if (!busy) setPendingRevokeId(null);
+          if (!revoking) setPendingRevokeId(null);
         }}
         onConfirm={confirmRevoke}
       />

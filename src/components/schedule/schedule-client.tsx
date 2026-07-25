@@ -8,6 +8,7 @@ import {
   updateInterviewScheduleStatus,
 } from "@/lib/actions/schedules";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 
 export type ScheduleRow = {
   id: string;
@@ -103,6 +104,7 @@ export function ScheduleClient({
   isAdmin,
 }: Props) {
   const router = useRouter();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -115,8 +117,10 @@ export function ScheduleClient({
     setBusy(false);
     if (result.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success("Jadwal interview dibuat");
     e.currentTarget.reset();
     router.refresh();
   }
@@ -127,8 +131,10 @@ export function ScheduleClient({
     setBusy(false);
     if (result.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success("Status jadwal diperbarui");
     router.refresh();
   }
 
@@ -140,8 +146,10 @@ export function ScheduleClient({
     setPendingDeleteId(null);
     if (result.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success("Jadwal dihapus");
     router.refresh();
   }
 

@@ -7,6 +7,7 @@ import { deleteJob } from "@/lib/actions/jobs";
 import { JobFormModal, type JobWithClient } from "./job-form-modal";
 import { EmptyState } from "@/components/onboarding/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
 import Link from "next/link";
 
 type Props = {
@@ -30,6 +31,7 @@ const statusLabel: Record<string, string> = {
 
 export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
   const router = useRouter();
+  const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<JobWithClient | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{
@@ -53,7 +55,7 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
 
   async function confirmDelete() {
     if (!pendingDelete) return;
-    const { id } = pendingDelete;
+    const { id, title } = pendingDelete;
     setDeletingId(id);
     setError(null);
     const result = await deleteJob(id);
@@ -62,9 +64,11 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
 
     if (result?.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
 
+    toast.success(`Job "${title}" dihapus`);
     router.refresh();
   }
 

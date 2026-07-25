@@ -1,15 +1,4 @@
 import { redirect } from "next/navigation";
-import {
-  Home,
-  Users,
-  Briefcase,
-  UserCheck,
-  Columns2,
-  Trophy,
-  UserCog,
-  CalendarDays,
-  FileSpreadsheet,
-} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/lib/actions/auth";
 import { isAdminAgency, isClientViewer, roleLabel } from "@/lib/auth/roles";
@@ -44,22 +33,37 @@ export default async function DashboardLayout({
 
   const navigation: NavItem[] = viewer
     ? [
-        { name: "Overview", href: "/dashboard", icon: Home },
-        { name: "Jobs", href: "/jobs", icon: Briefcase },
-        { name: "Candidates", href: "/candidates", icon: UserCheck },
-        { name: "Reports", href: "/reports", icon: FileSpreadsheet },
+        { name: "Overview", href: "/dashboard", icon: "home" },
+        { name: "Jobs", href: "/jobs", icon: "briefcase" },
+        { name: "Candidates", href: "/candidates", icon: "userCheck" },
+        { name: "Reports", href: "/reports", icon: "fileSpreadsheet" },
       ]
     : (
         [
-          { name: "Dashboard", href: "/dashboard", icon: Home, show: true },
-          { name: "Clients", href: "/clients", icon: Users, show: true },
-          { name: "Jobs", href: "/jobs", icon: Briefcase, show: true },
-          { name: "Candidates", href: "/candidates", icon: UserCheck, show: true },
-          { name: "Compare", href: "/compare", icon: Columns2, show: true },
-          { name: "Ranking", href: "/ranking", icon: Trophy, show: true },
-          { name: "Schedule", href: "/schedule", icon: CalendarDays, show: true },
-          { name: "Reports", href: "/reports", icon: FileSpreadsheet, show: true },
-          { name: "Team", href: "/team", icon: UserCog, show: admin },
+          { name: "Dashboard", href: "/dashboard", icon: "home", show: true },
+          { name: "Clients", href: "/clients", icon: "users", show: true },
+          { name: "Jobs", href: "/jobs", icon: "briefcase", show: true },
+          {
+            name: "Candidates",
+            href: "/candidates",
+            icon: "userCheck",
+            show: true,
+          },
+          { name: "Compare", href: "/compare", icon: "columns2", show: true },
+          { name: "Ranking", href: "/ranking", icon: "trophy", show: true },
+          {
+            name: "Schedule",
+            href: "/schedule",
+            icon: "calendarDays",
+            show: true,
+          },
+          {
+            name: "Reports",
+            href: "/reports",
+            icon: "fileSpreadsheet",
+            show: true,
+          },
+          { name: "Team", href: "/team", icon: "userCog", show: admin },
         ] as Array<NavItem & { show?: boolean }>
       ).filter((item) => item.show !== false);
 

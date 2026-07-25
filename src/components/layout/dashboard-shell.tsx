@@ -2,14 +2,51 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
-import { LogOut, Menu, X } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  Briefcase,
+  CalendarDays,
+  Columns2,
+  FileSpreadsheet,
+  Home,
+  LogOut,
+  Menu,
+  Trophy,
+  UserCheck,
+  UserCog,
+  Users,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { BRAND } from "@/lib/brand";
+
+export type NavIconName =
+  | "home"
+  | "users"
+  | "briefcase"
+  | "userCheck"
+  | "columns2"
+  | "trophy"
+  | "calendarDays"
+  | "fileSpreadsheet"
+  | "userCog";
 
 export type NavItem = {
   name: string;
   href: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: NavIconName;
+};
+
+const ICONS: Record<NavIconName, LucideIcon> = {
+  home: Home,
+  users: Users,
+  briefcase: Briefcase,
+  userCheck: UserCheck,
+  columns2: Columns2,
+  trophy: Trophy,
+  calendarDays: CalendarDays,
+  fileSpreadsheet: FileSpreadsheet,
+  userCog: UserCog,
 };
 
 type Props = {
@@ -88,6 +125,7 @@ export function DashboardShell({
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
         {navigation.map((item) => {
           const active = isActive(item.href);
+          const Icon = ICONS[item.icon] || Home;
           return (
             <Link
               key={item.name}
@@ -99,7 +137,7 @@ export function DashboardShell({
                   : "text-white/75 hover:bg-white/8 hover:text-white"
               }`}
             >
-              <item.icon
+              <Icon
                 className={`h-4 w-4 transition-colors ${
                   active ? "text-accent" : "text-white/45 group-hover:text-accent"
                 }`}
@@ -135,10 +173,8 @@ export function DashboardShell({
 
   return (
     <div className="flex h-screen bg-mist">
-      {/* Desktop sidebar */}
       <aside className="hidden border-r border-line md:flex">{sidebar}</aside>
 
-      {/* Mobile drawer */}
       {open && (
         <div className="fixed inset-0 z-50 md:hidden">
           <button

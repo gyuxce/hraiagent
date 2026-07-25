@@ -140,7 +140,7 @@ export function CandidatesTable({
           <h1 className="page-title">Candidates</h1>
           <p className="page-sub">
             {canWrite
-              ? "Screening AI, status ATS, import spreadsheet, dan interview"
+              ? "Screening AI, status ATS, import CSV, dan AI Interview Async (di halaman Detail)"
               : "Daftar kandidat yang diajukan agency — tampilan read-only"}
           </p>
         </div>

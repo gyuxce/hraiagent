@@ -222,6 +222,11 @@ export default async function CandidateDetailPage({ params }: Props) {
               Bandingkan Job
             </Link>
           )}
+          {canWrite && (
+            <a href="#async-interview" className="btn-primary">
+              AI Interview Async
+            </a>
+          )}
         </div>
       </div>
 

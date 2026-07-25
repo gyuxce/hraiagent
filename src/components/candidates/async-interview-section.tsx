@@ -7,6 +7,7 @@ import {
   analyzeCompletedInterview,
   createAsyncInterview,
 } from "@/lib/actions/async-interview";
+import { useToast } from "@/components/ui/toast";
 
 export type AsyncSessionRow = {
   id: string;
@@ -58,6 +59,7 @@ export function AsyncInterviewSection({
   canWrite = true,
 }: Props) {
   const router = useRouter();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -75,8 +77,10 @@ export function AsyncInterviewSection({
     setLoading(false);
     if (result?.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success("Interview async dibuat — salin link ke kandidat");
     if (result?.inviteUrl) {
       setInviteUrl(result.inviteUrl);
       const ok = await copyToClipboard(result.inviteUrl);
@@ -92,8 +96,10 @@ export function AsyncInterviewSection({
     setBusyId(null);
     if (result?.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success("Analisis AI selesai");
     router.refresh();
   }
 
@@ -101,24 +107,27 @@ export function AsyncInterviewSection({
     const ok = await copyToClipboard(url);
     if (ok) {
       setCopied(url);
+      toast.success("Link interview disalin");
       setTimeout(() => setCopied(null), 2500);
     } else {
       setError("Gagal salin otomatis. Blok link lalu Ctrl+C manual.");
+      toast.error("Gagal salin — select link lalu Ctrl+C");
     }
   }
 
   const base = typeof window !== "undefined" ? window.location.origin : "";
 
   return (
-    <div className="mt-8">
-      <div className="mb-4 flex items-center justify-between">
+    <div id="async-interview" className="mt-8 scroll-mt-20">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">
+          <p className="page-kicker">Fase 2.5</p>
+          <h2 className="font-display text-lg font-bold text-ink">
             AI Interview Async
           </h2>
-          <p className="text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted">
             AI generate ~5 pertanyaan → salin link → kandidat jawab teks/video.
-            Analisis AI otomatis setelah kandidat selesai.
+            Analisis AI otomatis setelah selesai → lihat di menu Ranking.
           </p>
         </div>
         {canWrite && (
@@ -126,7 +135,7 @@ export function AsyncInterviewSection({
             type="button"
             onClick={handleCreate}
             disabled={loading}
-            className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+            className="btn-primary disabled:opacity-50"
           >
             {loading ? "Generate pertanyaan..." : "+ Buat Interview Async"}
           </button>

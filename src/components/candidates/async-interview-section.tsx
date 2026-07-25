@@ -128,7 +128,8 @@ export function AsyncInterviewSection({
           <p className="mt-1 text-sm text-muted">
             Skor di sini = kualitas jawaban interview (bukan skor screening CV).
             Alur: generate ~5 pertanyaan → salin link → kandidat jawab{" "}
-            <strong>teks atau video</strong> → analisis AI → Ranking.
+            <strong>video saja</strong> (bicara ke kamera) → analisis AI →
+            Ranking.
           </p>
         </div>
         {canWrite && (

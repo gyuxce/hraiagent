@@ -362,7 +362,7 @@ export async function generateInterviewQuestions(params: {
       : "(umum)";
 
   const prompt = `Buat ${count} pertanyaan interview async (bukan real-time) untuk posisi berikut.
-Pertanyaan harus bisa dijawab dengan rekaman video pendek atau teks (1-3 menit).
+Pertanyaan harus dijawab dengan rekaman video pendek (bicara ke kamera, 1-3 menit). Jangan buat pertanyaan yang mengharapkan jawaban tertulis.
 
 JOB: ${params.jobTitle}
 KANDIDAT: ${params.candidateName || "Kandidat"}

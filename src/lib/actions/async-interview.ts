@@ -205,7 +205,7 @@ export async function analyzeCompletedInterview(sessionId: string) {
 
     const text =
       (ans?.text_answer || ans?.transcript || "").trim() ||
-      "(tidak ada jawaban teks)";
+      "(tidak ada transkrip — jawaban video tanpa teks otomatis)";
 
     try {
       const result = await analyzeInterviewAnswer({
@@ -305,8 +305,8 @@ export async function submitPublicAnswer(formData: FormData) {
   const videoPath = String(formData.get("video_path") || "").trim() || null;
 
   if (!token || !questionId) return { error: "Data tidak lengkap" };
-  if (!textAnswer && !transcript && !videoPath) {
-    return { error: "Isi jawaban teks atau rekam video" };
+  if (!videoPath) {
+    return { error: "Rekaman video wajib. Jawaban teks tidak diterima." };
   }
 
   const { error } = await supabase.rpc("submit_async_interview_answer", {

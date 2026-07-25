@@ -28,15 +28,11 @@ type Payload = {
   questions: Question[];
 };
 
-type AnswerMode = "text" | "video";
-
 export function PublicInterviewClient({ token }: { token: string }) {
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [idx, setIdx] = useState(0);
-  const [mode, setMode] = useState<AnswerMode>("text");
-  const [textAnswer, setTextAnswer] = useState("");
   const [transcript, setTranscript] = useState("");
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
@@ -89,17 +85,13 @@ export function PublicInterviewClient({ token }: { token: string }) {
       if (payload.session.status === "completed") setDone(true);
 
       if (opts?.resetIdx !== false) {
-        const firstUnanswered = payload.questions.findIndex((q) => !q.answer);
+        const firstUnanswered = payload.questions.findIndex(
+          (q) => !q.answer?.video_path
+        );
         const nextIdx = firstUnanswered >= 0 ? firstUnanswered : 0;
         setIdx(nextIdx);
         const q = payload.questions[nextIdx];
-        setTextAnswer(q?.answer?.text_answer || "");
         setTranscript(q?.answer?.transcript || "");
-        if (q?.answer?.video_path && !q?.answer?.text_answer) {
-          setMode("video");
-        } else {
-          setMode("text");
-        }
       }
       return payload;
     },
@@ -122,13 +114,10 @@ export function PublicInterviewClient({ token }: { token: string }) {
     if (!data) return;
     const q = data.questions[idx];
     if (!q) return;
-    setTextAnswer(q.answer?.text_answer || "");
     setTranscript(q.answer?.transcript || "");
     clearPreview();
     stopMediaTracks();
     setRecording(false);
-    if (q.answer?.video_path && !q.answer?.text_answer) setMode("video");
-    else if (q.answer?.text_answer) setMode("text");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 
@@ -181,7 +170,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
       recorder.start(250);
       setRecording(true);
 
-      // Optional live transcript
+      // Optional live transcript from speech (for AI scoring later)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const w = window as any;
       const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
@@ -208,7 +197,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
       }
     } catch {
       setError(
-        "Tidak bisa akses kamera/mikrofon. Izinkan permission browser, atau pilih mode teks."
+        "Tidak bisa akses kamera/mikrofon. Izinkan permission browser lalu coba lagi."
       );
       setRecording(false);
     }
@@ -240,12 +229,8 @@ export function PublicInterviewClient({ token }: { token: string }) {
     const q = data.questions[currentIdx];
     if (!q) return false;
 
-    if (mode === "text" && !textAnswer.trim()) {
-      setError("Isi jawaban teks dulu, atau ganti ke mode video.");
-      return false;
-    }
-    if (mode === "video" && !videoBlob && !q.answer?.video_path) {
-      setError("Rekam video dulu, atau ganti ke mode teks.");
+    if (!videoBlob && !q.answer?.video_path) {
+      setError("Rekam video jawaban dulu sebelum lanjut.");
       return false;
     }
 
@@ -253,7 +238,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
     setError(null);
 
     let videoPath: string | null = q.answer?.video_path || null;
-    if (mode === "video" && videoBlob) {
+    if (videoBlob) {
       const fd = new FormData();
       fd.set("token", token);
       fd.set("question_id", q.id);
@@ -270,17 +255,18 @@ export function PublicInterviewClient({ token }: { token: string }) {
       videoPath = up.videoPath || null;
     }
 
+    if (!videoPath) {
+      setSaving(false);
+      setError("Video belum tersimpan. Rekam ulang lalu coba lagi.");
+      return false;
+    }
+
     const form = new FormData();
     form.set("token", token);
     form.set("question_id", q.id);
-    if (mode === "text") {
-      form.set("text_answer", textAnswer.trim());
-      form.set("transcript", textAnswer.trim());
-    } else {
-      form.set("text_answer", "");
-      form.set("transcript", transcript.trim() || "(jawaban video)");
-      if (videoPath) form.set("video_path", videoPath);
-    }
+    form.set("text_answer", "");
+    form.set("transcript", transcript.trim() || "(jawaban video)");
+    form.set("video_path", videoPath);
 
     const result = await submitPublicAnswer(form);
     setSaving(false);
@@ -298,10 +284,9 @@ export function PublicInterviewClient({ token }: { token: string }) {
               ...item,
               answer: {
                 id: item.answer?.id || "local",
-                text_answer: mode === "text" ? textAnswer.trim() : null,
-                video_path: mode === "video" ? videoPath : null,
-                transcript:
-                  mode === "text" ? textAnswer.trim() : transcript.trim() || null,
+                text_answer: null,
+                video_path: videoPath,
+                transcript: transcript.trim() || null,
               },
             }
           : item
@@ -364,9 +349,9 @@ export function PublicInterviewClient({ token }: { token: string }) {
             Terima kasih!
           </h1>
           <p className="mt-3 text-muted">
-            Jawaban interview async untuk posisi{" "}
+            Jawaban video untuk posisi{" "}
             <strong className="text-ink">{data.job.title}</strong> sudah
-            terkirim. AI akan menganalisis jawaban; recruiter mereview hasilnya.
+            terkirim. AI akan menganalisis rekaman; recruiter mereview hasilnya.
           </p>
         </div>
       </div>
@@ -376,8 +361,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
   const total = data.questions.length;
   const safeIdx = Math.min(Math.max(idx, 0), Math.max(total - 1, 0));
   const q = data.questions[safeIdx];
-  const progress =
-    total > 0 ? Math.round(((safeIdx + 1) / total) * 100) : 0;
+  const progress = total > 0 ? Math.round(((safeIdx + 1) / total) * 100) : 0;
 
   return (
     <div className="relative min-h-screen bg-atmosphere px-4 py-8">
@@ -386,12 +370,12 @@ export function PublicInterviewClient({ token }: { token: string }) {
         <div className="mb-6">
           <p className="font-display text-sm font-extrabold text-ink">Saring</p>
           <h1 className="mt-2 font-display text-2xl font-bold text-ink">
-            Interview Async — {data.job.title}
+            Interview Video — {data.job.title}
           </h1>
           <p className="mt-1 text-sm text-muted">
-            Halo {data.candidate.name}. Pilih{" "}
-            <strong className="text-ink">satu</strong> cara jawab per
-            pertanyaan: teks atau video.
+            Halo {data.candidate.name}. Jawab setiap pertanyaan dengan{" "}
+            <strong className="text-ink">rekaman video</strong> (bicara ke
+            kamera). Tidak ada opsi teks.
           </p>
         </div>
 
@@ -421,106 +405,62 @@ export function PublicInterviewClient({ token }: { token: string }) {
             {q?.question_text}
           </h2>
 
-          <div className="mt-5 flex gap-2">
-            <button
-              type="button"
-              disabled={recording || saving}
-              onClick={() => {
-                stopRecording();
-                clearPreview();
-                setMode("text");
-              }}
-              className={`rounded-md px-3 py-1.5 text-sm font-semibold ${
-                mode === "text"
-                  ? "bg-ink text-white"
-                  : "border border-line bg-surface text-ink-soft"
-              }`}
-            >
-              Jawab teks
-            </button>
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => {
-                setMode("video");
-              }}
-              className={`rounded-md px-3 py-1.5 text-sm font-semibold ${
-                mode === "video"
-                  ? "bg-ink text-white"
-                  : "border border-line bg-surface text-ink-soft"
-              }`}
-            >
-              Jawab video
-            </button>
-          </div>
-
-          {mode === "text" ? (
-            <div className="mt-5">
-              <label className="block text-sm font-medium text-ink-soft">
-                Jawaban teks
-              </label>
-              <textarea
-                value={textAnswer}
-                onChange={(e) => setTextAnswer(e.target.value)}
-                rows={6}
-                className="field-input"
-                placeholder="Tulis jawaban Anda di sini..."
+          <div className="mt-5">
+            <label className="block text-sm font-medium text-ink-soft">
+              Rekaman video jawaban
+            </label>
+            <div className="mt-2 overflow-hidden rounded-xl bg-ink">
+              <video
+                ref={videoRef}
+                className="aspect-video w-full bg-ink object-cover"
+                playsInline
+                muted={recording}
+                controls={Boolean(previewUrl) && !recording}
+                src={previewUrl || undefined}
               />
             </div>
-          ) : (
-            <div className="mt-5">
-              <label className="block text-sm font-medium text-ink-soft">
-                Rekaman video
-              </label>
-              <div className="mt-2 overflow-hidden rounded-xl bg-ink">
-                <video
-                  ref={videoRef}
-                  className="aspect-video w-full bg-ink object-cover"
-                  playsInline
-                  muted={recording}
-                  controls={Boolean(previewUrl) && !recording}
-                  src={previewUrl || undefined}
-                />
-              </div>
-              {!recording && !previewUrl && !q?.answer?.video_path && (
-                <p className="mt-2 text-xs text-muted">
-                  Layar hitam normal sebelum rekaman dimulai. Klik Mulai Rekaman.
+            {!recording && !previewUrl && !q?.answer?.video_path && (
+              <p className="mt-2 text-xs text-muted">
+                Layar hitam normal sebelum rekaman dimulai. Klik Mulai Rekaman,
+                lalu bicara ke kamera.
+              </p>
+            )}
+            {q?.answer?.video_path && !previewUrl && !recording && (
+              <p className="mt-2 text-xs text-teal">
+                Video untuk pertanyaan ini sudah tersimpan. Rekam ulang untuk
+                mengganti.
+              </p>
+            )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {!recording ? (
+                <button
+                  type="button"
+                  onClick={startRecording}
+                  disabled={saving}
+                  className="rounded-lg bg-bad px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                >
+                  ●{" "}
+                  {previewUrl || q?.answer?.video_path
+                    ? "Rekam ulang"
+                    : "Mulai Rekaman"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={stopRecording}
+                  className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white"
+                >
+                  ■ Stop
+                </button>
+              )}
+              {transcript && (
+                <p className="w-full text-xs text-muted">
+                  Transkrip otomatis: {transcript.slice(0, 200)}
+                  {transcript.length > 200 ? "…" : ""}
                 </p>
               )}
-              {q?.answer?.video_path && !previewUrl && !recording && (
-                <p className="mt-2 text-xs text-teal">
-                  Video untuk pertanyaan ini sudah tersimpan. Rekam ulang untuk
-                  mengganti.
-                </p>
-              )}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {!recording ? (
-                  <button
-                    type="button"
-                    onClick={startRecording}
-                    disabled={saving}
-                    className="rounded-lg bg-bad px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
-                  >
-                    ● {previewUrl || q?.answer?.video_path ? "Rekam ulang" : "Mulai Rekaman"}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={stopRecording}
-                    className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white"
-                  >
-                    ■ Stop
-                  </button>
-                )}
-                {transcript && (
-                  <p className="w-full text-xs text-muted">
-                    Transkrip otomatis: {transcript.slice(0, 200)}
-                    {transcript.length > 200 ? "…" : ""}
-                  </p>
-                )}
-              </div>
             </div>
-          )}
+          </div>
 
           <div className="mt-6 flex flex-wrap justify-between gap-3">
             <button

@@ -40,17 +40,25 @@ export default async function DashboardLayout({
   const viewer = isClientViewer(profile);
   const admin = isAdminAgency(profile);
 
-  const navigation = [
-    { name: "Dashboard", href: "/dashboard", icon: Home, show: true },
-    { name: "Clients", href: "/clients", icon: Users, show: !viewer },
-    { name: "Jobs", href: "/jobs", icon: Briefcase, show: true },
-    { name: "Candidates", href: "/candidates", icon: UserCheck, show: true },
-    { name: "Compare", href: "/compare", icon: Columns2, show: !viewer },
-    { name: "Ranking", href: "/ranking", icon: Trophy, show: true },
-    { name: "Schedule", href: "/schedule", icon: CalendarDays, show: true },
-    { name: "Reports", href: "/reports", icon: FileSpreadsheet, show: true },
-    { name: "Team", href: "/team", icon: UserCog, show: admin },
-  ].filter((item) => item.show);
+  // Client portal: leaner, report-first navigation
+  const navigation = viewer
+    ? [
+        { name: "Overview", href: "/dashboard", icon: Home },
+        { name: "Jobs", href: "/jobs", icon: Briefcase },
+        { name: "Candidates", href: "/candidates", icon: UserCheck },
+        { name: "Reports", href: "/reports", icon: FileSpreadsheet },
+      ]
+    : [
+        { name: "Dashboard", href: "/dashboard", icon: Home, show: true },
+        { name: "Clients", href: "/clients", icon: Users, show: true },
+        { name: "Jobs", href: "/jobs", icon: Briefcase, show: true },
+        { name: "Candidates", href: "/candidates", icon: UserCheck, show: true },
+        { name: "Compare", href: "/compare", icon: Columns2, show: true },
+        { name: "Ranking", href: "/ranking", icon: Trophy, show: true },
+        { name: "Schedule", href: "/schedule", icon: CalendarDays, show: true },
+        { name: "Reports", href: "/reports", icon: FileSpreadsheet, show: true },
+        { name: "Team", href: "/team", icon: UserCog, show: admin },
+      ].filter((item) => item.show !== false);
 
   const initials = profile?.full_name
     ? profile.full_name
@@ -74,8 +82,11 @@ export default async function DashboardLayout({
         </div>
 
         {viewer && (
-          <div className="mx-4 mb-2 rounded-lg bg-white/8 px-3 py-2 text-xs text-white/70">
-            Portal klien · read-only
+          <div className="mx-4 mb-2 rounded-lg border border-white/10 bg-white/8 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-accent">
+              Client portal
+            </p>
+            <p className="mt-0.5 text-xs text-white/65">Read-only progress view</p>
           </div>
         )}
 

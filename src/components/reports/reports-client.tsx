@@ -45,10 +45,14 @@ export function ReportsClient({ clients, stats }: Props) {
   return (
     <div className="space-y-8">
       <div>
-        <p className="page-kicker">Client delivery</p>
+        <p className="page-kicker">
+          {clients.length === 1 ? "Client portal" : "Client delivery"}
+        </p>
         <h1 className="page-title">Reports</h1>
         <p className="page-sub">
-          Ringkasan per klien dan export progress kandidat (CSV)
+          {clients.length === 1
+            ? "Unduh progress kandidat untuk perusahaan Anda (CSV)"
+            : "Ringkasan per klien dan export progress kandidat (CSV)"}
         </p>
       </div>
 

@@ -12,6 +12,7 @@ import {
   CandidateFormModal,
   type JobOption,
 } from "./candidate-form-modal";
+import { ImportCandidatesModal } from "./import-candidates-modal";
 
 export type CandidateRow = {
   id: string;
@@ -72,6 +73,7 @@ export function CandidatesTable({
 }: Props) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,24 +118,40 @@ export function CandidatesTable({
     <div>
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="page-kicker">Pipeline</p>
+          <p className="page-kicker">{canWrite ? "Pipeline" : "Client portal"}</p>
           <h1 className="page-title">Candidates</h1>
           <p className="page-sub">
-            Screening AI, status ATS, dan interview dalam satu daftar
+            {canWrite
+              ? "Screening AI, status ATS, import spreadsheet, dan interview"
+              : "Daftar kandidat yang diajukan agency — tampilan read-only"}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/compare" className="btn-secondary">
-            Bandingkan
-          </Link>
+        <div className="flex flex-wrap gap-2">
           {canWrite && (
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="btn-primary"
-            >
-              + Tambah Kandidat
-            </button>
+            <>
+              <Link href="/compare" className="btn-secondary">
+                Bandingkan
+              </Link>
+              <button
+                type="button"
+                onClick={() => setImportOpen(true)}
+                className="btn-secondary"
+              >
+                Import CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalOpen(true)}
+                className="btn-primary"
+              >
+                + Tambah Kandidat
+              </button>
+            </>
+          )}
+          {!canWrite && (
+            <Link href="/reports" className="btn-secondary">
+              Export laporan
+            </Link>
           )}
         </div>
       </div>
@@ -274,11 +292,18 @@ export function CandidatesTable({
       </div>
 
       {canWrite && (
-        <CandidateFormModal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          jobs={jobs}
-        />
+        <>
+          <CandidateFormModal
+            open={modalOpen}
+            onClose={() => setModalOpen(false)}
+            jobs={jobs}
+          />
+          <ImportCandidatesModal
+            open={importOpen}
+            onClose={() => setImportOpen(false)}
+            jobs={jobs}
+          />
+        </>
       )}
     </div>
   );

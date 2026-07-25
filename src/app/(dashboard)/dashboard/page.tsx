@@ -8,6 +8,11 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
 import { isClientViewer } from "@/lib/auth/roles";
+import {
+  ClientDashboard,
+  type PortalCandidateRow,
+  type PortalJobRow,
+} from "@/components/portal/client-dashboard";
 
 function formatRelativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -42,14 +47,88 @@ export default async function DashboardPage() {
     { data: recentCandidates },
   ] = await Promise.all([
     supabase.from("client_companies").select("id, name").order("name"),
-    supabase.from("job_requisitions").select("id, status, client_id"),
-    supabase.from("candidates").select("id, status, ai_score, job_id"),
+    supabase.from("job_requisitions").select("id, title, status, client_id"),
+    supabase.from("candidates").select("id, status, ai_score, job_id, name, created_at"),
     supabase
       .from("candidates")
       .select("id, name, status, ai_score, created_at, job_requisitions(title)")
       .order("created_at", { ascending: false })
       .limit(5),
   ]);
+
+  // Client portal: dedicated report-like dashboard
+  if (viewer) {
+    const clientName = clients?.[0]?.name || "Client Anda";
+    const openJobs = jobs?.filter((j) => j.status === "open").length || 0;
+    const totalCandidates = candidates?.length || 0;
+    const inPipeline =
+      candidates?.filter(
+        (c) => c.status !== "hired" && c.status !== "rejected"
+      ).length || 0;
+    const scored = candidates?.filter((c) => c.ai_score != null) || [];
+    const avgScore =
+      scored.length > 0
+        ? Math.round(
+            scored.reduce((sum, c) => sum + (c.ai_score || 0), 0) /
+              scored.length
+          )
+        : null;
+
+    const pipeline: Record<string, number> = {};
+    for (const c of candidates || []) {
+      pipeline[c.status] = (pipeline[c.status] || 0) + 1;
+    }
+
+    const jobRows: PortalJobRow[] = (jobs || []).map((j) => {
+      const related = (candidates || []).filter((c) => c.job_id === j.id);
+      const scores = related
+        .map((c) => c.ai_score)
+        .filter((s): s is number => s != null);
+      return {
+        id: j.id,
+        title: j.title,
+        status: j.status,
+        candidateCount: related.length,
+        avgScore:
+          scores.length > 0
+            ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+            : null,
+      };
+    });
+
+    const recent: PortalCandidateRow[] = (recentCandidates || []).map((c) => {
+      const jr = c.job_requisitions as unknown as
+        | { title?: string }
+        | { title?: string }[]
+        | null;
+      const jobTitle = Array.isArray(jr)
+        ? jr[0]?.title || "—"
+        : jr?.title || "—";
+      return {
+        id: c.id,
+        name: c.name,
+        status: c.status,
+        ai_score: c.ai_score,
+        created_at: c.created_at,
+        jobTitle,
+      };
+    });
+
+    return (
+      <ClientDashboard
+        stats={{
+          clientName,
+          openJobs,
+          totalCandidates,
+          inPipeline,
+          avgScore,
+        }}
+        jobs={jobRows}
+        recent={recent}
+        pipeline={pipeline}
+      />
+    );
+  }
 
   const totalClients = clients?.length || 0;
   const totalJobs = jobs?.length || 0;
@@ -93,11 +172,7 @@ export default async function DashboardPage() {
 
   const stats = [
     { name: "Open Jobs", value: String(openJobs), icon: Briefcase },
-    {
-      name: viewer ? "Client Anda" : "Total Clients",
-      value: String(totalClients),
-      icon: Users,
-    },
+    { name: "Total Clients", value: String(totalClients), icon: Users },
     { name: "Total Kandidat", value: String(totalCandidates), icon: UserCheck },
     { name: "Dalam Pipeline", value: String(inPipeline), icon: Clock },
   ];
@@ -122,14 +197,10 @@ export default async function DashboardPage() {
   return (
     <div>
       <div className="mb-8">
-        <p className="page-kicker">
-          {viewer ? "Client portal" : "Agency workspace"}
-        </p>
+        <p className="page-kicker">Agency workspace</p>
         <h1 className="page-title">Dashboard</h1>
         <p className="page-sub">
-          {viewer
-            ? "Pantau progress kandidat yang diajukan untuk perusahaan Anda"
-            : "Overview performa rekrutmen lintas klien"}
+          Overview performa rekrutmen lintas klien
           {avgScore != null && (
             <span className="text-ink-soft">
               {" "}
@@ -157,65 +228,63 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {!viewer && (
-        <div className="mb-8 surface-panel overflow-hidden">
-          <div className="flex items-center justify-between border-b border-line px-6 py-4">
-            <div>
-              <h2 className="font-display text-lg font-bold text-ink">
-                Performa Multi-Klien
-              </h2>
-              <p className="text-sm text-muted">Breakdown pipeline per client</p>
-            </div>
-            <Link
-              href="/reports"
-              className="text-sm font-semibold text-accent hover:text-accent-hover"
-            >
-              Lihat reports
-            </Link>
+      <div className="mb-8 surface-panel overflow-hidden">
+        <div className="flex items-center justify-between border-b border-line px-6 py-4">
+          <div>
+            <h2 className="font-display text-lg font-bold text-ink">
+              Performa Multi-Klien
+            </h2>
+            <p className="text-sm text-muted">Breakdown pipeline per client</p>
           </div>
-          {clientStats.length === 0 ? (
-            <p className="px-6 py-10 text-center text-sm text-muted">
-              Belum ada client. Tambah client untuk melihat breakdown.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-line">
-                <thead className="bg-mist/70">
-                  <tr>
-                    {["Client", "Open Jobs", "Kandidat", "Pipeline", "Avg AI"].map(
-                      (h) => (
-                        <th
-                          key={h}
-                          className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted"
-                        >
-                          {h}
-                        </th>
-                      )
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {clientStats.map((c) => (
-                    <tr key={c.id} className="hover:bg-mist/40">
-                      <td className="px-6 py-3 text-sm font-medium text-ink">
-                        {c.name}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-muted">{c.openJobs}</td>
-                      <td className="px-6 py-3 text-sm text-muted">
-                        {c.candidates}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-muted">{c.pipeline}</td>
-                      <td className="px-6 py-3 text-sm text-muted">
-                        {c.avgScore != null ? `${c.avgScore}/100` : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <Link
+            href="/reports"
+            className="text-sm font-semibold text-accent hover:text-accent-hover"
+          >
+            Lihat reports
+          </Link>
         </div>
-      )}
+        {clientStats.length === 0 ? (
+          <p className="px-6 py-10 text-center text-sm text-muted">
+            Belum ada client. Tambah client untuk melihat breakdown.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-line">
+              <thead className="bg-mist/70">
+                <tr>
+                  {["Client", "Open Jobs", "Kandidat", "Pipeline", "Avg AI"].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted"
+                      >
+                        {h}
+                      </th>
+                    )
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {clientStats.map((c) => (
+                  <tr key={c.id} className="hover:bg-mist/40">
+                    <td className="px-6 py-3 text-sm font-medium text-ink">
+                      {c.name}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-muted">{c.openJobs}</td>
+                    <td className="px-6 py-3 text-sm text-muted">
+                      {c.candidates}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-muted">{c.pipeline}</td>
+                    <td className="px-6 py-3 text-sm text-muted">
+                      {c.avgScore != null ? `${c.avgScore}/100` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <div className="surface-panel overflow-hidden">
         <div className="border-b border-line px-6 py-4">

@@ -80,33 +80,35 @@ export function missingAiKeyMessage(): string {
 
 export function detectProvider(): AiProviderConfig {
   const explicit = cleanEnv(process.env.AI_PROVIDER).toLowerCase();
-
-  if (explicit && PROVIDERS[explicit]) {
-    const p = PROVIDERS[explicit];
-    const apiKey =
-      explicit === "openrouter"
-        ? readKey(
-            "OPENROUTER_API_KEY",
-            "OPEN_ROUTER_API_KEY",
-            "AI_API_KEY",
-            "NEXT_PUBLIC_OPENROUTER_API_KEY"
-          )
-        : readKey("OPENCODE_API_KEY", "AI_API_KEY");
-
-    return {
-      baseUrl: cleanEnv(process.env.AI_BASE_URL) || p.baseUrl,
-      model: cleanEnv(process.env.AI_MODEL) || p.defaultModel,
-      apiKey,
-      provider: explicit === "opencode" ? "opencode" : "openrouter",
-    };
-  }
-
   const openRouterKey = readKey(
     "OPENROUTER_API_KEY",
     "OPEN_ROUTER_API_KEY",
     "AI_API_KEY",
     "NEXT_PUBLIC_OPENROUTER_API_KEY"
   );
+  const openCodeKey = readKey("OPENCODE_API_KEY");
+
+  // Explicit provider only if its key exists — otherwise fall back to available key.
+  // (Common misconfig: AI_PROVIDER=opencode but only OPENROUTER_API_KEY is set.)
+  if (explicit === "openrouter" && openRouterKey) {
+    return {
+      baseUrl:
+        cleanEnv(process.env.AI_BASE_URL) || PROVIDERS.openrouter.baseUrl,
+      model: cleanEnv(process.env.AI_MODEL) || PROVIDERS.openrouter.defaultModel,
+      apiKey: openRouterKey,
+      provider: "openrouter",
+    };
+  }
+
+  if (explicit === "opencode" && openCodeKey) {
+    return {
+      baseUrl: cleanEnv(process.env.AI_BASE_URL) || PROVIDERS.opencode.baseUrl,
+      model: cleanEnv(process.env.AI_MODEL) || PROVIDERS.opencode.defaultModel,
+      apiKey: openCodeKey,
+      provider: "opencode",
+    };
+  }
+
   if (openRouterKey) {
     return {
       baseUrl:
@@ -117,7 +119,6 @@ export function detectProvider(): AiProviderConfig {
     };
   }
 
-  const openCodeKey = readKey("OPENCODE_API_KEY");
   if (openCodeKey) {
     return {
       baseUrl: cleanEnv(process.env.AI_BASE_URL) || PROVIDERS.opencode.baseUrl,

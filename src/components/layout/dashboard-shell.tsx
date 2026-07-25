@@ -209,7 +209,7 @@ export function DashboardShell({
         </header>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+          <div className="w-full px-4 py-5 sm:px-6 sm:py-8 lg:px-8 xl:px-10">
             {children}
           </div>
         </main>

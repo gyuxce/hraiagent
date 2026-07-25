@@ -199,9 +199,12 @@ export function AsyncInterviewSection({
             </>
           ) : canWrite ? (
             <>
-              Belum ada sesi. Klik <strong>+ Buat Interview Async</strong> — AI
-              akan generate ~5 pertanyaan video + link. Setelah kandidat selesai,
-              sesi + skor (atau “Analisis pending”) muncul di sini.
+              Belum ada sesi untuk kandidat ini. Klik{" "}
+              <strong>+ Buat Interview Async</strong>. Jika di Supabase Table
+              Editor ada skor tapi di sini kosong: pastikan{" "}
+              <code className="text-xs">candidate_id</code> row itu sama dengan
+              kandidat ini, dan <code className="text-xs">agency_id</code> cocok
+              dengan akun login Anda (RLS).
             </>
           ) : (
             "Belum ada sesi interview async untuk kandidat ini."

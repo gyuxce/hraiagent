@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { BRAND } from "@/lib/brand";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 export type NavIconName =
   | "home"
@@ -98,10 +99,10 @@ export function DashboardShell({
       <div className="flex h-14 items-center justify-between px-5 md:h-16 md:px-6">
         <Link
           href="/dashboard"
-          className="font-display text-xl font-extrabold tracking-tight"
+          className="inline-flex items-center"
           onClick={() => setOpen(false)}
         >
-          {BRAND.name}
+          <BrandLogo variant="light" size="sm" />
         </Link>
         <button
           type="button"
@@ -201,10 +202,10 @@ export function DashboardShell({
             <Menu className="h-5 w-5" />
           </button>
           <div className="min-w-0">
-            <p className="font-display text-base font-extrabold text-ink">
-              {BRAND.name}
+            <BrandLogo variant="dark" size="sm" />
+            <p className="mt-0.5 truncate text-[11px] text-muted">
+              {BRAND.slogan}
             </p>
-            <p className="truncate text-[11px] text-muted">{BRAND.slogan}</p>
           </div>
         </header>
 

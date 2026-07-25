@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Saring">
+  <!-- Abstract sieve / filter mark  ink + coral -->
+  <rect width="64" height="64" rx="14" fill="#0B1F33"/>
+  <path d="M18 20h28c0 6.5-5.2 11-12 12.2V36h8v6H22v-6h8v-3.8C23.2 31 18 26.5 18 20Z" fill="#F7F4EF"/>
+  <circle cx="26" cy="24" r="1.6" fill="#E85D4C"/>
+  <circle cx="32" cy="24" r="1.6" fill="#E85D4C"/>
+  <circle cx="38" cy="24" r="1.6" fill="#E85D4C"/>
+  <circle cx="29" cy="28" r="1.6" fill="#E85D4C"/>
+  <circle cx="35" cy="28" r="1.6" fill="#E85D4C"/>
+</svg>

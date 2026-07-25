@@ -19,6 +19,25 @@ const display = Syne({
 export const metadata: Metadata = {
   title: `${BRAND.name} — ${BRAND.slogan}`,
   description: BRAND.tagline,
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+  ),
+  openGraph: {
+    title: `${BRAND.name} — ${BRAND.slogan}`,
+    description: BRAND.tagline,
+    images: [{ url: BRAND.assets.og, width: 1200, height: 630, alt: BRAND.name }],
+    locale: "id_ID",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${BRAND.name} — ${BRAND.slogan}`,
+    description: BRAND.tagline,
+    images: [BRAND.assets.og],
+  },
+  icons: {
+    icon: BRAND.assets.logoMark,
+  },
 };
 
 export default function RootLayout({

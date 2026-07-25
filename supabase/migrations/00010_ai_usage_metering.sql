@@ -1,5 +1,6 @@
 -- =============================================================================
 -- AI usage metering — fondasi kuota / pricing per agency per bulan
+-- Jalankan SELURUH file ini sekali (jangan partial select).
 -- =============================================================================
 
 ALTER TABLE agencies
@@ -10,10 +11,9 @@ ALTER TABLE agencies
 COMMENT ON COLUMN agencies.plan_tier IS 'starter | growth | scale (label pricing; kuota di ai_quota_monthly)';
 COMMENT ON COLUMN agencies.ai_quota_monthly IS 'Total unit AI billable per bulan kalender (UTC)';
 
--- Aggregate counters (fast dashboard / enforce)
 CREATE TABLE IF NOT EXISTS agency_usage_monthly (
   agency_id UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
-  year_month CHAR(7) NOT NULL, -- YYYY-MM (UTC)
+  year_month CHAR(7) NOT NULL,
   total_units INTEGER NOT NULL DEFAULT 0 CHECK (total_units >= 0),
   cv_screen_count INTEGER NOT NULL DEFAULT 0,
   interview_summary_count INTEGER NOT NULL DEFAULT 0,
@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS agency_usage_monthly (
   PRIMARY KEY (agency_id, year_month)
 );
 
--- Event log (audit / future cost analysis)
 CREATE TABLE IF NOT EXISTS ai_usage_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   agency_id UUID NOT NULL REFERENCES agencies(id) ON DELETE CASCADE,
@@ -60,7 +59,6 @@ CREATE POLICY "Users can view own agency ai events"
   ON ai_usage_events FOR SELECT
   USING (agency_id = get_user_agency_id());
 
--- Atomic consume + enforce quota
 CREATE OR REPLACE FUNCTION consume_ai_quota(
   p_agency_id UUID,
   p_event_type TEXT,
@@ -74,12 +72,11 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $consume$
 DECLARE
   v_month CHAR(7) := to_char(timezone('utc', now()), 'YYYY-MM');
   v_quota INTEGER;
   v_used INTEGER;
-  v_col TEXT;
 BEGIN
   IF p_agency_id IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'error', 'agency_id wajib');
@@ -129,22 +126,31 @@ BEGIN
     );
   END IF;
 
-  v_col := CASE p_event_type
-    WHEN 'cv_screen' THEN 'cv_screen_count'
-    WHEN 'interview_summary' THEN 'interview_summary_count'
-    WHEN 'async_question_gen' THEN 'async_question_gen_count'
-    WHEN 'async_analyze' THEN 'async_analyze_count'
-  END;
-
-  EXECUTE format(
-    'UPDATE agency_usage_monthly
-     SET total_units = total_units + $1,
-         %I = %I + $1,
-         updated_at = now()
-     WHERE agency_id = $2 AND year_month = $3',
-    v_col, v_col
-  )
-  USING p_units, p_agency_id, v_month;
+  IF p_event_type = 'cv_screen' THEN
+    UPDATE agency_usage_monthly
+    SET total_units = total_units + p_units,
+        cv_screen_count = cv_screen_count + p_units,
+        updated_at = now()
+    WHERE agency_id = p_agency_id AND year_month = v_month;
+  ELSIF p_event_type = 'interview_summary' THEN
+    UPDATE agency_usage_monthly
+    SET total_units = total_units + p_units,
+        interview_summary_count = interview_summary_count + p_units,
+        updated_at = now()
+    WHERE agency_id = p_agency_id AND year_month = v_month;
+  ELSIF p_event_type = 'async_question_gen' THEN
+    UPDATE agency_usage_monthly
+    SET total_units = total_units + p_units,
+        async_question_gen_count = async_question_gen_count + p_units,
+        updated_at = now()
+    WHERE agency_id = p_agency_id AND year_month = v_month;
+  ELSE
+    UPDATE agency_usage_monthly
+    SET total_units = total_units + p_units,
+        async_analyze_count = async_analyze_count + p_units,
+        updated_at = now()
+    WHERE agency_id = p_agency_id AND year_month = v_month;
+  END IF;
 
   INSERT INTO ai_usage_events (
     agency_id, user_id, event_type, units,
@@ -164,9 +170,8 @@ BEGIN
     'units', p_units
   );
 END;
-$$;
+$consume$;
 
--- Public async interview path: gate by invite token
 CREATE OR REPLACE FUNCTION consume_ai_quota_for_async_token(
   p_token TEXT,
   p_event_type TEXT,
@@ -179,7 +184,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $token$
 DECLARE
   v_agency_id UUID;
   v_session_id UUID;
@@ -203,14 +208,14 @@ BEGIN
     p_model
   );
 END;
-$$;
+$token$;
 
 CREATE OR REPLACE FUNCTION get_agency_ai_usage(p_agency_id UUID DEFAULT NULL)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $usage$
 DECLARE
   v_agency_id UUID := COALESCE(p_agency_id, get_user_agency_id());
   v_month CHAR(7) := to_char(timezone('utc', now()), 'YYYY-MM');
@@ -222,7 +227,6 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'error', 'Tidak ada agency');
   END IF;
 
-  -- Members may only read own agency
   IF p_agency_id IS NOT NULL
      AND get_user_agency_id() IS NOT NULL
      AND p_agency_id <> get_user_agency_id() THEN
@@ -257,7 +261,7 @@ BEGIN
     )
   );
 END;
-$$;
+$usage$;
 
 GRANT EXECUTE ON FUNCTION consume_ai_quota(UUID, TEXT, INTEGER, UUID, TEXT, UUID, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION consume_ai_quota_for_async_token(TEXT, TEXT, INTEGER, TEXT, UUID, TEXT) TO anon, authenticated;

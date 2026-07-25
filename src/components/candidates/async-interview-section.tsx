@@ -33,6 +33,8 @@ type Props = {
   candidateId: string;
   sessions: AsyncSessionRow[];
   canWrite?: boolean;
+  /** Surfaced when Supabase select fails (e.g. missing migration columns). */
+  loadError?: string | null;
 };
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -65,6 +67,7 @@ export function AsyncInterviewSection({
   candidateId,
   sessions,
   canWrite = true,
+  loadError = null,
 }: Props) {
   const router = useRouter();
   const toast = useToast();
@@ -134,9 +137,10 @@ export function AsyncInterviewSection({
             AI Interview Async
           </h2>
           <p className="mt-1 text-sm text-muted">
-            Skor di sini = kualitas jawaban interview (bukan skor screening CV).
-            Alur: selfie wajib → video + kode tantangan → AI skor (hanya jika
-            transkrip bagus) → face match ringan → Ranking.
+            Skor AI = dari <strong>transkrip suara → teks</strong> (bukan analisis
+            video mahal). Video disimpan sebagai bukti untuk review manusia.
+            Alur: selfie → rekam video → AI skor dari transkrip → face match
+            ringan → Ranking.
           </p>
         </div>
         {canWrite && (
@@ -153,9 +157,9 @@ export function AsyncInterviewSection({
         )}
       </div>
 
-      {error && (
+      {(loadError || error) && (
         <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-          {error}
+          {loadError || error}
         </div>
       )}
 
@@ -187,10 +191,17 @@ export function AsyncInterviewSection({
 
       {sessions.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
-          {canWrite ? (
+          {loadError ? (
+            <>
+              Sesi gagal dimuat (bukan kosong). Perbaiki error di atas, lalu
+              refresh. Cek juga Supabase Table{" "}
+              <code className="text-xs">async_interview_sessions</code>.
+            </>
+          ) : canWrite ? (
             <>
               Belum ada sesi. Klik <strong>+ Buat Interview Async</strong> — AI
-              akan generate ~5 pertanyaan video + link.
+              akan generate ~5 pertanyaan video + link. Setelah kandidat selesai,
+              sesi + skor (atau “Analisis pending”) muncul di sini.
             </>
           ) : (
             "Belum ada sesi interview async untuk kandidat ini."

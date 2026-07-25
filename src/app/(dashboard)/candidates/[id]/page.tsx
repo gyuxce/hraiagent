@@ -119,56 +119,80 @@ export default async function CandidateDetailPage({ params }: Props) {
     );
   }
 
-  // Parallel fetch — avoids 3 sequential round-trips that made Detail feel 3–4s
-  const [
-    { data: candidate, error },
-    { data: notes },
-    { data: asyncSessions },
-  ] = await Promise.all([
-    supabase
-      .from("candidates")
-      .select("*, job_requisitions(id, title, client_companies(name))")
-      .eq("id", id)
-      .single(),
-    supabase
-      .from("interview_notes")
-      .select("*")
-      .eq("candidate_id", id)
-      .order("conducted_at", { ascending: false }),
-    supabase
+  // Parallel fetch — avoids sequential round-trips that made Detail feel slow
+  const [{ data: candidate, error }, { data: notes }, sessionsFull] =
+    await Promise.all([
+      supabase
+        .from("candidates")
+        .select("*, job_requisitions(id, title, client_companies(name))")
+        .eq("id", id)
+        .single(),
+      supabase
+        .from("interview_notes")
+        .select("*")
+        .eq("candidate_id", id)
+        .order("conducted_at", { ascending: false }),
+      supabase
+        .from("async_interview_sessions")
+        .select(
+          "id, invite_token, status, overall_score, overall_summary, created_at, completed_at, expires_at, challenge_code, challenge_passed, face_match_status, face_match_note, needs_manual_review, identity_summary, selfie_path, async_interview_questions(id, question_text, focus_area, sort_order)"
+        )
+        .eq("candidate_id", id)
+        .order("created_at", { ascending: false }),
+    ]);
+
+  // Identity columns need migration 00011. Fall back if missing so the section
+  // doesn't silently render "Belum ada sesi".
+  let asyncSessions = sessionsFull.data;
+  let asyncSessionsError: string | null = sessionsFull.error?.message || null;
+
+  if (sessionsFull.error) {
+    const sessionsBasic = await supabase
       .from("async_interview_sessions")
       .select(
-        "id, invite_token, status, overall_score, overall_summary, created_at, completed_at, expires_at, challenge_code, challenge_passed, face_match_status, face_match_note, needs_manual_review, identity_summary, selfie_path, async_interview_questions(id, question_text, focus_area, sort_order)"
+        "id, invite_token, status, overall_score, overall_summary, created_at, completed_at, expires_at, async_interview_questions(id, question_text, focus_area, sort_order)"
       )
       .eq("candidate_id", id)
-      .order("created_at", { ascending: false }),
-  ]);
+      .order("created_at", { ascending: false });
+
+    if (!sessionsBasic.error) {
+      asyncSessions = sessionsBasic.data as typeof sessionsFull.data;
+      asyncSessionsError =
+        "Beberapa kolom identitas belum ada di database. Jalankan migration 00011_interview_identity_guards.sql di Supabase agar selfie/face match tampil penuh.";
+    } else {
+      asyncSessions = [];
+      asyncSessionsError =
+        sessionsFull.error.message +
+        " — Cek Supabase: tabel async_interview_sessions + migration 00006/00011.";
+    }
+  }
 
   if (error || !candidate) notFound();
 
   const sessionsForUi = (asyncSessions || []).map((s) => {
-    const qs = s.async_interview_questions as unknown;
+    const row = s as Record<string, unknown>;
+    const qs = row.async_interview_questions as unknown;
     const questions = Array.isArray(qs)
       ? qs
       : qs
         ? [qs]
         : [];
     return {
-      id: s.id,
-      invite_token: s.invite_token,
-      status: s.status,
-      overall_score: s.overall_score,
-      overall_summary: s.overall_summary,
-      created_at: s.created_at,
-      completed_at: s.completed_at,
-      expires_at: s.expires_at,
-      challenge_code: s.challenge_code,
-      challenge_passed: s.challenge_passed,
-      face_match_status: s.face_match_status,
-      face_match_note: s.face_match_note,
-      needs_manual_review: s.needs_manual_review,
-      identity_summary: s.identity_summary,
-      selfie_path: s.selfie_path,
+      id: String(row.id),
+      invite_token: String(row.invite_token),
+      status: String(row.status),
+      overall_score: (row.overall_score as number | null) ?? null,
+      overall_summary: (row.overall_summary as string | null) ?? null,
+      created_at: String(row.created_at),
+      completed_at: (row.completed_at as string | null) ?? null,
+      expires_at: (row.expires_at as string | null) ?? null,
+      challenge_code: (row.challenge_code as string | null) ?? null,
+      challenge_passed: (row.challenge_passed as boolean | null) ?? null,
+      face_match_status: (row.face_match_status as string | null) ?? null,
+      face_match_note: (row.face_match_note as string | null) ?? null,
+      needs_manual_review: (row.needs_manual_review as boolean | null) ?? null,
+      identity_summary: (row.identity_summary as string | null) ?? null,
+      selfie_path: (row.selfie_path as string | null) ?? null,
       questions: questions as {
         id: string;
         question_text: string;
@@ -266,6 +290,7 @@ export default async function CandidateDetailPage({ params }: Props) {
         candidateId={candidate.id}
         sessions={sessionsForUi}
         canWrite={canWrite}
+        loadError={asyncSessionsError}
       />
 
       <InterviewNotesSection

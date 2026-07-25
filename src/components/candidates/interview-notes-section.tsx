@@ -8,6 +8,7 @@ import {
   regenerateInterviewSummary,
 } from "@/lib/actions/interviews";
 import type { InterviewNote } from "@/types/database";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type Props = {
   candidateId: string;
@@ -27,6 +28,7 @@ export function InterviewNotesSection({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -56,11 +58,13 @@ export function InterviewNotesSection({
     router.refresh();
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Hapus catatan interview ini?")) return;
+  async function confirmDelete() {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
     setBusyId(id);
     const result = await deleteInterviewNote(id, candidateId);
     setBusyId(null);
+    setPendingDeleteId(null);
     if (result?.error) {
       setError(result.error);
       return;
@@ -90,6 +94,18 @@ export function InterviewNotesSection({
           {error}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteId)}
+        title="Hapus catatan interview?"
+        description="Catatan ini akan dihapus permanen. Tindakan ini tidak bisa dibatalkan."
+        confirmLabel="Ya, hapus"
+        loading={Boolean(pendingDeleteId && busyId === pendingDeleteId)}
+        onCancel={() => {
+          if (!busyId) setPendingDeleteId(null);
+        }}
+        onConfirm={confirmDelete}
+      />
 
       {notes.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
@@ -124,7 +140,7 @@ export function InterviewNotesSection({
                       <button
                         type="button"
                         disabled={busyId === note.id}
-                        onClick={() => handleDelete(note.id)}
+                        onClick={() => setPendingDeleteId(note.id)}
                         className="text-sm font-medium text-red-600 hover:text-red-500 disabled:opacity-50"
                       >
                         Hapus

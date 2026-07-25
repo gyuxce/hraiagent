@@ -6,6 +6,7 @@ import type { ClientCompany } from "@/types/database";
 import { deleteClientCompany } from "@/lib/actions/clients";
 import { ClientFormModal } from "./client-form-modal";
 import { EmptyState } from "@/components/onboarding/empty-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type ClientWithJobs = ClientCompany & {
   job_count?: number;
@@ -21,6 +22,10 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ClientCompany | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,15 +41,14 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
     setModalOpen(true);
   }
 
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`Hapus client "${name}"? Tindakan ini tidak bisa dibatalkan.`)) {
-      return;
-    }
-
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const { id } = pendingDelete;
     setDeletingId(id);
     setError(null);
     const result = await deleteClientCompany(id);
     setDeletingId(null);
+    setPendingDelete(null);
 
     if (result?.error) {
       setError(result.error);
@@ -141,7 +145,12 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
                         {isAdmin && (
                           <button
                             type="button"
-                            onClick={() => handleDelete(client.id, client.name)}
+                            onClick={() =>
+                              setPendingDelete({
+                                id: client.id,
+                                name: client.name,
+                              })
+                            }
                             disabled={deletingId === client.id}
                             className="text-red-600 hover:text-red-500 font-medium disabled:opacity-50"
                           >
@@ -166,6 +175,22 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
           client={editing}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Hapus client?"
+        description={
+          pendingDelete
+            ? `Client "${pendingDelete.name}" akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`
+            : ""
+        }
+        confirmLabel="Ya, hapus"
+        loading={Boolean(deletingId)}
+        onCancel={() => {
+          if (!deletingId) setPendingDelete(null);
+        }}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

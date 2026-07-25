@@ -9,6 +9,7 @@ import {
 } from "@/lib/actions/team";
 import { roleLabel } from "@/lib/auth/roles";
 import type { ClientCompany, UserRole } from "@/types/database";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export type TeamMember = {
   id: string;
@@ -68,6 +69,7 @@ export function TeamClient({
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [role, setRole] = useState<UserRole>("recruiter");
+  const [pendingRevokeId, setPendingRevokeId] = useState<string | null>(null);
 
   async function handleInvite(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -90,11 +92,12 @@ export function TeamClient({
     router.refresh();
   }
 
-  async function handleRevoke(id: string) {
-    if (!confirm("Batalkan undangan ini?")) return;
+  async function confirmRevoke() {
+    if (!pendingRevokeId) return;
     setBusy(true);
-    const result = await revokeTeamInvite(id);
+    const result = await revokeTeamInvite(pendingRevokeId);
     setBusy(false);
+    setPendingRevokeId(null);
     if (result.error) {
       setError(result.error);
       return;
@@ -348,7 +351,7 @@ export function TeamClient({
                     <button
                       type="button"
                       disabled={busy}
-                      onClick={() => handleRevoke(inv.id)}
+                      onClick={() => setPendingRevokeId(inv.id)}
                       className="text-sm font-medium text-red-600"
                     >
                       Batalkan
@@ -360,6 +363,18 @@ export function TeamClient({
           </ul>
         )}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(pendingRevokeId)}
+        title="Batalkan undangan?"
+        description="Link undangan ini tidak akan bisa dipakai lagi setelah dibatalkan."
+        confirmLabel="Ya, batalkan"
+        loading={busy && Boolean(pendingRevokeId)}
+        onCancel={() => {
+          if (!busy) setPendingRevokeId(null);
+        }}
+        onConfirm={confirmRevoke}
+      />
     </div>
   );
 }

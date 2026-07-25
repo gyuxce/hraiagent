@@ -6,6 +6,7 @@ import type { ClientCompany } from "@/types/database";
 import { deleteJob } from "@/lib/actions/jobs";
 import { JobFormModal, type JobWithClient } from "./job-form-modal";
 import { EmptyState } from "@/components/onboarding/empty-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import Link from "next/link";
 
 type Props = {
@@ -31,6 +32,10 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<JobWithClient | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,13 +51,14 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
     setModalOpen(true);
   }
 
-  async function handleDelete(id: string, title: string) {
-    if (!confirm(`Hapus job "${title}"?`)) return;
-
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const { id } = pendingDelete;
     setDeletingId(id);
     setError(null);
     const result = await deleteJob(id);
     setDeletingId(null);
+    setPendingDelete(null);
 
     if (result?.error) {
       setError(result.error);
@@ -173,7 +179,9 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
                         {isAdmin && (
                           <button
                             type="button"
-                            onClick={() => handleDelete(job.id, job.title)}
+                            onClick={() =>
+                              setPendingDelete({ id: job.id, title: job.title })
+                            }
                             disabled={deletingId === job.id}
                             className="text-red-600 hover:text-red-500 font-medium disabled:opacity-50"
                           >
@@ -199,6 +207,22 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
           clients={clients}
         />
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Hapus job?"
+        description={
+          pendingDelete
+            ? `Job "${pendingDelete.title}" akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`
+            : ""
+        }
+        confirmLabel="Ya, hapus"
+        loading={Boolean(deletingId)}
+        onCancel={() => {
+          if (!deletingId) setPendingDelete(null);
+        }}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

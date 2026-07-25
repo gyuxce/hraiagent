@@ -7,6 +7,7 @@ import {
   deleteInterviewSchedule,
   updateInterviewScheduleStatus,
 } from "@/lib/actions/schedules";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export type ScheduleRow = {
   id: string;
@@ -104,6 +105,7 @@ export function ScheduleClient({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -130,11 +132,12 @@ export function ScheduleClient({
     router.refresh();
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Hapus jadwal ini?")) return;
+  async function confirmDelete() {
+    if (!pendingDeleteId) return;
     setBusy(true);
-    const result = await deleteInterviewSchedule(id);
+    const result = await deleteInterviewSchedule(pendingDeleteId);
     setBusy(false);
+    setPendingDeleteId(null);
     if (result.error) {
       setError(result.error);
       return;
@@ -337,7 +340,7 @@ export function ScheduleClient({
                           <button
                             type="button"
                             disabled={busy}
-                            onClick={() => handleDelete(s.id)}
+                            onClick={() => setPendingDeleteId(s.id)}
                             className="font-medium text-red-600"
                           >
                             Hapus
@@ -352,6 +355,18 @@ export function ScheduleClient({
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteId)}
+        title="Hapus jadwal?"
+        description="Jadwal interview ini akan dihapus permanen. Tindakan ini tidak bisa dibatalkan."
+        confirmLabel="Ya, hapus"
+        loading={busy && Boolean(pendingDeleteId)}
+        onCancel={() => {
+          if (!busy) setPendingDeleteId(null);
+        }}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

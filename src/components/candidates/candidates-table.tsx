@@ -14,6 +14,7 @@ import {
 } from "./candidate-form-modal";
 import { ImportCandidatesModal } from "./import-candidates-modal";
 import { EmptyState } from "@/components/onboarding/empty-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { effectiveScore } from "@/lib/candidates/score";
 
 export type CandidateRow = {
@@ -78,6 +79,10 @@ export function CandidatesTable({
   const [modalOpen, setModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleStatus(id: string, status: string) {
@@ -104,12 +109,14 @@ export function CandidatesTable({
     router.refresh();
   }
 
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`Hapus kandidat "${name}"?`)) return;
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const { id } = pendingDelete;
     setBusyId(id);
     setError(null);
     const result = await deleteCandidate(id);
     setBusyId(null);
+    setPendingDelete(null);
     if (result?.error) {
       setError(result.error);
       return;
@@ -379,7 +386,9 @@ export function CandidatesTable({
                               <button
                                 type="button"
                                 disabled={busyId === c.id}
-                                onClick={() => handleDelete(c.id, c.name)}
+                                onClick={() =>
+                                  setPendingDelete({ id: c.id, name: c.name })
+                                }
                                 className="font-medium text-bad hover:opacity-80 disabled:opacity-50"
                               >
                                 Hapus
@@ -411,6 +420,22 @@ export function CandidatesTable({
           />
         </>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Hapus kandidat?"
+        description={
+          pendingDelete
+            ? `Kandidat "${pendingDelete.name}" akan dihapus permanen beserta data terkait. Tindakan ini tidak bisa dibatalkan.`
+            : ""
+        }
+        confirmLabel="Ya, hapus"
+        loading={Boolean(pendingDelete && busyId === pendingDelete.id)}
+        onCancel={() => {
+          if (!busyId) setPendingDelete(null);
+        }}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 }

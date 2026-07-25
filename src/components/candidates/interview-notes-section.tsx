@@ -155,7 +155,7 @@ export function InterviewNotesSection({
                   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
                     AI Summary
                   </p>
-                  <pre className="whitespace-pre-wrap font-sans text-sm text-blue-950">
+                  <pre className="prose-read whitespace-pre-wrap font-sans text-blue-950">
                     {note.ai_summary}
                   </pre>
                 </div>
@@ -166,7 +166,7 @@ export function InterviewNotesSection({
                   <p className="text-xs font-semibold uppercase text-gray-500">
                     Catatan Interviewer
                   </p>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">
+                  <p className="prose-read mt-1 whitespace-pre-wrap text-gray-700">
                     {note.interviewer_notes}
                   </p>
                 </div>
@@ -176,7 +176,7 @@ export function InterviewNotesSection({
                 <p className="text-xs font-semibold uppercase text-gray-500">
                   Transkrip
                 </p>
-                <p className="mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap text-sm text-gray-700">
+                <p className="prose-read mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap text-gray-700">
                   {note.transcript}
                 </p>
               </div>

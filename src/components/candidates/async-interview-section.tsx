@@ -239,7 +239,7 @@ export function AsyncInterviewSection({
                     </div>
 
                     {s.overall_summary && (
-                      <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">
+                      <p className="prose-read mt-2 whitespace-pre-wrap text-gray-700">
                         {s.overall_summary}
                       </p>
                     )}

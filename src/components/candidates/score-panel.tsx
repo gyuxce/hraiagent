@@ -108,7 +108,7 @@ export function ScorePanel({
         </div>
       </div>
 
-      <p className="mb-4 whitespace-pre-wrap text-sm text-ink-soft">
+      <p className="prose-read mb-4 whitespace-pre-wrap text-ink-soft">
         {summary || "Belum ada AI screening."}
       </p>
 
@@ -124,10 +124,10 @@ export function ScorePanel({
           {(breakdown.strengths?.length > 0 ||
             breakdown.gaps?.length > 0 ||
             breakdown.red_flags?.length > 0) && (
-            <div className="grid gap-3 pt-2 text-sm sm:grid-cols-3">
+            <div className="prose-read grid gap-3 pt-2 sm:grid-cols-3">
               <div>
                 <p className="text-xs font-semibold text-teal">Strengths</p>
-                <ul className="mt-1 list-disc space-y-1 pl-4 text-ink-soft">
+                <ul className="mt-1 list-disc space-y-1.5 pl-4 text-ink-soft">
                   {(breakdown.strengths || []).map((s) => (
                     <li key={s}>{s}</li>
                   ))}
@@ -135,7 +135,7 @@ export function ScorePanel({
               </div>
               <div>
                 <p className="text-xs font-semibold text-warn">Gaps</p>
-                <ul className="mt-1 list-disc space-y-1 pl-4 text-ink-soft">
+                <ul className="mt-1 list-disc space-y-1.5 pl-4 text-ink-soft">
                   {(breakdown.gaps || []).map((s) => (
                     <li key={s}>{s}</li>
                   ))}
@@ -143,7 +143,7 @@ export function ScorePanel({
               </div>
               <div>
                 <p className="text-xs font-semibold text-bad">Red flags</p>
-                <ul className="mt-1 list-disc space-y-1 pl-4 text-ink-soft">
+                <ul className="mt-1 list-disc space-y-1.5 pl-4 text-ink-soft">
                   {(breakdown.red_flags || []).length ? (
                     breakdown.red_flags.map((s) => <li key={s}>{s}</li>)
                   ) : (

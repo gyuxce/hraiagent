@@ -169,7 +169,7 @@ export function CompareClient({
                     <p className="text-xs font-semibold uppercase text-gray-400">
                       AI CV Summary
                     </p>
-                    <p className="mt-1 line-clamp-5 text-sm text-gray-700">
+                    <p className="prose-read mt-1 line-clamp-5 text-gray-700">
                       {c.ai_summary || "Belum di-screen"}
                     </p>
                   </div>
@@ -192,7 +192,7 @@ export function CompareClient({
                       Interview AI Summary
                     </p>
                     {latestNote?.ai_summary ? (
-                      <p className="mt-1 line-clamp-6 whitespace-pre-wrap text-sm text-gray-700">
+                      <p className="prose-read mt-1 line-clamp-6 whitespace-pre-wrap text-gray-700">
                         {latestNote.ai_summary}
                       </p>
                     ) : (

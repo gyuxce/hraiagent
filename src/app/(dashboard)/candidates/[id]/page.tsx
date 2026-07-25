@@ -44,7 +44,7 @@ function ParsedCvView({ data }: { data: Record<string, unknown> }) {
       {typeof data.summary === "string" && data.summary && (
         <div>
           <p className="text-xs font-semibold uppercase text-gray-400">Ringkasan</p>
-          <p className="mt-1 text-gray-700">{data.summary}</p>
+          <p className="prose-read mt-1 text-gray-700">{data.summary}</p>
         </div>
       )}
       {skills.length > 0 && (
@@ -67,7 +67,7 @@ function ParsedCvView({ data }: { data: Record<string, unknown> }) {
           <p className="mb-1 text-xs font-semibold uppercase text-gray-400">
             Pengalaman
           </p>
-          <ul className="list-disc space-y-1 pl-5 text-gray-700">
+          <ul className="prose-read list-disc space-y-1.5 pl-5 text-gray-700">
             {experience.map((e) => (
               <li key={e}>{e}</li>
             ))}
@@ -79,7 +79,7 @@ function ParsedCvView({ data }: { data: Record<string, unknown> }) {
           <p className="mb-1 text-xs font-semibold uppercase text-gray-400">
             Pendidikan
           </p>
-          <ul className="list-disc space-y-1 pl-5 text-gray-700">
+          <ul className="prose-read list-disc space-y-1.5 pl-5 text-gray-700">
             {education.map((e) => (
               <li key={e}>{e}</li>
             ))}

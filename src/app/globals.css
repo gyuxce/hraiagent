@@ -173,6 +173,21 @@ option {
   color: var(--muted);
 }
 
+/**
+ * Long-form reading blocks (AI summary, CV prose, feedback lists).
+ * Keeps Syne + Jakarta globally; only loosens metrics where paragraphs get dense.
+ */
+.prose-read {
+  font-size: 0.9375rem; /* 15px */
+  line-height: 1.7;
+  letter-spacing: 0.01em;
+  word-spacing: 0.02em;
+}
+
+.prose-read li {
+  line-height: 1.65;
+}
+
 /* Atmosphere helpers */
 .bg-atmosphere {
   background:

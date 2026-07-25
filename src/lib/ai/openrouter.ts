@@ -360,8 +360,7 @@ export async function generateInterviewQuestions(params: {
   candidateName?: string;
   count?: number;
 }): Promise<{ question_text: string; focus_area: string }[]> {
-  // Keep default small — AI latency dominates "buat link" time.
-  const count = params.count ?? 3;
+  const count = params.count ?? 5;
   const requirementsText =
     params.requirements.length > 0
       ? params.requirements

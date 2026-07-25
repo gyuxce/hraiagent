@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   analyzeInterviewAnswer,
@@ -85,7 +86,7 @@ export async function createAsyncInterview(candidateId: string) {
       jobDescription: job.description || "",
       requirements: Array.isArray(job.requirements) ? job.requirements : [],
       candidateName: candidate.name,
-      count: 3,
+      count: 5,
     });
   } catch (err) {
     return { error: "Gagal generate pertanyaan AI: " + formatError(err) };
@@ -797,6 +798,133 @@ export async function getInterviewIdentityMedia(sessionId: string) {
   };
 }
 
+async function analyzePublicInterviewSession(token: string) {
+  const supabase = await createClient();
+
+  const quota = await consumeAiQuotaForAsyncToken(supabase, {
+    token,
+    eventType: "async_analyze",
+  });
+  if (!quota.ok && !quota.soft) {
+    await supabase.rpc("save_async_interview_analysis", {
+      p_token: token,
+      p_answer_scores: [],
+      p_overall_score: null,
+      p_overall_summary:
+        "Interview selesai. Analisis AI tertunda (kuota). Recruiter: klik Jalankan Analisis AI.",
+      p_allow_null_overall: true,
+    });
+    return { analyzed: false, analyzeError: quotaExceededMessage(quota) };
+  }
+
+  const { data: payload, error: loadErr } = await supabase.rpc(
+    "get_async_interview_by_token",
+    { p_token: token }
+  );
+
+  if (loadErr || !payload) {
+    throw new Error(loadErr?.message || "Gagal memuat sesi untuk analisis");
+  }
+
+  const data = payload as {
+    session?: {
+      selfie_path?: string | null;
+      face_frame_path?: string | null;
+      challenge_code?: string | null;
+      challenge_question_id?: string | null;
+      candidate_id?: string | null;
+    };
+    candidate?: { id?: string };
+    job?: { title?: string };
+    questions?: Array<{
+      id?: string;
+      question_text: string;
+      focus_area?: string | null;
+      answer?: {
+        id?: string;
+        text_answer?: string | null;
+        transcript?: string | null;
+      } | null;
+    }>;
+  };
+
+  const jobTitle = data.job?.title || "Posisi";
+  const questions = (data.questions || []).map((q) => ({
+    id: q.id,
+    question_text: q.question_text,
+    focus_area: q.focus_area,
+    answer: q.answer || null,
+  }));
+
+  const { graded, answerScores, weakTranscriptCount } =
+    await gradeAnswersFromText({
+      jobTitle,
+      questions,
+    });
+
+  const identity = await runIdentityChecks({
+    supabase,
+    token,
+    selfiePath: data.session?.selfie_path || null,
+    faceFramePath: data.session?.face_frame_path || null,
+    challengeCode: data.session?.challenge_code || null,
+    challengeQuestionId: data.session?.challenge_question_id || null,
+    questions,
+    weakTranscriptCount,
+    totalAnswers: questions.length,
+  });
+
+  const scored = graded.filter((g) => g.score != null);
+  let overallScore: number | null = null;
+  let overallSummary = "";
+
+  if (scored.length === 0) {
+    overallScore = null;
+    overallSummary =
+      "Skor AI ditunda: tidak ada transkrip yang cukup jelas. Putar video + cek identitas. " +
+      identity.identitySummary;
+  } else {
+    try {
+      const overall = await rankInterviewSession({
+        jobTitle,
+        answers: graded,
+      });
+      overallScore = overall.overall_score;
+      overallSummary = `${overall.overall_summary}\n\n[Identitas] ${identity.identitySummary}`;
+    } catch (err) {
+      overallScore = Math.round(
+        scored.reduce((s, g) => s + (g.score || 0), 0) / scored.length
+      );
+      overallSummary =
+        "Ringkasan AI gagal: " +
+        formatError(err) +
+        `\n\n[Identitas] ${identity.identitySummary}`;
+    }
+  }
+
+  const { error: saveErr } = await supabase.rpc(
+    "save_async_interview_analysis",
+    {
+      p_token: token,
+      p_answer_scores: answerScores,
+      p_overall_score: overallScore,
+      p_overall_summary: overallSummary,
+      p_allow_null_overall: overallScore == null,
+    }
+  );
+  if (saveErr) throw new Error(saveErr.message);
+
+  const candidateId =
+    data.candidate?.id || data.session?.candidate_id || null;
+  if (candidateId) {
+    revalidatePath(`/candidates/${candidateId}`);
+  }
+  revalidatePath("/candidates");
+  revalidatePath("/ranking");
+
+  return { analyzed: true, analyzeError: null as string | null };
+}
+
 export async function completePublicInterview(token: string) {
   const supabase = await createClient();
   const { data: sessionId, error } = await supabase.rpc(
@@ -806,122 +934,40 @@ export async function completePublicInterview(token: string) {
 
   if (error) return { error: formatError(error) };
 
-  // Auto-analyze after candidate submits (no recruiter login needed).
-  let analyzed = false;
-  let analyzeError: string | null = null;
+  // Immediate placeholder so recruiter refresh already shows a result row.
+  await supabase.rpc("save_async_interview_analysis", {
+    p_token: token,
+    p_answer_scores: [],
+    p_overall_score: null,
+    p_overall_summary:
+      "Interview selesai. Analisis AI sedang diproses di background — refresh halaman atau klik Jalankan Analisis AI jika belum muncul skor.",
+    p_allow_null_overall: true,
+  });
 
-  try {
-    const quota = await consumeAiQuotaForAsyncToken(supabase, {
-      token,
-      eventType: "async_analyze",
-    });
-    if (!quota.ok && !quota.soft) {
-      return {
-        success: true,
-        analyzed: false,
-        analyzeError: quotaExceededMessage(quota),
-      };
-    }
-
-    const { data: payload, error: loadErr } = await supabase.rpc(
-      "get_async_interview_by_token",
-      { p_token: token }
-    );
-
-    if (loadErr || !payload) {
-      throw new Error(loadErr?.message || "Gagal memuat sesi untuk analisis");
-    }
-
-    const data = payload as {
-      session?: {
-        selfie_path?: string | null;
-        face_frame_path?: string | null;
-        challenge_code?: string | null;
-        challenge_question_id?: string | null;
-      };
-      job?: { title?: string };
-      questions?: Array<{
-        id?: string;
-        question_text: string;
-        focus_area?: string | null;
-        answer?: {
-          id?: string;
-          text_answer?: string | null;
-          transcript?: string | null;
-        } | null;
-      }>;
-    };
-
-    const jobTitle = data.job?.title || "Posisi";
-    const questions = (data.questions || []).map((q) => ({
-      id: q.id,
-      question_text: q.question_text,
-      focus_area: q.focus_area,
-      answer: q.answer || null,
-    }));
-
-    const { graded, answerScores, weakTranscriptCount } =
-      await gradeAnswersFromText({
-        jobTitle,
-        questions,
-      });
-
-    const identity = await runIdentityChecks({
-      supabase,
-      token,
-      selfiePath: data.session?.selfie_path || null,
-      faceFramePath: data.session?.face_frame_path || null,
-      challengeCode: data.session?.challenge_code || null,
-      challengeQuestionId: data.session?.challenge_question_id || null,
-      questions,
-      weakTranscriptCount,
-      totalAnswers: questions.length,
-    });
-
-    const scored = graded.filter((g) => g.score != null);
-    let overallScore: number | null = null;
-    let overallSummary = "";
-
-    if (scored.length === 0) {
-      overallScore = null;
-      overallSummary =
-        "Skor AI ditunda: tidak ada transkrip yang cukup jelas. Putar video + cek identitas. " +
-        identity.identitySummary;
-    } else {
-      try {
-        const overall = await rankInterviewSession({
-          jobTitle,
-          answers: graded,
-        });
-        overallScore = overall.overall_score;
-        overallSummary = `${overall.overall_summary}\n\n[Identitas] ${identity.identitySummary}`;
-      } catch (err) {
-        overallScore = Math.round(
-          scored.reduce((s, g) => s + (g.score || 0), 0) / scored.length
-        );
-        overallSummary =
-          "Ringkasan AI gagal: " +
-          formatError(err) +
-          `\n\n[Identitas] ${identity.identitySummary}`;
-      }
-    }
-
-    const { error: saveErr } = await supabase.rpc(
-      "save_async_interview_analysis",
-      {
+  // Heavy AI work after response — avoids Vercel timeout killing the finish step.
+  after(async () => {
+    try {
+      await analyzePublicInterviewSession(token);
+    } catch (err) {
+      const supabaseBg = await createClient();
+      await supabaseBg.rpc("save_async_interview_analysis", {
         p_token: token,
-        p_answer_scores: answerScores,
-        p_overall_score: overallScore,
-        p_overall_summary: overallSummary,
-        p_allow_null_overall: overallScore == null,
-      }
-    );
-    if (saveErr) throw new Error(saveErr.message);
+        p_answer_scores: [],
+        p_overall_score: null,
+        p_overall_summary:
+          "Interview selesai, tapi analisis AI gagal otomatis: " +
+          formatError(err) +
+          ". Recruiter: klik Jalankan Analisis AI.",
+        p_allow_null_overall: true,
+      });
+    }
+  });
 
-    analyzed = true;
-  } catch (err) {
-    analyzeError = formatError(err);
-  }
-
-  return { success: true, sessionId, analyzed, analyzeError };
+  return {
+    success: true,
+    sessionId,
+    analyzed: false,
+    analyzeError: null as string | null,
+    pendingAnalysis: true,
+  };
 }

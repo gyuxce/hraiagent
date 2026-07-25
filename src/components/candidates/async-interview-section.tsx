@@ -147,7 +147,7 @@ export function AsyncInterviewSection({
             className="btn-primary disabled:opacity-50"
           >
             {loading
-              ? "Generate pertanyaan AI (~3–5 dtk)..."
+              ? "Generate 5 pertanyaan AI..."
               : "+ Buat Interview Async"}
           </button>
         )}
@@ -190,7 +190,7 @@ export function AsyncInterviewSection({
           {canWrite ? (
             <>
               Belum ada sesi. Klik <strong>+ Buat Interview Async</strong> — AI
-              akan generate ~3 pertanyaan video + link.
+              akan generate ~5 pertanyaan video + link.
             </>
           ) : (
             "Belum ada sesi interview async untuk kandidat ini."
@@ -215,6 +215,11 @@ export function AsyncInterviewSection({
                       {s.overall_score != null && (
                         <span className="ml-2 rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
                           Score {s.overall_score}/100
+                        </span>
+                      )}
+                      {s.status === "completed" && s.overall_score == null && (
+                        <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
+                          Analisis pending
                         </span>
                       )}
                       {s.needs_manual_review && (

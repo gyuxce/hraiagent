@@ -15,6 +15,8 @@ import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
 const MAX_RECORD_SECONDS = 90;
 const TARGET_RECORD_HINT = "Target 30–90 detik per jawaban";
 const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
+/** Live front-camera previews are often mirrored by the browser; flip to "normal". */
+const LIVE_CAMERA_TRANSFORM = "scaleX(-1)";
 
 type Question = {
   id: string;
@@ -67,6 +69,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
   const [selfieReady, setSelfieReady] = useState(false);
   const [selfieBusy, setSelfieBusy] = useState(false);
   const [faceFrameSent, setFaceFrameSent] = useState(false);
+  const [answerSaved, setAnswerSaved] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const selfieVideoRef = useRef<HTMLVideoElement>(null);
@@ -95,6 +98,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
     setUploadedPath(null);
     setUploadNote(null);
     setRecordSeconds(0);
+    setAnswerSaved(false);
   }
 
   function stopMediaTracks() {
@@ -171,6 +175,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
     clearRecordTimer();
     setRecording(false);
     setUploading(false);
+    setAnswerSaved(Boolean(q.answer?.video_path));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 
@@ -200,6 +205,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
           selfieVideoRef.current.srcObject = stream;
           selfieVideoRef.current.muted = true;
           selfieVideoRef.current.playsInline = true;
+          selfieVideoRef.current.style.transform = LIVE_CAMERA_TRANSFORM;
           await selfieVideoRef.current.play().catch(() => undefined);
         }
       } catch {
@@ -300,11 +306,50 @@ export function PublicInterviewClient({ token }: { token: string }) {
     }
   }
 
+  async function persistAnswer(
+    questionId: string,
+    videoPath: string,
+    currentIdx: number
+  ) {
+    const form = new FormData();
+    form.set("token", token);
+    form.set("question_id", questionId);
+    form.set("text_answer", "");
+    form.set("transcript", transcript.trim() || "(jawaban video)");
+    form.set("video_path", videoPath);
+    const result = await submitPublicAnswer(form);
+    if (result.error) {
+      setError(result.error);
+      return false;
+    }
+    setAnswerSaved(true);
+    setData((prev) => {
+      if (!prev) return prev;
+      const questions = prev.questions.map((item, i) =>
+        i === currentIdx
+          ? {
+              ...item,
+              answer: {
+                id: item.answer?.id || "local",
+                text_answer: null,
+                video_path: videoPath,
+                transcript: transcript.trim() || null,
+              },
+            }
+          : item
+      );
+      return { ...prev, questions };
+    });
+    return true;
+  }
+
   async function uploadBlobDirect(blob: Blob, questionId: string) {
     const gen = ++uploadGenRef.current;
+    const currentIdx = idxRef.current;
     setUploading(true);
     setUploadNote("Mengunggah video…");
     setError(null);
+    setAnswerSaved(false);
 
     try {
       if (blob.size > MAX_UPLOAD_BYTES) {
@@ -319,6 +364,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
       }
 
       const supabase = createBrowserSupabase();
+      let videoPath = prepared.path;
       const { error: upErr } = await supabase.storage
         .from("interview-videos")
         .upload(prepared.path, blob, {
@@ -343,18 +389,24 @@ export function PublicInterviewClient({ token }: { token: string }) {
             fallback.error || upErr.message || "Upload gagal"
           );
         }
-        if (gen !== uploadGenRef.current) return null;
-        setUploadedPath(fallback.videoPath);
-        setUploadNote("Video siap. Klik Simpan & Lanjut.");
-        setUploading(false);
-        return fallback.videoPath;
+        videoPath = fallback.videoPath;
       }
 
       if (gen !== uploadGenRef.current) return null;
-      setUploadedPath(prepared.path);
-      setUploadNote("Video siap. Klik Simpan & Lanjut.");
+      setUploadedPath(videoPath);
+      setUploadNote("Menyimpan jawaban…");
+
+      const saved = await persistAnswer(questionId, videoPath, currentIdx);
+      if (gen !== uploadGenRef.current) return null;
+      if (!saved) {
+        setUploading(false);
+        setUploadNote("Video terunggah, tapi simpan jawaban gagal. Coba Lanjut lagi.");
+        return videoPath;
+      }
+
+      setUploadNote("Tersimpan. Klik Lanjut.");
       setUploading(false);
-      return prepared.path;
+      return videoPath;
     } catch (err) {
       if (gen !== uploadGenRef.current) return null;
       setUploading(false);
@@ -396,8 +448,8 @@ export function PublicInterviewClient({ token }: { token: string }) {
         videoRef.current.srcObject = stream;
         videoRef.current.muted = true;
         videoRef.current.playsInline = true;
-        // Normal (non-mirrored) — same orientation recruiter will see
-        videoRef.current.style.transform = "none";
+        // Counteract browser front-camera mirror → normal orientation
+        videoRef.current.style.transform = LIVE_CAMERA_TRANSFORM;
         await videoRef.current.play().catch(() => undefined);
       }
 
@@ -412,12 +464,12 @@ export function PublicInterviewClient({ token }: { token: string }) {
       const recorder = mime
         ? new MediaRecorder(stream, {
             mimeType: mime,
-            videoBitsPerSecond: 500_000,
-            audioBitsPerSecond: 64_000,
+            videoBitsPerSecond: 350_000,
+            audioBitsPerSecond: 48_000,
           })
         : new MediaRecorder(stream, {
-            videoBitsPerSecond: 500_000,
-            audioBitsPerSecond: 64_000,
+            videoBitsPerSecond: 350_000,
+            audioBitsPerSecond: 48_000,
           });
       mediaRecorderRef.current = recorder;
       recorder.ondataavailable = (e) => {
@@ -437,10 +489,11 @@ export function PublicInterviewClient({ token }: { token: string }) {
           videoRef.current.srcObject = null;
           videoRef.current.src = url;
           videoRef.current.muted = false;
+          // Playback = recorded frames (not live) — no flip
           videoRef.current.style.transform = "none";
           void videoRef.current.load();
         }
-        // Upload immediately after stop so "Simpan & Lanjut" is fast
+        // Upload + save answer immediately after stop
         void uploadBlobDirect(blob, q.id);
       };
       recorder.start(1000);
@@ -512,7 +565,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
     setRecording(false);
   }
 
-  async function saveCurrent(currentIdx: number): Promise<boolean> {
+  async function ensureAnswerSaved(currentIdx: number): Promise<boolean> {
     if (!data) return false;
     const q = data.questions[currentIdx];
     if (!q) return false;
@@ -523,17 +576,21 @@ export function PublicInterviewClient({ token }: { token: string }) {
     }
 
     if (recording) {
-      setError("Klik Stop dulu untuk mengakhiri rekaman, lalu Simpan & Lanjut.");
-      return false;
-    }
-
-    if (!videoBlob && !uploadedPath && !q.answer?.video_path) {
-      setError("Rekam video jawaban dulu sebelum lanjut.");
+      setError("Klik Stop dulu untuk mengakhiri rekaman, lalu Lanjut.");
       return false;
     }
 
     if (uploading) {
-      setError("Video masih diunggah. Tunggu sebentar…");
+      setError("Video masih diunggah/disimpan. Tunggu sebentar…");
+      return false;
+    }
+
+    if (answerSaved || q.answer?.video_path) {
+      return true;
+    }
+
+    if (!videoBlob && !uploadedPath) {
+      setError("Rekam video jawaban dulu sebelum lanjut.");
       return false;
     }
 
@@ -545,6 +602,8 @@ export function PublicInterviewClient({ token }: { token: string }) {
 
     if (!videoPath && videoBlob) {
       videoPath = await uploadBlobDirect(videoBlob, q.id);
+      setSaving(false);
+      return Boolean(videoPath);
     }
 
     if (!videoPath) {
@@ -553,45 +612,14 @@ export function PublicInterviewClient({ token }: { token: string }) {
       return false;
     }
 
-    const form = new FormData();
-    form.set("token", token);
-    form.set("question_id", q.id);
-    form.set("text_answer", "");
-    form.set("transcript", transcript.trim() || "(jawaban video)");
-    form.set("video_path", videoPath);
-
-    const result = await submitPublicAnswer(form);
+    const ok = await persistAnswer(q.id, videoPath, currentIdx);
     setSaving(false);
-    if (result.error) {
-      setError(result.error);
-      return false;
-    }
-
-    setData((prev) => {
-      if (!prev) return prev;
-      const questions = prev.questions.map((item, i) =>
-        i === currentIdx
-          ? {
-              ...item,
-              answer: {
-                id: item.answer?.id || "local",
-                text_answer: null,
-                video_path: videoPath,
-                transcript: transcript.trim() || null,
-              },
-            }
-          : item
-      );
-      return { ...prev, questions };
-    });
-    setVideoBlob(null);
-    setUploadedPath(null);
-    return true;
+    return ok;
   }
 
   async function handleNext() {
     const current = idxRef.current;
-    const ok = await saveCurrent(current);
+    const ok = await ensureAnswerSaved(current);
     if (!ok || !data) return;
     if (current < data.questions.length - 1) {
       setIdx(current + 1);
@@ -600,7 +628,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
 
   async function handleFinish() {
     const current = idxRef.current;
-    const ok = await saveCurrent(current);
+    const ok = await ensureAnswerSaved(current);
     if (!ok) return;
     setSaving(true);
     const result = await completePublicInterview(token);
@@ -644,7 +672,9 @@ export function PublicInterviewClient({ token }: { token: string }) {
           <p className="mt-3 text-muted">
             Jawaban video untuk posisi{" "}
             <strong className="text-ink">{data.job.title}</strong> sudah
-            terkirim. AI akan menganalisis rekaman; recruiter mereview hasilnya.
+            terkirim. Analisis AI diproses di background — recruiter bisa refresh
+            halaman kandidat atau klik <em>Jalankan Analisis AI</em> jika skor
+            belum muncul.
           </p>
         </div>
       </div>
@@ -677,14 +707,14 @@ export function PublicInterviewClient({ token }: { token: string }) {
               <video
                 ref={selfieVideoRef}
                 className="aspect-[4/3] w-full object-cover"
-                style={{ transform: "none" }}
+                style={{ transform: LIVE_CAMERA_TRANSFORM }}
                 playsInline
                 muted
               />
             </div>
             <p className="mt-3 text-xs text-muted">
-              Tampilan normal (tidak mirror) — sama seperti yang dilihat
-              recruiter. Pastikan wajah jelas, tanpa filter.
+              Preview sudah di-koreksi agar tidak mirror. Pastikan wajah jelas,
+              tanpa filter.
             </p>
             <button
               type="button"
@@ -712,7 +742,9 @@ export function PublicInterviewClient({ token }: { token: string }) {
     !recording &&
     !uploading &&
     !saving &&
-    Boolean(uploadedPath || videoBlob || q?.answer?.video_path);
+    Boolean(
+      answerSaved || uploadedPath || videoBlob || q?.answer?.video_path
+    );
 
   return (
     <div className="relative min-h-screen bg-atmosphere px-4 py-8">
@@ -752,7 +784,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
               {q.focus_area}
             </span>
           )}
-          <h2 className="mt-2 font-display text-lg font-bold text-ink">
+          <h2 className="prose-read mt-3 text-[1.05rem] font-semibold leading-relaxed text-ink">
             {q?.question_text}
           </h2>
 
@@ -785,7 +817,9 @@ export function PublicInterviewClient({ token }: { token: string }) {
               <video
                 ref={videoRef}
                 className="aspect-video w-full bg-ink object-cover"
-                style={{ transform: "none" }}
+                style={{
+                  transform: recording ? LIVE_CAMERA_TRANSFORM : "none",
+                }}
                 playsInline
                 muted={recording}
                 controls={Boolean(previewUrl) && !recording}
@@ -794,27 +828,30 @@ export function PublicInterviewClient({ token }: { token: string }) {
             </div>
             <p className="mt-2 text-xs text-muted">
               Alur: <strong>Mulai Rekaman</strong> → bicara →{" "}
-              <strong>Stop</strong> → tunggu upload →{" "}
-              <strong>Simpan &amp; Lanjut</strong>. Tombol lanjut sengaja
-              terkunci saat masih merekam.
+              <strong>Stop</strong> → tunggu tersimpan → <strong>Lanjut</strong>.
+              Upload + simpan jalan otomatis setelah Stop.
             </p>
             {!recording && !previewUrl && !q?.answer?.video_path && (
               <p className="mt-1 text-xs text-muted">
-                Layar hitam normal sebelum rekaman. Kamera tampil normal (tidak
-                mirror).
+                Layar hitam normal sebelum rekaman. Preview kamera dikoreksi
+                agar tidak mirror.
               </p>
             )}
-            {q?.answer?.video_path && !previewUrl && !recording && (
-              <p className="mt-2 text-xs text-teal">
-                Video untuk pertanyaan ini sudah tersimpan. Rekam ulang untuk
-                mengganti.
-              </p>
-            )}
+            {(q?.answer?.video_path || answerSaved) &&
+              !previewUrl &&
+              !recording && (
+                <p className="mt-2 text-xs text-teal">
+                  Jawaban sudah tersimpan. Rekam ulang untuk mengganti, atau
+                  klik Lanjut.
+                </p>
+              )}
             {(uploading || uploadNote) && (
               <p
                 className={`mt-2 text-xs ${uploading ? "text-warn" : "text-teal"}`}
               >
-                {uploading ? "Mengunggah video ke server…" : uploadNote}
+                {uploading
+                  ? uploadNote || "Mengunggah & menyimpan…"
+                  : uploadNote}
               </p>
             )}
             <div className="mt-3 flex flex-wrap gap-2">
@@ -826,7 +863,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
                   className="rounded-lg bg-bad px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
                 >
                   ●{" "}
-                  {previewUrl || q?.answer?.video_path
+                  {previewUrl || q?.answer?.video_path || answerSaved
                     ? "Rekam ulang"
                     : "Mulai Rekaman"}
                 </button>
@@ -875,8 +912,8 @@ export function PublicInterviewClient({ token }: { token: string }) {
                   {saving
                     ? "Menyimpan..."
                     : uploading
-                      ? "Mengunggah..."
-                      : "Simpan & Lanjut"}
+                      ? "Menyimpan video..."
+                      : "Lanjut"}
                 </button>
               ) : (
                 <button
@@ -888,7 +925,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
                   {saving
                     ? "Mengirim..."
                     : uploading
-                      ? "Mengunggah..."
+                      ? "Menyimpan video..."
                       : "Selesai & Kirim"}
                 </button>
               )}

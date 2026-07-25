@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { ensureUserHasAgency } from "@/lib/actions/agency";
 import {
   analyzeInterviewAnswer,
   generateInterviewQuestions,
@@ -13,6 +12,7 @@ import {
   consumeAiQuotaForAsyncToken,
   quotaExceededMessage,
 } from "@/lib/ai/usage";
+import { requireAgencyContext } from "@/lib/auth/agency-context";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -26,16 +26,7 @@ function formatError(error: unknown): string {
 }
 
 async function getProfile() {
-  const supabase = await createClient();
-  const ensured = await ensureUserHasAgency();
-  if (ensured.error || !ensured.profile?.agency_id) {
-    return {
-      supabase,
-      error: ensured.error || "Akun belum terhubung ke agency",
-      profile: null as null,
-    };
-  }
-  return { supabase, error: null as null, profile: ensured.profile };
+  return requireAgencyContext();
 }
 
 export async function createAsyncInterview(candidateId: string) {

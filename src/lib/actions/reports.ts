@@ -1,7 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { ensureUserHasAgency } from "@/lib/actions/agency";
+import { requireAgencyContext } from "@/lib/auth/agency-context";
 
 function csvEscape(value: unknown): string {
   const s = value == null ? "" : String(value);
@@ -12,10 +11,9 @@ function csvEscape(value: unknown): string {
 }
 
 export async function exportClientCandidatesCsv(clientId: string) {
-  const supabase = await createClient();
-  const ensured = await ensureUserHasAgency();
-  if (ensured.error || !ensured.profile?.agency_id) {
-    return { error: ensured.error || "Unauthorized", csv: null as string | null };
+  const { supabase, error: authError } = await requireAgencyContext();
+  if (authError) {
+    return { error: authError || "Unauthorized", csv: null as string | null };
   }
 
   if (!clientId) {

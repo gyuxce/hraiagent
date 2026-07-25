@@ -1,9 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { ensureUserHasAgency } from "@/lib/actions/agency";
 import { canWriteAgencyData } from "@/lib/auth/roles";
+import { requireAgencyContext } from "@/lib/auth/agency-context";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -17,23 +16,22 @@ function formatError(error: unknown): string {
 }
 
 async function getStaffProfile() {
-  const supabase = await createClient();
-  const ensured = await ensureUserHasAgency();
-  if (ensured.error || !ensured.profile?.agency_id) {
+  const ctx = await requireAgencyContext();
+  if (ctx.error !== null) {
     return {
-      supabase,
-      error: ensured.error || "Akun belum terhubung ke agency",
+      supabase: ctx.supabase,
+      error: ctx.error,
       profile: null as null,
     };
   }
-  if (!canWriteAgencyData(ensured.profile)) {
+  if (!canWriteAgencyData(ctx.profile)) {
     return {
-      supabase,
+      supabase: ctx.supabase,
       error: "Client viewer hanya bisa melihat jadwal",
       profile: null as null,
     };
   }
-  return { supabase, error: null as null, profile: ensured.profile };
+  return { supabase: ctx.supabase, error: null as null, profile: ctx.profile };
 }
 
 export async function createInterviewSchedule(formData: FormData) {
@@ -121,16 +119,15 @@ export async function updateInterviewScheduleStatus(
 }
 
 export async function deleteInterviewSchedule(id: string) {
-  const supabase = await createClient();
-  const ensured = await ensureUserHasAgency();
-  if (ensured.error || !ensured.profile) {
-    return { error: ensured.error || "Unauthorized" };
+  const ctx = await requireAgencyContext();
+  if (ctx.error !== null) {
+    return { error: ctx.error || "Unauthorized" };
   }
-  if (ensured.profile.role !== "admin_agency") {
+  if (ctx.profile.role !== "admin_agency") {
     return { error: "Hanya admin yang bisa hapus jadwal" };
   }
 
-  const { error } = await supabase
+  const { error } = await ctx.supabase
     .from("interview_schedules")
     .delete()
     .eq("id", id);

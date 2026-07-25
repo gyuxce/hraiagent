@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/lib/actions/auth";
+import { getSessionProfile } from "@/lib/auth/session";
 import { isAdminAgency, isClientViewer, roleLabel } from "@/lib/auth/roles";
 import {
   DashboardShell,
@@ -12,21 +12,11 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, profile } = await getSessionProfile();
 
   if (!user) {
     redirect("/login");
   }
-
-  const { data: profile } = await supabase
-    .from("users")
-    .select("*")
-    .eq("id", user.id)
-    .single();
 
   const viewer = isClientViewer(profile);
   const admin = isAdminAgency(profile);

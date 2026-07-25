@@ -33,7 +33,12 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protected routes
+  // Public async interview for candidates (skip extra work)
+  if (request.nextUrl.pathname.startsWith("/interview/")) {
+    return supabaseResponse;
+  }
+
+  // Protected routes (keep list complete so auth refresh stays consistent)
   const protectedPaths = [
     "/dashboard",
     "/clients",
@@ -41,12 +46,10 @@ export async function updateSession(request: NextRequest) {
     "/candidates",
     "/compare",
     "/ranking",
+    "/schedule",
+    "/reports",
+    "/team",
   ];
-
-  // Public async interview for candidates
-  if (request.nextUrl.pathname.startsWith("/interview/")) {
-    return supabaseResponse;
-  }
   const isProtected = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );

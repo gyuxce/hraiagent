@@ -32,6 +32,7 @@ function formatRelativeTime(dateStr: string): string {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
+  // Auth/profile is request-cached with layout via getSessionProfile()
   const ensured = await ensureUserHasAgency();
 
   if (ensured.error && !ensured.profile?.agency_id) {
@@ -52,7 +53,9 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase.from("client_companies").select("id, name").order("name"),
     supabase.from("job_requisitions").select("id, title, status, client_id"),
-    supabase.from("candidates").select("id, status, ai_score, job_id, name, created_at"),
+    supabase
+      .from("candidates")
+      .select("id, status, ai_score, job_id, name, created_at"),
     supabase
       .from("candidates")
       .select("id, name, status, ai_score, created_at, job_requisitions(title)")

@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { ensureUserHasAgency } from "@/lib/actions/agency";
 import { isValidEmail, normalizeEmail } from "@/lib/validation/email";
 import type { UserRole } from "@/types/database";
+import { requireAgencyContext } from "@/lib/auth/agency-context";
+import { getSupabase } from "@/lib/auth/session";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -18,27 +18,26 @@ function formatError(error: unknown): string {
 }
 
 async function requireAdmin() {
-  const supabase = await createClient();
-  const ensured = await ensureUserHasAgency();
-  if (ensured.error || !ensured.profile?.agency_id) {
+  const ctx = await requireAgencyContext();
+  if (ctx.error !== null) {
     return {
-      supabase,
-      error: ensured.error || "Akun belum terhubung ke agency",
+      supabase: ctx.supabase,
+      error: ctx.error,
       profile: null as null,
     };
   }
-  if (ensured.profile.role !== "admin_agency") {
+  if (ctx.profile.role !== "admin_agency") {
     return {
-      supabase,
+      supabase: ctx.supabase,
       error: "Hanya admin agency yang bisa kelola tim",
       profile: null as null,
     };
   }
-  return { supabase, error: null as null, profile: ensured.profile };
+  return { supabase: ctx.supabase, error: null as null, profile: ctx.profile };
 }
 
 async function assertClientInAgency(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof getSupabase>>,
   agencyId: string,
   clientId: string
 ) {
@@ -225,7 +224,7 @@ export async function updateTeamMemberRole(formData: FormData) {
 }
 
 export async function getInvitePreview(token: string) {
-  const supabase = await createClient();
+  const supabase = await getSupabase();
   const cleaned = String(token || "").trim();
   if (!cleaned || cleaned.length < 10) {
     return { error: "Link undangan tidak valid", data: null };

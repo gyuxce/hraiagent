@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { ensureUserHasAgency } from "@/lib/actions/agency";
+import { requireAgencyContext } from "@/lib/auth/agency-context";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -16,18 +15,7 @@ function formatError(error: unknown): string {
 }
 
 async function getCurrentProfile() {
-  const supabase = await createClient();
-  const ensured = await ensureUserHasAgency();
-
-  if (ensured.error || !ensured.profile?.agency_id) {
-    return {
-      supabase,
-      error: (ensured.error || "Akun belum terhubung ke agency") as string,
-      profile: null,
-    };
-  }
-
-  return { supabase, error: null, profile: ensured.profile };
+  return requireAgencyContext();
 }
 
 export async function createClientCompany(formData: FormData) {

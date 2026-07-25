@@ -1,30 +1,44 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import {
+  getAuthUser,
+  getSessionProfile,
+  getSupabase,
+  type AgencyLinkedProfile,
+  type SessionProfile,
+} from "@/lib/auth/session";
 
-export async function ensureUserHasAgency(fallbackName?: string) {
-  const supabase = await createClient();
+type EnsureResult =
+  | {
+      error: null;
+      agencyId: string;
+      profile: AgencyLinkedProfile;
+    }
+  | {
+      error: string;
+      agencyId: null;
+      profile: SessionProfile | null;
+    };
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export async function ensureUserHasAgency(
+  fallbackName?: string
+): Promise<EnsureResult> {
+  const { supabase, user, profile } = await getSessionProfile();
 
   if (!user) {
     return { error: "Anda harus login", agencyId: null, profile: null };
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("users")
-    .select("id, agency_id, role, full_name, client_id")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError || !profile) {
+  if (!profile) {
     return { error: "Profile tidak ditemukan", agencyId: null, profile: null };
   }
 
   if (profile.agency_id) {
-    return { error: null, agencyId: profile.agency_id, profile };
+    return {
+      error: null,
+      agencyId: profile.agency_id,
+      profile: profile as AgencyLinkedProfile,
+    };
   }
 
   // Recover: create agency for users stuck without agency_id
@@ -50,15 +64,39 @@ export async function ensureUserHasAgency(fallbackName?: string) {
     };
   }
 
-  const { data: updatedProfile } = await supabase
+  // Fresh client read after recovery (bypass request memo of old null agency)
+  const fresh = await getSupabase();
+  const authUser = await getAuthUser();
+  const { data: updatedProfile } = await fresh
     .from("users")
     .select("id, agency_id, role, full_name, client_id")
-    .eq("id", user.id)
+    .eq("id", authUser?.id || user.id)
     .single();
+
+  const linkedId =
+    (agencyId as string | null) ||
+    (updatedProfile?.agency_id as string | null) ||
+    null;
+
+  if (!linkedId) {
+    return {
+      error: "Gagal menghubungkan agency",
+      agencyId: null,
+      profile,
+    };
+  }
+
+  const nextProfile: AgencyLinkedProfile = {
+    id: updatedProfile?.id || profile.id,
+    agency_id: linkedId,
+    role: (updatedProfile?.role as SessionProfile["role"]) || "admin_agency",
+    full_name: updatedProfile?.full_name || profile.full_name,
+    client_id: (updatedProfile?.client_id as string | null) ?? null,
+  };
 
   return {
     error: null,
-    agencyId: (agencyId as string) || updatedProfile?.agency_id || null,
-    profile: updatedProfile || { ...profile, agency_id: agencyId as string, role: "admin_agency" },
+    agencyId: linkedId,
+    profile: nextProfile,
   };
 }

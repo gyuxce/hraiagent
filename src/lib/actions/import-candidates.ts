@@ -1,10 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { ensureUserHasAgency } from "@/lib/actions/agency";
 import { canWriteAgencyData } from "@/lib/auth/roles";
 import { normalizeHeaderAliases, parseCsv } from "@/lib/csv/parse";
+import { requireAgencyContext } from "@/lib/auth/agency-context";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -27,16 +26,19 @@ const VALID_STATUS = new Set([
 ]);
 
 export async function importCandidatesFromCsv(formData: FormData) {
-  const supabase = await createClient();
-  const ensured = await ensureUserHasAgency();
-  if (ensured.error || !ensured.profile?.agency_id) {
-    return { error: ensured.error || "Unauthorized" };
+  const {
+    supabase,
+    error: authError,
+    profile,
+  } = await requireAgencyContext();
+  if (authError || !profile) {
+    return { error: authError || "Unauthorized" };
   }
-  if (!canWriteAgencyData(ensured.profile)) {
+  if (!canWriteAgencyData(profile)) {
     return { error: "Client viewer tidak bisa import kandidat" };
   }
 
-  const agencyId = ensured.profile.agency_id as string;
+  const agencyId = profile.agency_id;
   const file = formData.get("file") as File | null;
   const defaultJobId = String(formData.get("job_id") || "").trim() || null;
 

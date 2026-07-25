@@ -14,6 +14,9 @@ Run migrations **in order** in the Supabase SQL Editor:
 8. `00007_team_invites_client_scope.sql` — multi-role invite + client_viewer scope + auto-analyze RPC
 9. `00008_interview_schedules.sql` — Fase 3 scheduling
 10. `00009_score_breakdown_override.sql` — AI rubric breakdown + manual score override
+11. `00010_ai_usage_metering.sql` — kuota AI per agency
+12. `00011_interview_identity_guards.sql` — selfie / challenge / face match
+13. `00012_video_retention.sql` — retensi auto-hapus video interview
 
 ### Steps:
 
@@ -37,7 +40,11 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 OPENROUTER_API_KEY=your-openrouter-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+CRON_SECRET=your-random-cron-secret
 ```
+
+Lihat juga `docs/SPEC-Video-Retention.md` untuk auto-hapus video setelah X hari.
 
 4. Run the dev server:
 

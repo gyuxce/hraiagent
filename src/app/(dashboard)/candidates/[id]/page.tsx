@@ -185,6 +185,21 @@ export default async function CandidateDetailPage({ params }: Props) {
         "Sesi tampil, tapi kolom identitas belum lengkap. Jalankan 00011_interview_identity_guards.sql di Supabase.";
     }
 
+    // Optional (00012) — never block identity UI if retention column missing
+    const purged = await supabase
+      .from("async_interview_sessions")
+      .select("id, media_purged_at")
+      .in("id", ids);
+    if (!purged.error && purged.data) {
+      const byId = new Map(
+        purged.data.map((r) => [String(r.id), r as Record<string, unknown>])
+      );
+      sessionRows = sessionRows.map((s) => ({
+        ...s,
+        ...(byId.get(String(s.id)) || {}),
+      }));
+    }
+
     const questionsRes = await supabase
       .from("async_interview_questions")
       .select("id, session_id, question_text, focus_area, sort_order")
@@ -225,6 +240,7 @@ export default async function CandidateDetailPage({ params }: Props) {
       needs_manual_review: (row.needs_manual_review as boolean | null) ?? null,
       identity_summary: (row.identity_summary as string | null) ?? null,
       selfie_path: (row.selfie_path as string | null) ?? null,
+      media_purged_at: (row.media_purged_at as string | null) ?? null,
       questions: questions as {
         id: string;
         question_text: string;

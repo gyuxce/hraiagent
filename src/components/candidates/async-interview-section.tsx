@@ -26,6 +26,7 @@ export type AsyncSessionRow = {
   needs_manual_review?: boolean | null;
   identity_summary?: string | null;
   selfie_path?: string | null;
+  media_purged_at?: string | null;
   questions?: { id: string; question_text: string; focus_area: string | null; sort_order: number }[];
 };
 
@@ -138,9 +139,8 @@ export function AsyncInterviewSection({
           </h2>
           <p className="mt-1 text-sm text-muted">
             Skor AI = dari <strong>transkrip suara → teks</strong> (bukan analisis
-            video mahal). Video disimpan sebagai bukti untuk review manusia.
-            Alur: selfie → rekam video → AI skor dari transkrip → face match
-            ringan → Ranking.
+            video mahal). Video bukti bisa dihapus otomatis setelah X hari
+            (atur di Team → Retensi video); skor & transkrip tetap aman.
           </p>
         </div>
         {canWrite && (
@@ -241,6 +241,11 @@ export function AsyncInterviewSection({
                           Review identitas
                         </span>
                       )}
+                      {s.media_purged_at && (
+                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                          Media dihapus (retensi)
+                        </span>
+                      )}
                     </p>
                     <p className="mt-1 text-xs text-gray-400">
                       Dibuat {new Date(s.created_at).toLocaleString("id-ID")}
@@ -248,6 +253,8 @@ export function AsyncInterviewSection({
                         ` · Expired ${new Date(s.expires_at).toLocaleDateString("id-ID")}`}
                       {questions.length > 0 &&
                         ` · ${questions.length} pertanyaan`}
+                      {s.media_purged_at &&
+                        ` · Media dibersihkan ${new Date(s.media_purged_at).toLocaleDateString("id-ID")}`}
                     </p>
 
                     <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-center">
@@ -329,6 +336,7 @@ export function AsyncInterviewSection({
                       faceMatchNote={s.face_match_note}
                       needsManualReview={s.needs_manual_review}
                       identitySummary={s.identity_summary}
+                      mediaPurgedAt={s.media_purged_at}
                     />
                     <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
                       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">

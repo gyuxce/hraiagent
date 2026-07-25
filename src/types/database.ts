@@ -5,6 +5,8 @@ export interface Agency {
   name: string;
   plan_tier?: string;
   ai_quota_monthly?: number;
+  /** 0 = no auto-delete; otherwise 7–365 days */
+  video_retention_days?: number;
   created_at: string;
 }
 

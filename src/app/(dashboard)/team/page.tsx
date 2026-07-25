@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
+import { getVideoRetentionDays } from "@/lib/actions/video-retention";
 import {
   TeamClient,
   type InviteRow,
   type TeamMember,
 } from "@/components/team/team-client";
+import { VideoRetentionSettings } from "@/components/team/video-retention-settings";
 import type { ClientCompany } from "@/types/database";
 
 export default async function TeamPage() {
@@ -24,30 +26,42 @@ export default async function TeamPage() {
     redirect("/dashboard");
   }
 
-  const [{ data: members }, { data: invites }, { data: clients }] =
-    await Promise.all([
-      supabase
-        .from("users")
-        .select("id, full_name, role, client_id, created_at, client_companies(name)")
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("team_invites")
-        .select(
-          "id, email, role, client_id, token, expires_at, accepted_at, created_at, client_companies(name)"
-        )
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("client_companies")
-        .select("*")
-        .order("name", { ascending: true }),
-    ]);
+  const [
+    { data: members },
+    { data: invites },
+    { data: clients },
+    retention,
+  ] = await Promise.all([
+    supabase
+      .from("users")
+      .select("id, full_name, role, client_id, created_at, client_companies(name)")
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("team_invites")
+      .select(
+        "id, email, role, client_id, token, expires_at, accepted_at, created_at, client_companies(name)"
+      )
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("client_companies")
+      .select("*")
+      .order("name", { ascending: true }),
+    getVideoRetentionDays(),
+  ]);
 
   return (
-    <TeamClient
-      members={(members || []) as unknown as TeamMember[]}
-      invites={(invites || []) as unknown as InviteRow[]}
-      clients={(clients || []) as ClientCompany[]}
-      currentUserId={ensured.profile.id}
-    />
+    <div>
+      <VideoRetentionSettings
+        initialDays={retention.days ?? 30}
+        migrationMissing={retention.migrationMissing}
+        loadError={retention.error || null}
+      />
+      <TeamClient
+        members={(members || []) as unknown as TeamMember[]}
+        invites={(invites || []) as unknown as InviteRow[]}
+        clients={(clients || []) as ClientCompany[]}
+        currentUserId={ensured.profile.id}
+      />
+    </div>
   );
 }

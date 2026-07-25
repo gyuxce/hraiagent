@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/purge-interview-videos",
+      "schedule": "0 17 * * *"
+    }
+  ]
+}

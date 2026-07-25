@@ -2,16 +2,24 @@
 
 ## Quick Start (Recommended)
 
-1. Run `00000_complete_setup.sql` in **Supabase SQL Editor** (first time only)
-2. Run `00001_fix_auth_trigger.sql` if signup fails with "Database error saving new user"
+Run migrations **in order** in the Supabase SQL Editor:
+
+1. `00000_complete_setup.sql` — schema inti + RLS
+2. `00001_fix_auth_trigger.sql` — jika signup gagal
+3. `00002_fix_agencies_rls.sql` — RPC create agency (wajib untuk register)
+4. `00003_fix_orphan_users.sql` — recovery user orphan
+5. `00004_storage_cvs.sql` — bucket CV
+6. `00005_interview_notes.sql` — Fase 2
+7. `00006_async_interview.sql` — Fase 2.5
+8. `00007_team_invites_client_scope.sql` — multi-role invite + client_viewer scope + auto-analyze RPC
+9. `00008_interview_schedules.sql` — Fase 3 scheduling
 
 ### Steps:
 
 1. Go to [supabase.com](https://supabase.com) and create a new project
 2. In your project dashboard, go to **SQL Editor**
-3. Copy the entire contents of `00000_complete_setup.sql`
-4. Paste into SQL Editor and click **Run**
-5. If register/login fails, also run `00001_fix_auth_trigger.sql`
+3. Run each migration file above in order
+4. If register/login fails, re-check `00001` / `00002`
 
 ---
 
@@ -20,16 +28,17 @@
 1. Go to **Authentication > Sign In / Providers > Email**
    - Enable "Allow new users to sign up"
    - **Disable "Confirm email"** (for local dev)
-2. Go to **Storage** and create a bucket named `cvs` for CV file uploads
-3. Copy your project URL and anon key from **Settings > API**
-4. Create `.env.local` in the project root:
+2. Copy your project URL and anon key from **Settings > API**
+3. Create `.env.local` from `.env.example`:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+OPENROUTER_API_KEY=your-openrouter-key
 ```
 
-5. Run the dev server:
+4. Run the dev server:
 
 ```bash
 npm run dev
@@ -40,11 +49,16 @@ npm run dev
 ## Schema Overview
 
 ```
-agencies (1) ──── (many) client_companies
-agencies (1) ──── (many) job_requisitions
-client_companies (1) ──── (many) job_requisitions
-job_requisitions (1) ──── (many) candidates
-auth.users (1) ──── (1) users
+Agency
+ └── Client Company
+      └── Job Requisition
+           └── Candidate
+                ├── AI Screening Result
+                ├── Interview Note
+                ├── Async Interview Session
+                └── Interview Schedule
+User (role + agency_id [+ client_id for client_viewer])
+Team Invite (pending join links)
 ```
 
 ### Enums
@@ -52,7 +66,10 @@ auth.users (1) ──── (1) users
 - `user_role`: admin_agency, recruiter, client_viewer
 - `job_status`: open, closed, on_hold
 - `candidate_status`: submitted, screened, interview, offer, hired, rejected
+- `async_interview_status`: draft, sent, in_progress, completed, expired
+- `interview_schedule_status`: scheduled, completed, cancelled, no_show
 
 ### Multi-Tenant Isolation
 
-All tables have Row Level Security (RLS) enabled. Users can only access data belonging to their agency via `agency_id` check.
+All tables have Row Level Security (RLS) enabled via `agency_id`.
+`client_viewer` is further scoped to a single `client_id`.

@@ -15,7 +15,7 @@ export async function ensureUserHasAgency(fallbackName?: string) {
 
   const { data: profile, error: profileError } = await supabase
     .from("users")
-    .select("id, agency_id, role, full_name")
+    .select("id, agency_id, role, full_name, client_id")
     .eq("id", user.id)
     .single();
 
@@ -52,7 +52,7 @@ export async function ensureUserHasAgency(fallbackName?: string) {
 
   const { data: updatedProfile } = await supabase
     .from("users")
-    .select("id, agency_id, role, full_name")
+    .select("id, agency_id, role, full_name, client_id")
     .eq("id", user.id)
     .single();
 

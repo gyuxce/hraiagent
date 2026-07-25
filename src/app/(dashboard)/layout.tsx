@@ -8,18 +8,13 @@ import {
   Columns2,
   Trophy,
   LogOut,
+  UserCog,
+  CalendarDays,
+  FileSpreadsheet,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/lib/actions/auth";
-
-const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: Home },
-  { name: "Clients", href: "/clients", icon: Users },
-  { name: "Jobs", href: "/jobs", icon: Briefcase },
-  { name: "Candidates", href: "/candidates", icon: UserCheck },
-  { name: "Compare", href: "/compare", icon: Columns2 },
-  { name: "Ranking", href: "/ranking", icon: Trophy },
-];
+import { isAdminAgency, isClientViewer, roleLabel } from "@/lib/auth/roles";
 
 export default async function DashboardLayout({
   children,
@@ -42,6 +37,21 @@ export default async function DashboardLayout({
     .eq("id", user.id)
     .single();
 
+  const viewer = isClientViewer(profile);
+  const admin = isAdminAgency(profile);
+
+  const navigation = [
+    { name: "Dashboard", href: "/dashboard", icon: Home, show: true },
+    { name: "Clients", href: "/clients", icon: Users, show: !viewer },
+    { name: "Jobs", href: "/jobs", icon: Briefcase, show: true },
+    { name: "Candidates", href: "/candidates", icon: UserCheck, show: true },
+    { name: "Compare", href: "/compare", icon: Columns2, show: true },
+    { name: "Ranking", href: "/ranking", icon: Trophy, show: true },
+    { name: "Schedule", href: "/schedule", icon: CalendarDays, show: true },
+    { name: "Reports", href: "/reports", icon: FileSpreadsheet, show: true },
+    { name: "Team", href: "/team", icon: UserCog, show: admin },
+  ].filter((item) => item.show);
+
   const initials = profile?.full_name
     ? profile.full_name
         .split(" ")
@@ -53,7 +63,6 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex h-screen">
-      {/* Sidebar */}
       <aside className="flex w-64 flex-col border-r border-gray-200 bg-white">
         <div className="flex h-16 items-center px-6 border-b border-gray-200">
           <Link href="/dashboard" className="text-xl font-bold text-gray-900">
@@ -83,7 +92,9 @@ export default async function DashboardLayout({
               <p className="text-sm font-medium text-gray-900 truncate">
                 {profile?.full_name || "User"}
               </p>
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
+              <p className="text-xs text-gray-500 truncate">
+                {roleLabel(profile?.role)} · {user.email}
+              </p>
             </div>
             <form action={logout}>
               <button
@@ -97,7 +108,6 @@ export default async function DashboardLayout({
         </div>
       </aside>
 
-      {/* Main content */}
       <main className="flex-1 overflow-y-auto bg-gray-50 p-8">{children}</main>
     </div>
   );

@@ -35,6 +35,7 @@ type Props = {
   candidates: CandidateRow[];
   jobs: JobOption[];
   isAdmin: boolean;
+  canWrite?: boolean;
 };
 
 const statusOptions = [
@@ -63,7 +64,12 @@ function scoreColor(score: number | null) {
   return "bg-red-50 text-red-700";
 }
 
-export function CandidatesTable({ candidates, jobs, isAdmin }: Props) {
+export function CandidatesTable({
+  candidates,
+  jobs,
+  isAdmin,
+  canWrite = true,
+}: Props) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -122,13 +128,15 @@ export function CandidatesTable({ candidates, jobs, isAdmin }: Props) {
           >
             Bandingkan
           </Link>
-          <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
-          >
-            + Tambah Kandidat
-          </button>
+          {canWrite && (
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
+            >
+              + Tambah Kandidat
+            </button>
+          )}
         </div>
       </div>
 
@@ -142,13 +150,15 @@ export function CandidatesTable({ candidates, jobs, isAdmin }: Props) {
         {candidates.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <p className="text-sm text-gray-500">Belum ada kandidat.</p>
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-500"
-            >
-              + Tambah kandidat pertama
-            </button>
+            {canWrite && (
+              <button
+                type="button"
+                onClick={() => setModalOpen(true)}
+                className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-500"
+              >
+                + Tambah kandidat pertama
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -202,20 +212,30 @@ export function CandidatesTable({ candidates, jobs, isAdmin }: Props) {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        value={c.status}
-                        disabled={busyId === c.id}
-                        onChange={(e) => handleStatus(c.id, e.target.value)}
-                        className={`rounded-full border-0 px-2 py-1 text-xs font-medium focus:ring-2 focus:ring-blue-500 ${
-                          statusStyle[c.status] || statusStyle.submitted
-                        }`}
-                      >
-                        {statusOptions.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
+                      {canWrite ? (
+                        <select
+                          value={c.status}
+                          disabled={busyId === c.id}
+                          onChange={(e) => handleStatus(c.id, e.target.value)}
+                          className={`rounded-full border-0 px-2 py-1 text-xs font-medium focus:ring-2 focus:ring-blue-500 ${
+                            statusStyle[c.status] || statusStyle.submitted
+                          }`}
+                        >
+                          {statusOptions.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span
+                          className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
+                            statusStyle[c.status] || statusStyle.submitted
+                          }`}
+                        >
+                          {c.status}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex flex-wrap items-center gap-2">
@@ -225,7 +245,7 @@ export function CandidatesTable({ candidates, jobs, isAdmin }: Props) {
                         >
                           Detail
                         </Link>
-                        {c.cv_file_path && (
+                        {canWrite && c.cv_file_path && (
                           <button
                             type="button"
                             disabled={busyId === c.id}
@@ -235,7 +255,7 @@ export function CandidatesTable({ candidates, jobs, isAdmin }: Props) {
                             {busyId === c.id ? "..." : "Re-AI"}
                           </button>
                         )}
-                        {isAdmin && (
+                        {canWrite && isAdmin && (
                           <button
                             type="button"
                             disabled={busyId === c.id}
@@ -255,11 +275,13 @@ export function CandidatesTable({ candidates, jobs, isAdmin }: Props) {
         )}
       </div>
 
-      <CandidateFormModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        jobs={jobs}
-      />
+      {canWrite && (
+        <CandidateFormModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          jobs={jobs}
+        />
+      )}
     </div>
   );
 }

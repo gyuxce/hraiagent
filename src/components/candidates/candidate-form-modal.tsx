@@ -101,13 +101,13 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
 
             <div>
               <label htmlFor="cv" className="block text-sm font-medium text-gray-700">
-                Upload CV (PDF/TXT)
+                Upload CV (PDF/DOCX/TXT)
               </label>
               <input
                 id="cv"
                 name="cv"
                 type="file"
-                accept=".pdf,.txt,application/pdf,text/plain"
+                accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
                 className="mt-1 block w-full text-sm text-gray-600 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
               />
               <p className="mt-1 text-xs text-gray-400">

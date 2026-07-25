@@ -13,9 +13,10 @@ type ClientWithJobs = ClientCompany & {
 type Props = {
   clients: ClientWithJobs[];
   isAdmin: boolean;
+  canWrite?: boolean;
 };
 
-export function ClientsTable({ clients, isAdmin }: Props) {
+export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<ClientCompany | null>(null);
@@ -61,13 +62,15 @@ export function ClientsTable({ clients, isAdmin }: Props) {
             Kelola data perusahaan klien
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
-        >
-          + Tambah Client
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={openCreate}
+            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
+          >
+            + Tambah Client
+          </button>
+        )}
       </div>
 
       {error && (
@@ -80,13 +83,15 @@ export function ClientsTable({ clients, isAdmin }: Props) {
         {clients.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <p className="text-sm text-gray-500">Belum ada client.</p>
-            <button
-              type="button"
-              onClick={openCreate}
-              className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-500"
-            >
-              + Tambah client pertama
-            </button>
+            {canWrite && (
+              <button
+                type="button"
+                onClick={openCreate}
+                className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-500"
+              >
+                + Tambah client pertama
+              </button>
+            )}
           </div>
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
@@ -104,9 +109,11 @@ export function ClientsTable({ clients, isAdmin }: Props) {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Telepon
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Aksi
-                </th>
+                {canWrite && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Aksi
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -124,27 +131,29 @@ export function ClientsTable({ clients, isAdmin }: Props) {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {client.contact_phone || "—"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(client)}
-                        className="text-blue-600 hover:text-blue-500 font-medium"
-                      >
-                        Edit
-                      </button>
-                      {isAdmin && (
+                  {canWrite && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex items-center gap-3">
                         <button
                           type="button"
-                          onClick={() => handleDelete(client.id, client.name)}
-                          disabled={deletingId === client.id}
-                          className="text-red-600 hover:text-red-500 font-medium disabled:opacity-50"
+                          onClick={() => openEdit(client)}
+                          className="text-blue-600 hover:text-blue-500 font-medium"
                         >
-                          {deletingId === client.id ? "..." : "Hapus"}
+                          Edit
                         </button>
-                      )}
-                    </div>
-                  </td>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(client.id, client.name)}
+                            disabled={deletingId === client.id}
+                            className="text-red-600 hover:text-red-500 font-medium disabled:opacity-50"
+                          >
+                            {deletingId === client.id ? "..." : "Hapus"}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -152,11 +161,13 @@ export function ClientsTable({ clients, isAdmin }: Props) {
         )}
       </div>
 
-      <ClientFormModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        client={editing}
-      />
+      {canWrite && (
+        <ClientFormModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          client={editing}
+        />
+      )}
     </div>
   );
 }

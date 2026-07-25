@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
+import { canWriteAgencyData, isAdminAgency } from "@/lib/auth/roles";
 import { InterviewNotesSection } from "@/components/candidates/interview-notes-section";
 import { AsyncInterviewSection } from "@/components/candidates/async-interview-section";
 import type { InterviewNote } from "@/types/database";
@@ -243,12 +244,14 @@ export default async function CandidateDetailPage({ params }: Props) {
       <AsyncInterviewSection
         candidateId={candidate.id}
         sessions={sessionsForUi}
+        canWrite={canWriteAgencyData(ensured.profile)}
       />
 
       <InterviewNotesSection
         candidateId={candidate.id}
         notes={(notes || []) as InterviewNote[]}
-        isAdmin={ensured.profile?.role === "admin_agency"}
+        isAdmin={isAdminAgency(ensured.profile)}
+        canWrite={canWriteAgencyData(ensured.profile)}
       />
     </div>
   );

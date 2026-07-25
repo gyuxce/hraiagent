@@ -82,7 +82,7 @@ export async function createCandidate(formData: FormData) {
       !ALLOWED_TYPES.includes(mime) &&
       !file.name.match(/\.(pdf|txt|docx?)$/i)
     ) {
-      return { error: "Format file harus PDF atau TXT" };
+      return { error: "Format file harus PDF, DOCX, atau TXT" };
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

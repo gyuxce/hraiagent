@@ -244,8 +244,9 @@ export function PublicInterviewClient({ token }: { token: string }) {
           <h1 className="text-2xl font-bold text-gray-900">Terima kasih!</h1>
           <p className="mt-3 text-gray-600">
             Jawaban interview async untuk posisi{" "}
-            <strong>{data.job.title}</strong> sudah terkirim. Tim recruiter
-            akan mereview hasilnya.
+            <strong>{data.job.title}</strong> sudah terkirim. Sistem AI
+            menganalisis jawaban secara otomatis; tim recruiter akan mereview
+            hasilnya.
           </p>
         </div>
       </div>

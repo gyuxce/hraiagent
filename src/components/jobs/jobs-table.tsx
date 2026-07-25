@@ -10,6 +10,7 @@ type Props = {
   jobs: JobWithClient[];
   clients: ClientCompany[];
   isAdmin: boolean;
+  canWrite?: boolean;
 };
 
 const statusStyle: Record<string, string> = {
@@ -24,7 +25,7 @@ const statusLabel: Record<string, string> = {
   on_hold: "On Hold",
 };
 
-export function JobsTable({ jobs, clients, isAdmin }: Props) {
+export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<JobWithClient | null>(null);
@@ -66,13 +67,15 @@ export function JobsTable({ jobs, clients, isAdmin }: Props) {
           <h1 className="text-2xl font-bold text-gray-900">Jobs</h1>
           <p className="mt-1 text-sm text-gray-500">Kelola lowongan per klien</p>
         </div>
-        <button
-          type="button"
-          onClick={openCreate}
-          className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
-        >
-          + Buat Job
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={openCreate}
+            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
+          >
+            + Buat Job
+          </button>
+        )}
       </div>
 
       {error && (
@@ -85,13 +88,15 @@ export function JobsTable({ jobs, clients, isAdmin }: Props) {
         {jobs.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <p className="text-sm text-gray-500">Belum ada job requisition.</p>
-            <button
-              type="button"
-              onClick={openCreate}
-              className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-500"
-            >
-              + Buat job pertama
-            </button>
+            {canWrite && (
+              <button
+                type="button"
+                onClick={openCreate}
+                className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-500"
+              >
+                + Buat job pertama
+              </button>
+            )}
           </div>
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
@@ -109,9 +114,11 @@ export function JobsTable({ jobs, clients, isAdmin }: Props) {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Requirements
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Aksi
-                </th>
+                {canWrite && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Aksi
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -137,27 +144,29 @@ export function JobsTable({ jobs, clients, isAdmin }: Props) {
                       ? job.requirements.slice(0, 3).join(", ")
                       : "—"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => openEdit(job)}
-                        className="text-blue-600 hover:text-blue-500 font-medium"
-                      >
-                        Edit
-                      </button>
-                      {isAdmin && (
+                  {canWrite && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="flex items-center gap-3">
                         <button
                           type="button"
-                          onClick={() => handleDelete(job.id, job.title)}
-                          disabled={deletingId === job.id}
-                          className="text-red-600 hover:text-red-500 font-medium disabled:opacity-50"
+                          onClick={() => openEdit(job)}
+                          className="text-blue-600 hover:text-blue-500 font-medium"
                         >
-                          {deletingId === job.id ? "..." : "Hapus"}
+                          Edit
                         </button>
-                      )}
-                    </div>
-                  </td>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(job.id, job.title)}
+                            disabled={deletingId === job.id}
+                            className="text-red-600 hover:text-red-500 font-medium disabled:opacity-50"
+                          >
+                            {deletingId === job.id ? "..." : "Hapus"}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -165,12 +174,14 @@ export function JobsTable({ jobs, clients, isAdmin }: Props) {
         )}
       </div>
 
-      <JobFormModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        job={editing}
-        clients={clients}
-      />
+      {canWrite && (
+        <JobFormModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          job={editing}
+          clients={clients}
+        />
+      )}
     </div>
   );
 }

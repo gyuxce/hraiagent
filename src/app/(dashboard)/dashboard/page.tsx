@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Briefcase,
   Users,
@@ -7,6 +8,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
+import { isClientViewer } from "@/lib/auth/roles";
 
 function formatRelativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -32,18 +34,17 @@ export default async function DashboardPage() {
     );
   }
 
-  // Fetch counts
+  const viewer = isClientViewer(ensured.profile);
+
   const [
-    { count: totalClients },
+    { data: clients },
     { data: jobs },
     { data: candidates },
     { data: recentCandidates },
   ] = await Promise.all([
-    supabase
-      .from("client_companies")
-      .select("*", { count: "exact", head: true }),
-    supabase.from("job_requisitions").select("id, status"),
-    supabase.from("candidates").select("id, status, ai_score"),
+    supabase.from("client_companies").select("id, name").order("name"),
+    supabase.from("job_requisitions").select("id, status, client_id"),
+    supabase.from("candidates").select("id, status, ai_score, job_id"),
     supabase
       .from("candidates")
       .select("id, name, status, ai_score, created_at, job_requisitions(title)")
@@ -51,27 +52,57 @@ export default async function DashboardPage() {
       .limit(5),
   ]);
 
+  const totalClients = clients?.length || 0;
   const totalJobs = jobs?.length || 0;
   const openJobs = jobs?.filter((j) => j.status === "open").length || 0;
   const totalCandidates = candidates?.length || 0;
   const inPipeline =
     candidates?.filter(
-      (c) =>
-        c.status !== "hired" && c.status !== "rejected"
+      (c) => c.status !== "hired" && c.status !== "rejected"
     ).length || 0;
+  const scored = candidates?.filter((c) => c.ai_score != null) || [];
   const avgScore =
-    candidates?.length && candidates.filter((c) => c.ai_score != null).length
+    scored.length > 0
       ? Math.round(
-          (candidates
-            .filter((c) => c.ai_score != null)
-            .reduce((sum, c) => sum + (c.ai_score || 0), 0) /
-            candidates.filter((c) => c.ai_score != null).length)
+          scored.reduce((sum, c) => sum + (c.ai_score || 0), 0) / scored.length
         )
       : null;
 
+  const jobClient = new Map((jobs || []).map((j) => [j.id, j.client_id]));
+  const clientStats = (clients || []).map((client) => {
+    const clientJobs = (jobs || []).filter((j) => j.client_id === client.id);
+    const clientJobIds = new Set(clientJobs.map((j) => j.id));
+    const clientCands = (candidates || []).filter((c) =>
+      clientJobIds.has(c.job_id)
+    );
+    const scores = clientCands
+      .map((c) => c.ai_score)
+      .filter((s): s is number => s != null);
+    return {
+      id: client.id,
+      name: client.name,
+      openJobs: clientJobs.filter((j) => j.status === "open").length,
+      candidates: clientCands.length,
+      pipeline: clientCands.filter(
+        (c) => c.status !== "hired" && c.status !== "rejected"
+      ).length,
+      avgScore:
+        scores.length > 0
+          ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+          : null,
+    };
+  });
+
+  // silence unused for client_viewer path where clients list is scoped
+  void jobClient;
+
   const stats = [
     { name: "Open Jobs", value: String(openJobs), icon: Briefcase },
-    { name: "Total Clients", value: String(totalClients || 0), icon: Users },
+    {
+      name: viewer ? "Client Anda" : "Total Clients",
+      value: String(totalClients),
+      icon: Users,
+    },
     { name: "Total Kandidat", value: String(totalCandidates), icon: UserCheck },
     { name: "Dalam Pipeline", value: String(inPipeline), icon: Clock },
   ];
@@ -98,11 +129,12 @@ export default async function DashboardPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Overview aktivitas rekrutmen Anda
+          {viewer
+            ? "Overview progress kandidat untuk client Anda"
+            : "Overview performa rekrutmen lintas klien"}
         </p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         {stats.map((stat) => (
           <div
@@ -123,7 +155,10 @@ export default async function DashboardPage() {
               <span className="text-gray-500">
                 {totalJobs} total job
                 {avgScore != null && (
-                  <span className="text-gray-400"> • AI rata² {avgScore}/100</span>
+                  <span className="text-gray-400">
+                    {" "}
+                    • AI rata² {avgScore}/100
+                  </span>
                 )}
               </span>
             </div>
@@ -131,7 +166,72 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* Recent Candidates */}
+      {!viewer && (
+        <div className="mb-8 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Performa Multi-Klien
+            </h2>
+            <Link
+              href="/reports"
+              className="text-sm font-medium text-blue-600 hover:text-blue-500"
+            >
+              Lihat reports
+            </Link>
+          </div>
+          {clientStats.length === 0 ? (
+            <p className="px-6 py-10 text-center text-sm text-gray-500">
+              Belum ada client. Tambah client untuk melihat breakdown.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Client
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Open Jobs
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Kandidat
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Pipeline
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      Avg AI
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {clientStats.map((c) => (
+                    <tr key={c.id}>
+                      <td className="px-6 py-3 text-sm font-medium text-gray-900">
+                        {c.name}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-600">
+                        {c.openJobs}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-600">
+                        {c.candidates}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-600">
+                        {c.pipeline}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-gray-600">
+                        {c.avgScore != null ? `${c.avgScore}/100` : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="border-b border-gray-200 px-6 py-4">
           <h2 className="text-lg font-semibold text-gray-900">
@@ -140,7 +240,7 @@ export default async function DashboardPage() {
         </div>
         {!recentCandidates?.length ? (
           <div className="px-6 py-12 text-center text-sm text-gray-500">
-            Belum ada kandidat. Tambah kandidat pertama.
+            Belum ada kandidat.
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
@@ -154,9 +254,7 @@ export default async function DashboardPage() {
                     <UserCheck className="h-5 w-5 text-gray-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {c.name}
-                    </p>
+                    <p className="text-sm font-medium text-gray-900">{c.name}</p>
                     <p className="text-sm text-gray-500">
                       {(() => {
                         const jr = c.job_requisitions as unknown as

@@ -16,19 +16,21 @@ export async function extractTextFromFile(
   if (
     mimeType ===
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-    lower.endsWith(".docx") ||
-    mimeType === "application/msword" ||
-    lower.endsWith(".doc")
+    lower.endsWith(".docx")
   ) {
+    return extractDocx(buffer);
+  }
+
+  if (mimeType === "application/msword" || lower.endsWith(".doc")) {
     throw new Error(
-      "Format Word belum didukung. Upload CV dalam format PDF atau TXT."
+      "Format .doc lama belum didukung. Simpan sebagai .docx atau PDF lalu upload ulang."
     );
   }
 
   const text = buffer.toString("utf-8").trim();
   if (text.length > 50) return text;
 
-  throw new Error("Tidak bisa membaca isi file. Gunakan PDF atau TXT.");
+  throw new Error("Tidak bisa membaca isi file. Gunakan PDF, DOCX, atau TXT.");
 }
 
 async function extractPdf(buffer: Buffer): Promise<string> {
@@ -49,4 +51,16 @@ async function extractPdf(buffer: Buffer): Promise<string> {
   }
 
   return text.trim();
+}
+
+async function extractDocx(buffer: Buffer): Promise<string> {
+  const mammoth = await import("mammoth");
+  const result = await mammoth.extractRawText({ buffer });
+  const text = (result.value || "").trim();
+
+  if (!text) {
+    throw new Error("Dokumen Word kosong atau tidak berisi teks yang bisa dibaca");
+  }
+
+  return text;
 }

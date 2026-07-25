@@ -13,12 +13,14 @@ type Props = {
   candidateId: string;
   notes: InterviewNote[];
   isAdmin: boolean;
+  canWrite?: boolean;
 };
 
 export function InterviewNotesSection({
   candidateId,
   notes,
   isAdmin,
+  canWrite = true,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -72,13 +74,15 @@ export function InterviewNotesSection({
         <h2 className="text-lg font-semibold text-gray-900">
           Catatan Interview
         </h2>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
-        >
-          + Tambah Catatan
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+          >
+            + Tambah Catatan
+          </button>
+        )}
       </div>
 
       {error && (
@@ -106,26 +110,28 @@ export function InterviewNotesSection({
                     {new Date(note.conducted_at).toLocaleString("id-ID")}
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={busyId === note.id}
-                    onClick={() => handleRegen(note.id)}
-                    className="text-sm font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
-                  >
-                    {busyId === note.id ? "..." : "Re-AI Summary"}
-                  </button>
-                  {isAdmin && (
+                {canWrite && (
+                  <div className="flex gap-2">
                     <button
                       type="button"
                       disabled={busyId === note.id}
-                      onClick={() => handleDelete(note.id)}
-                      className="text-sm font-medium text-red-600 hover:text-red-500 disabled:opacity-50"
+                      onClick={() => handleRegen(note.id)}
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
                     >
-                      Hapus
+                      {busyId === note.id ? "..." : "Re-AI Summary"}
                     </button>
-                  )}
-                </div>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        disabled={busyId === note.id}
+                        onClick={() => handleDelete(note.id)}
+                        className="text-sm font-medium text-red-600 hover:text-red-500 disabled:opacity-50"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {note.ai_summary && (

@@ -23,6 +23,7 @@ export type AsyncSessionRow = {
 type Props = {
   candidateId: string;
   sessions: AsyncSessionRow[];
+  canWrite?: boolean;
 };
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -51,7 +52,11 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-export function AsyncInterviewSection({ candidateId, sessions }: Props) {
+export function AsyncInterviewSection({
+  candidateId,
+  sessions,
+  canWrite = true,
+}: Props) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
@@ -112,18 +117,20 @@ export function AsyncInterviewSection({ candidateId, sessions }: Props) {
             AI Interview Async
           </h2>
           <p className="text-sm text-gray-500">
-            AI generate ~5 pertanyaan → salin link → kandidat jawab teks/video di
-            browser
+            AI generate ~5 pertanyaan → salin link → kandidat jawab teks/video.
+            Analisis AI otomatis setelah kandidat selesai.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleCreate}
-          disabled={loading}
-          className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {loading ? "Generate pertanyaan..." : "+ Buat Interview Async"}
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={loading}
+            className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
+          >
+            {loading ? "Generate pertanyaan..." : "+ Buat Interview Async"}
+          </button>
+        )}
       </div>
 
       {error && (
@@ -160,8 +167,14 @@ export function AsyncInterviewSection({ candidateId, sessions }: Props) {
 
       {sessions.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
-          Belum ada sesi. Klik <strong>+ Buat Interview Async</strong> — AI akan
-          generate ~5 pertanyaan + link.
+          {canWrite ? (
+            <>
+              Belum ada sesi. Klik <strong>+ Buat Interview Async</strong> — AI
+              akan generate ~5 pertanyaan + link.
+            </>
+          ) : (
+            "Belum ada sesi interview async untuk kandidat ini."
+          )}
         </div>
       ) : (
         <div className="space-y-3">
@@ -233,7 +246,8 @@ export function AsyncInterviewSection({ candidateId, sessions }: Props) {
                     >
                       {isOpen ? "Sembunyikan soal" : "Lihat soal AI"}
                     </button>
-                    {(s.status === "completed" || s.status === "in_progress") &&
+                    {canWrite &&
+                      (s.status === "completed" || s.status === "in_progress") &&
                       s.overall_score == null && (
                         <button
                           type="button"
@@ -246,16 +260,18 @@ export function AsyncInterviewSection({ candidateId, sessions }: Props) {
                             : "Jalankan Analisis AI"}
                         </button>
                       )}
-                    {s.status === "completed" && s.overall_score != null && (
-                      <button
-                        type="button"
-                        disabled={busyId === s.id}
-                        onClick={() => handleAnalyze(s.id)}
-                        className="text-sm font-medium text-gray-600 hover:text-gray-800 disabled:opacity-50"
-                      >
-                        {busyId === s.id ? "..." : "Re-analisis"}
-                      </button>
-                    )}
+                    {canWrite &&
+                      s.status === "completed" &&
+                      s.overall_score != null && (
+                        <button
+                          type="button"
+                          disabled={busyId === s.id}
+                          onClick={() => handleAnalyze(s.id)}
+                          className="text-sm font-medium text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                        >
+                          {busyId === s.id ? "..." : "Re-analisis"}
+                        </button>
+                      )}
                   </div>
                 </div>
 

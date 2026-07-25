@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
+import { canWriteAgencyData, isAdminAgency } from "@/lib/auth/roles";
 import {
   CandidatesTable,
   type CandidateRow,
@@ -43,7 +44,8 @@ export default async function CandidatesPage() {
     <CandidatesTable
       candidates={(candidates || []) as unknown as CandidateRow[]}
       jobs={(jobs || []) as unknown as JobOption[]}
-      isAdmin={ensured.profile?.role === "admin_agency"}
+      isAdmin={isAdminAgency(ensured.profile)}
+      canWrite={canWriteAgencyData(ensured.profile)}
     />
   );
 }

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
+import { canWriteAgencyData, isAdminAgency } from "@/lib/auth/roles";
 import { JobsTable } from "@/components/jobs/jobs-table";
 import type { ClientCompany } from "@/types/database";
 import type { JobWithClient } from "@/components/jobs/job-form-modal";
@@ -39,7 +40,8 @@ export default async function JobsPage() {
     <JobsTable
       jobs={(jobs || []) as JobWithClient[]}
       clients={(clients || []) as ClientCompany[]}
-      isAdmin={ensured.profile?.role === "admin_agency"}
+      isAdmin={isAdminAgency(ensured.profile)}
+      canWrite={canWriteAgencyData(ensured.profile)}
     />
   );
 }

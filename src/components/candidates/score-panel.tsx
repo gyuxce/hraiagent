@@ -85,12 +85,12 @@ export function ScorePanel({
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-display text-lg font-bold text-ink">
-            Screening Score
+            Screening Score (CV)
           </h2>
           <p className="text-sm text-muted">
             {manualScore != null
-              ? "Skor efektif dari override recruiter"
-              : "Skor AI dari rubrik ketat (boleh di-override)"}
+              ? "Skor efektif dari override recruiter — mengukur kecocokan CV vs requirement job"
+              : "Kecocokan CV vs requirement job (bukan skor interview). Boleh di-override."}
           </p>
         </div>
         <div className="text-right">

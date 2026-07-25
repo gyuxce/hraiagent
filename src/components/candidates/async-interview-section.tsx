@@ -121,13 +121,14 @@ export function AsyncInterviewSection({
     <div id="async-interview" className="mt-8 scroll-mt-20">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="page-kicker">Fase 2.5</p>
+          <p className="page-kicker">Fase 2.5 · skor terpisah dari CV</p>
           <h2 className="font-display text-lg font-bold text-ink">
             AI Interview Async
           </h2>
           <p className="mt-1 text-sm text-muted">
-            AI generate ~5 pertanyaan → salin link → kandidat jawab teks/video.
-            Analisis AI otomatis setelah selesai → lihat di menu Ranking.
+            Skor di sini = kualitas jawaban interview (bukan skor screening CV).
+            Alur: generate ~5 pertanyaan → salin link → kandidat jawab{" "}
+            <strong>teks atau video</strong> → analisis AI → Ranking.
           </p>
         </div>
         {canWrite && (

@@ -12,6 +12,11 @@ import {
   CandidateFormModal,
   type JobOption,
 } from "./candidate-form-modal";
+import { ImportCandidatesModal } from "./import-candidates-modal";
+import { EmptyState } from "@/components/onboarding/empty-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/ui/toast";
+import { effectiveScore } from "@/lib/candidates/score";
 
 export type CandidateRow = {
   id: string;
@@ -19,6 +24,7 @@ export type CandidateRow = {
   email: string;
   phone: string | null;
   ai_score: number | null;
+  manual_score?: number | null;
   ai_summary: string | null;
   status: string;
   cv_file_path: string | null;
@@ -35,6 +41,7 @@ type Props = {
   candidates: CandidateRow[];
   jobs: JobOption[];
   isAdmin: boolean;
+  canWrite?: boolean;
 };
 
 const statusOptions = [
@@ -63,10 +70,21 @@ function scoreColor(score: number | null) {
   return "bg-red-50 text-red-700";
 }
 
-export function CandidatesTable({ candidates, jobs, isAdmin }: Props) {
+export function CandidatesTable({
+  candidates,
+  jobs,
+  isAdmin,
+  canWrite = true,
+}: Props) {
   const router = useRouter();
+  const toast = useToast();
   const [modalOpen, setModalOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleStatus(id: string, status: string) {
@@ -76,8 +94,10 @@ export function CandidatesTable({ candidates, jobs, isAdmin }: Props) {
     setBusyId(null);
     if (result?.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success("Status kandidat diperbarui");
     router.refresh();
   }
 
@@ -88,47 +108,69 @@ export function CandidatesTable({ candidates, jobs, isAdmin }: Props) {
     setBusyId(null);
     if (result?.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success("AI screening selesai");
     router.refresh();
   }
 
-  async function handleDelete(id: string, name: string) {
-    if (!confirm(`Hapus kandidat "${name}"?`)) return;
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const { id, name } = pendingDelete;
     setBusyId(id);
     setError(null);
     const result = await deleteCandidate(id);
     setBusyId(null);
+    setPendingDelete(null);
     if (result?.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
+    toast.success(`Kandidat "${name}" dihapus`);
     router.refresh();
   }
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Candidates</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Pipeline kandidat + AI screening + interview notes
+          <p className="page-kicker">{canWrite ? "Pipeline" : "Client portal"}</p>
+          <h1 className="page-title">Candidates</h1>
+          <p className="page-sub">
+            {canWrite
+              ? "Screening AI, status ATS, import CSV, dan AI Interview Async (di halaman Detail)"
+              : "Daftar kandidat yang diajukan agency — tampilan read-only"}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link
-            href="/compare"
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            Bandingkan
-          </Link>
-          <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
-          >
-            + Tambah Kandidat
-          </button>
+        <div className="flex flex-wrap gap-2">
+          {canWrite && (
+            <>
+              <Link href="/compare" className="btn-secondary">
+                Bandingkan
+              </Link>
+              <button
+                type="button"
+                onClick={() => setImportOpen(true)}
+                className="btn-secondary"
+              >
+                Import CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalOpen(true)}
+                className="btn-primary"
+              >
+                + Tambah Kandidat
+              </button>
+            </>
+          )}
+          {!canWrite && (
+            <Link href="/reports" className="btn-secondary">
+              Export laporan
+            </Link>
+          )}
         </div>
       </div>
 
@@ -138,127 +180,269 @@ export function CandidatesTable({ candidates, jobs, isAdmin }: Props) {
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="surface-panel overflow-hidden">
         {candidates.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <p className="text-sm text-gray-500">Belum ada kandidat.</p>
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-500"
-            >
-              + Tambah kandidat pertama
-            </button>
-          </div>
+          <EmptyState
+            stepLabel="Langkah 3 dari 3"
+            title="Belum ada kandidat"
+            description={
+              jobs.length === 0
+                ? "Buat job dulu, lalu upload CV (PDF/DOCX) atau import CSV agar AI bisa men-score kecocokan."
+                : "Upload CV atau import spreadsheet. Centang AI screening agar skor + breakdown muncul otomatis."
+            }
+            action={
+              canWrite ? (
+                jobs.length === 0 ? (
+                  <Link href="/jobs" className="btn-primary">
+                    Buat job dulu
+                  </Link>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setImportOpen(true)}
+                      className="btn-secondary"
+                    >
+                      Import CSV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModalOpen(true)}
+                      className="btn-primary"
+                    >
+                      + Tambah kandidat
+                    </button>
+                  </>
+                )
+              ) : undefined
+            }
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Nama
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Posisi
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    AI Score
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {candidates.map((c) => (
-                  <tr key={c.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/candidates/${c.id}`}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-500"
-                      >
-                        {c.name}
-                      </Link>
-                      <div className="text-xs text-gray-500">{c.email}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      <div>{c.job_requisitions?.title || "—"}</div>
-                      {c.job_requisitions?.client_companies?.name && (
-                        <div className="text-xs text-gray-400">
-                          {c.job_requisitions.client_companies.name}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${scoreColor(
-                          c.ai_score
-                        )}`}
-                      >
-                        {c.ai_score != null ? `${c.ai_score}/100` : "—"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <select
-                        value={c.status}
-                        disabled={busyId === c.id}
-                        onChange={(e) => handleStatus(c.id, e.target.value)}
-                        className={`rounded-full border-0 px-2 py-1 text-xs font-medium focus:ring-2 focus:ring-blue-500 ${
-                          statusStyle[c.status] || statusStyle.submitted
-                        }`}
-                      >
-                        {statusOptions.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex flex-wrap items-center gap-2">
+          <>
+            {/* Mobile cards */}
+            <div className="divide-y divide-line md:hidden">
+              {candidates.map((c) => {
+                const score = effectiveScore(c);
+                return (
+                  <div key={c.id} className="space-y-3 px-4 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
                         <Link
                           href={`/candidates/${c.id}`}
-                          className="font-medium text-blue-600 hover:text-blue-500"
+                          className="text-sm font-semibold text-ink hover:text-accent"
                         >
-                          Detail
+                          {c.name}
                         </Link>
-                        {c.cv_file_path && (
-                          <button
-                            type="button"
-                            disabled={busyId === c.id}
-                            onClick={() => handleRescreen(c.id)}
-                            className="font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
-                          >
-                            {busyId === c.id ? "..." : "Re-AI"}
-                          </button>
-                        )}
-                        {isAdmin && (
-                          <button
-                            type="button"
-                            disabled={busyId === c.id}
-                            onClick={() => handleDelete(c.id, c.name)}
-                            className="font-medium text-red-600 hover:text-red-500 disabled:opacity-50"
-                          >
-                            Hapus
-                          </button>
-                        )}
+                        <p className="truncate text-xs text-muted">{c.email}</p>
+                        <p className="mt-1 text-xs text-ink-soft">
+                          {c.job_requisitions?.title || "—"}
+                          {c.job_requisitions?.client_companies?.name
+                            ? ` · ${c.job_requisitions.client_companies.name}`
+                            : ""}
+                        </p>
                       </div>
-                    </td>
+                      <span
+                        className={`shrink-0 inline-flex rounded-md px-2 py-1 text-xs font-medium ${scoreColor(
+                          score
+                        )}`}
+                      >
+                        {score != null ? `${score}` : "—"}
+                        {c.manual_score != null ? " M" : ""}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {canWrite ? (
+                        <select
+                          value={c.status}
+                          disabled={busyId === c.id}
+                          onChange={(e) => handleStatus(c.id, e.target.value)}
+                          className={`rounded-md border-0 px-2 py-1 text-xs font-medium ${
+                            statusStyle[c.status] || statusStyle.submitted
+                          }`}
+                        >
+                          {statusOptions.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span
+                          className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${
+                            statusStyle[c.status] || statusStyle.submitted
+                          }`}
+                        >
+                          {c.status}
+                        </span>
+                      )}
+                      <Link
+                        href={`/candidates/${c.id}`}
+                        className="text-xs font-semibold text-accent"
+                      >
+                        Detail
+                      </Link>
+                      {canWrite && c.cv_file_path && (
+                        <button
+                          type="button"
+                          disabled={busyId === c.id}
+                          onClick={() => handleRescreen(c.id)}
+                          className="text-xs font-semibold text-ink-soft"
+                        >
+                          Re-AI
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="min-w-full divide-y divide-line">
+                <thead className="bg-mist/70">
+                  <tr>
+                    {["Nama", "Posisi", "Score", "Status", "Aksi"].map((h) => (
+                      <th
+                        key={h}
+                        className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted"
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {candidates.map((c) => {
+                    const score = effectiveScore(c);
+                    return (
+                      <tr key={c.id} className="hover:bg-mist/40">
+                        <td className="px-6 py-4">
+                          <Link
+                            href={`/candidates/${c.id}`}
+                            className="text-sm font-medium text-accent hover:text-accent-hover"
+                          >
+                            {c.name}
+                          </Link>
+                          <div className="text-xs text-muted">{c.email}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-muted">
+                          <div>{c.job_requisitions?.title || "—"}</div>
+                          {c.job_requisitions?.client_companies?.name && (
+                            <div className="text-xs text-muted/80">
+                              {c.job_requisitions.client_companies.name}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${scoreColor(
+                              score
+                            )}`}
+                          >
+                            {score != null ? `${score}/100` : "—"}
+                            {c.manual_score != null ? " · M" : ""}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {canWrite ? (
+                            <select
+                              value={c.status}
+                              disabled={busyId === c.id}
+                              onChange={(e) =>
+                                handleStatus(c.id, e.target.value)
+                              }
+                              className={`rounded-md border-0 px-2 py-1 text-xs font-medium ${
+                                statusStyle[c.status] || statusStyle.submitted
+                              }`}
+                            >
+                              {statusOptions.map((s) => (
+                                <option key={s} value={s}>
+                                  {s}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span
+                              className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${
+                                statusStyle[c.status] || statusStyle.submitted
+                              }`}
+                            >
+                              {c.status}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Link
+                              href={`/candidates/${c.id}`}
+                              className="font-medium text-accent hover:text-accent-hover"
+                            >
+                              Detail
+                            </Link>
+                            {canWrite && c.cv_file_path && (
+                              <button
+                                type="button"
+                                disabled={busyId === c.id}
+                                onClick={() => handleRescreen(c.id)}
+                                className="font-medium text-ink-soft hover:text-ink disabled:opacity-50"
+                              >
+                                {busyId === c.id ? "..." : "Re-AI"}
+                              </button>
+                            )}
+                            {canWrite && isAdmin && (
+                              <button
+                                type="button"
+                                disabled={busyId === c.id}
+                                onClick={() =>
+                                  setPendingDelete({ id: c.id, name: c.name })
+                                }
+                                className="font-medium text-bad hover:opacity-80 disabled:opacity-50"
+                              >
+                                Hapus
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
-      <CandidateFormModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        jobs={jobs}
+      {canWrite && (
+        <>
+          <CandidateFormModal
+            open={modalOpen}
+            onClose={() => setModalOpen(false)}
+            jobs={jobs}
+          />
+          <ImportCandidatesModal
+            open={importOpen}
+            onClose={() => setImportOpen(false)}
+            jobs={jobs}
+          />
+        </>
+      )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Hapus kandidat?"
+        description={
+          pendingDelete
+            ? `Kandidat "${pendingDelete.name}" akan dihapus permanen beserta data terkait. Tindakan ini tidak bisa dibatalkan.`
+            : ""
+        }
+        confirmLabel="Ya, hapus"
+        loading={Boolean(pendingDelete && busyId === pendingDelete.id)}
+        onCancel={() => {
+          if (!busyId) setPendingDelete(null);
+        }}
+        onConfirm={confirmDelete}
       />
     </div>
   );

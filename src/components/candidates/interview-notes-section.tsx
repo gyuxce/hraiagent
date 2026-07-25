@@ -8,23 +8,27 @@ import {
   regenerateInterviewSummary,
 } from "@/lib/actions/interviews";
 import type { InterviewNote } from "@/types/database";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type Props = {
   candidateId: string;
   notes: InterviewNote[];
   isAdmin: boolean;
+  canWrite?: boolean;
 };
 
 export function InterviewNotesSection({
   candidateId,
   notes,
   isAdmin,
+  canWrite = true,
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -54,11 +58,13 @@ export function InterviewNotesSection({
     router.refresh();
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("Hapus catatan interview ini?")) return;
+  async function confirmDelete() {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
     setBusyId(id);
     const result = await deleteInterviewNote(id, candidateId);
     setBusyId(null);
+    setPendingDeleteId(null);
     if (result?.error) {
       setError(result.error);
       return;
@@ -72,13 +78,15 @@ export function InterviewNotesSection({
         <h2 className="text-lg font-semibold text-gray-900">
           Catatan Interview
         </h2>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
-        >
-          + Tambah Catatan
-        </button>
+        {canWrite && (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+          >
+            + Tambah Catatan
+          </button>
+        )}
       </div>
 
       {error && (
@@ -86,6 +94,18 @@ export function InterviewNotesSection({
           {error}
         </div>
       )}
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteId)}
+        title="Hapus catatan interview?"
+        description="Catatan ini akan dihapus permanen. Tindakan ini tidak bisa dibatalkan."
+        confirmLabel="Ya, hapus"
+        loading={Boolean(pendingDeleteId && busyId === pendingDeleteId)}
+        onCancel={() => {
+          if (!busyId) setPendingDeleteId(null);
+        }}
+        onConfirm={confirmDelete}
+      />
 
       {notes.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
@@ -106,26 +126,28 @@ export function InterviewNotesSection({
                     {new Date(note.conducted_at).toLocaleString("id-ID")}
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={busyId === note.id}
-                    onClick={() => handleRegen(note.id)}
-                    className="text-sm font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
-                  >
-                    {busyId === note.id ? "..." : "Re-AI Summary"}
-                  </button>
-                  {isAdmin && (
+                {canWrite && (
+                  <div className="flex gap-2">
                     <button
                       type="button"
                       disabled={busyId === note.id}
-                      onClick={() => handleDelete(note.id)}
-                      className="text-sm font-medium text-red-600 hover:text-red-500 disabled:opacity-50"
+                      onClick={() => handleRegen(note.id)}
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
                     >
-                      Hapus
+                      {busyId === note.id ? "..." : "Re-AI Summary"}
                     </button>
-                  )}
-                </div>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        disabled={busyId === note.id}
+                        onClick={() => setPendingDeleteId(note.id)}
+                        className="text-sm font-medium text-red-600 hover:text-red-500 disabled:opacity-50"
+                      >
+                        Hapus
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {note.ai_summary && (

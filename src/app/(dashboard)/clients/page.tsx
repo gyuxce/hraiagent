@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
+import { canWriteAgencyData, isAdminAgency } from "@/lib/auth/roles";
 import { ClientsTable } from "@/components/clients/clients-table";
 import type { ClientCompany } from "@/types/database";
 
@@ -38,7 +39,8 @@ export default async function ClientsPage() {
   return (
     <ClientsTable
       clients={(clients || []) as ClientCompany[]}
-      isAdmin={ensured.profile?.role === "admin_agency"}
+      isAdmin={isAdminAgency(ensured.profile)}
+      canWrite={canWriteAgencyData(ensured.profile)}
     />
   );
 }

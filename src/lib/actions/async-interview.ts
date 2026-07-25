@@ -8,6 +8,11 @@ import {
   generateInterviewQuestions,
   rankInterviewSession,
 } from "@/lib/ai/openrouter";
+import {
+  consumeAiQuota,
+  consumeAiQuotaForAsyncToken,
+  quotaExceededMessage,
+} from "@/lib/ai/usage";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -61,6 +66,17 @@ export async function createAsyncInterview(candidateId: string) {
       } | null);
 
   if (!candidate.job_id || !job) return { error: "Job kandidat tidak ditemukan" };
+
+  const quota = await consumeAiQuota(supabase, {
+    agencyId: profile.agency_id,
+    eventType: "async_question_gen",
+    userId: profile.id,
+    resourceType: "candidate",
+    resourceId: candidateId,
+  });
+  if (!quota.ok && !quota.soft) {
+    return { error: quotaExceededMessage(quota) };
+  }
 
   let questions: { question_text: string; focus_area: string }[] = [];
   try {
@@ -142,16 +158,29 @@ export async function createAsyncInterview(candidateId: string) {
 }
 
 export async function analyzeCompletedInterview(sessionId: string) {
-  const { supabase, error: authError } = await getProfile();
-  if (authError) return { error: authError };
+  const { supabase, error: authError, profile } = await getProfile();
+  if (authError || !profile?.agency_id) {
+    return { error: authError || "Akun belum terhubung ke agency" };
+  }
 
   const { data: session, error: sErr } = await supabase
     .from("async_interview_sessions")
-    .select("id, status, job_id, job_requisitions(title)")
+    .select("id, status, job_id, agency_id, job_requisitions(title)")
     .eq("id", sessionId)
     .single();
 
   if (sErr || !session) return { error: "Sesi tidak ditemukan" };
+
+  const quota = await consumeAiQuota(supabase, {
+    agencyId: session.agency_id || profile.agency_id,
+    eventType: "async_analyze",
+    userId: profile.id,
+    resourceType: "async_interview_session",
+    resourceId: sessionId,
+  });
+  if (!quota.ok && !quota.soft) {
+    return { error: quotaExceededMessage(quota) };
+  }
 
   const { data: questions } = await supabase
     .from("async_interview_questions")
@@ -362,9 +391,135 @@ export async function completePublicInterview(token: string) {
 
   if (error) return { error: formatError(error) };
 
-  // Fire-and-forget style: analyze with service role isn't available;
-  // analysis runs when recruiter opens detail or via separate action.
-  // Try analyzing if we can use authenticated context - candidate is anon.
-  // Store completed; recruiter clicks "Analisis AI".
-  return { success: true, sessionId };
+  // Auto-analyze after candidate submits (no recruiter login needed).
+  let analyzed = false;
+  let analyzeError: string | null = null;
+
+  try {
+    const quota = await consumeAiQuotaForAsyncToken(supabase, {
+      token,
+      eventType: "async_analyze",
+    });
+    if (!quota.ok && !quota.soft) {
+      return {
+        success: true,
+        analyzed: false,
+        analyzeError: quotaExceededMessage(quota),
+      };
+    }
+
+    const { data: payload, error: loadErr } = await supabase.rpc(
+      "get_async_interview_by_token",
+      { p_token: token }
+    );
+
+    if (loadErr || !payload) {
+      throw new Error(loadErr?.message || "Gagal memuat sesi untuk analisis");
+    }
+
+    const data = payload as {
+      job?: { title?: string };
+      questions?: Array<{
+        question_text: string;
+        focus_area?: string | null;
+        answer?: {
+          id?: string;
+          text_answer?: string | null;
+          transcript?: string | null;
+        } | null;
+      }>;
+    };
+
+    const jobTitle = data.job?.title || "Posisi";
+    const questions = data.questions || [];
+    const answerScores: Array<{
+      answer_id: string;
+      score: number;
+      feedback: string;
+    }> = [];
+    const graded: {
+      question: string;
+      answer: string;
+      score: number | null;
+      feedback: string | null;
+    }[] = [];
+
+    for (const q of questions) {
+      const ans = q.answer;
+      const text =
+        (ans?.text_answer || ans?.transcript || "").trim() ||
+        "(tidak ada jawaban teks)";
+
+      try {
+        const result = await analyzeInterviewAnswer({
+          jobTitle,
+          question: q.question_text,
+          focusArea: q.focus_area || null,
+          answerText: text,
+        });
+
+        if (ans?.id) {
+          answerScores.push({
+            answer_id: ans.id,
+            score: result.score,
+            feedback: result.feedback,
+          });
+        }
+
+        graded.push({
+          question: q.question_text,
+          answer: text,
+          score: result.score,
+          feedback: result.feedback,
+        });
+      } catch (err) {
+        graded.push({
+          question: q.question_text,
+          answer: text,
+          score: null,
+          feedback: "Analisis gagal: " + formatError(err),
+        });
+      }
+    }
+
+    let overallScore = 0;
+    let overallSummary = "";
+    try {
+      const overall = await rankInterviewSession({
+        jobTitle,
+        answers: graded,
+      });
+      overallScore = overall.overall_score;
+      overallSummary = overall.overall_summary;
+    } catch (err) {
+      const scored = graded.filter((g) => g.score != null);
+      overallScore =
+        scored.length > 0
+          ? Math.round(
+              scored.reduce((s, g) => s + (g.score || 0), 0) / scored.length
+            )
+          : 0;
+      overallSummary = "Ringkasan AI gagal: " + formatError(err);
+    }
+
+    const { error: saveErr } = await supabase.rpc(
+      "save_async_interview_analysis",
+      {
+        p_token: token,
+        p_answer_scores: answerScores,
+        p_overall_score: overallScore,
+        p_overall_summary: overallSummary,
+      }
+    );
+
+    if (saveErr) {
+      throw new Error(saveErr.message);
+    }
+
+    analyzed = true;
+  } catch (err) {
+    analyzeError = formatError(err);
+  }
+
+  return { success: true, sessionId, analyzed, analyzeError };
 }

@@ -3,6 +3,8 @@ export type UserRole = "admin_agency" | "recruiter" | "client_viewer";
 export interface Agency {
   id: string;
   name: string;
+  plan_tier?: string;
+  ai_quota_monthly?: number;
   created_at: string;
 }
 
@@ -39,6 +41,10 @@ export interface Candidate {
   parsed_data: Record<string, unknown> | null;
   ai_score: number | null;
   ai_summary: string | null;
+  ai_score_breakdown?: Record<string, unknown> | null;
+  manual_score?: number | null;
+  manual_score_reason?: string | null;
+  manual_score_updated_at?: string | null;
   status:
     | "submitted"
     | "screened"
@@ -54,7 +60,44 @@ export interface User {
   email: string;
   role: UserRole;
   agency_id: string;
+  client_id: string | null;
   full_name: string;
+  created_at: string;
+}
+
+export interface TeamInvite {
+  id: string;
+  agency_id: string;
+  email: string;
+  role: UserRole;
+  client_id: string | null;
+  token: string;
+  invited_by: string | null;
+  accepted_at: string | null;
+  expires_at: string;
+  created_at: string;
+}
+
+export type InterviewScheduleStatus =
+  | "scheduled"
+  | "completed"
+  | "cancelled"
+  | "no_show";
+
+export interface InterviewSchedule {
+  id: string;
+  agency_id: string;
+  candidate_id: string;
+  job_id: string;
+  client_id: string | null;
+  title: string;
+  scheduled_at: string;
+  duration_minutes: number;
+  location: string | null;
+  meeting_url: string | null;
+  notes: string | null;
+  status: InterviewScheduleStatus;
+  created_by: string | null;
   created_at: string;
 }
 

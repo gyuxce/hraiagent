@@ -1,5 +1,5 @@
 {
-  "name": "recruitment-platform",
+  "name": "saring",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,6 +12,7 @@
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.8",
     "lucide-react": "^1.26.0",
+    "mammoth": "^1.12.0",
     "next": "16.2.11",
     "react": "19.2.4",
     "react-dom": "19.2.4",

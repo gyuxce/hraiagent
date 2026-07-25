@@ -1,12 +1,51 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { register } from "@/lib/actions/auth";
+import { getInvitePreview } from "@/lib/actions/team";
+import { roleLabel } from "@/lib/auth/roles";
+import { BRAND } from "@/lib/brand";
 
-export default function RegisterPage() {
+type InviteInfo = {
+  email?: string;
+  role?: string;
+  agency_name?: string;
+  client_name?: string | null;
+};
+
+function RegisterForm() {
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("invite") || "";
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [invite, setInvite] = useState<InviteInfo | null>(null);
+  const [inviteLoading, setInviteLoading] = useState(Boolean(inviteToken));
+
+  useEffect(() => {
+    if (!inviteToken) return;
+    let cancelled = false;
+    (async () => {
+      setInviteLoading(true);
+      const result = await getInvitePreview(inviteToken);
+      if (cancelled) return;
+      setInviteLoading(false);
+      if (result.error || !result.data) {
+        setError(
+          result.error ||
+            "Undangan tidak valid, sudah dipakai, atau kadaluarsa"
+        );
+        setInvite(null);
+        return;
+      }
+      setInvite(result.data as InviteInfo);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteToken]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -14,6 +53,9 @@ export default function RegisterPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
+    if (inviteToken) {
+      formData.set("invite_token", inviteToken);
+    }
     const result = await register(formData);
 
     if (result?.error) {
@@ -23,46 +65,76 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-8 bg-gray-50">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Recruit<span className="text-blue-600">AI</span>
-          </h1>
-          <p className="mt-2 text-gray-600">Buat akun agency baru</p>
+    <div className="relative flex min-h-screen items-center justify-center bg-atmosphere px-6 py-12">
+      <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-70" />
+      <div className="relative w-full max-w-md animate-rise">
+        <div className="mb-8 text-center">
+          <Link
+            href="/"
+            className="font-display text-3xl font-extrabold tracking-tight text-ink"
+          >
+            {BRAND.name}
+          </Link>
+          <p className="mt-2 text-sm font-medium text-ink-soft">{BRAND.slogan}</p>
+          <p className="mt-1 text-sm text-muted">
+            {inviteToken
+              ? "Terima undangan bergabung ke agency"
+              : "Buat workspace agency baru"}
+          </p>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6 bg-white p-8 rounded-xl shadow-sm border border-gray-200"
-        >
+        <form onSubmit={handleSubmit} className="surface-panel space-y-5 p-8">
           {error && (
-            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 break-words">
+            <div className="rounded-lg bg-accent-soft px-4 py-3 text-sm text-accent-hover break-words">
               {error}
+            </div>
+          )}
+
+          {inviteToken && (
+            <div className="rounded-lg bg-teal-soft px-4 py-3 text-sm text-teal">
+              {inviteLoading ? (
+                "Memuat undangan..."
+              ) : invite ? (
+                <>
+                  Bergabung ke <strong>{invite.agency_name}</strong> sebagai{" "}
+                  <strong>{roleLabel(invite.role)}</strong>
+                  {invite.client_name ? (
+                    <>
+                      {" "}
+                      untuk client <strong>{invite.client_name}</strong>
+                    </>
+                  ) : null}
+                  .
+                </>
+              ) : (
+                "Undangan tidak bisa dipakai. Minta admin kirim ulang."
+              )}
+            </div>
+          )}
+
+          {!inviteToken && (
+            <div>
+              <label
+                htmlFor="agency_name"
+                className="block text-sm font-medium text-ink-soft"
+              >
+                Nama Agency
+              </label>
+              <input
+                id="agency_name"
+                name="agency_name"
+                type="text"
+                required
+                className="field-input"
+                placeholder="PT Rekrutmen Sejahtera"
+              />
             </div>
           )}
 
           <div>
             <label
-              htmlFor="agency_name"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Nama Agency
-            </label>
-            <input
-              id="agency_name"
-              name="agency_name"
-              type="text"
-              required
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="PT Rekrutmen Sejahtera"
-            />
-          </div>
-
-          <div>
-            <label
               htmlFor="full_name"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-ink-soft"
             >
               Nama Lengkap
             </label>
@@ -71,24 +143,27 @@ export default function RegisterPage() {
               name="full_name"
               type="text"
               required
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="John Doe"
+              className="field-input"
+              placeholder="Nama Anda"
             />
           </div>
 
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-ink-soft"
             >
               Email
             </label>
             <input
+              key={invite?.email || "email-input"}
               id="email"
               name="email"
               type="email"
               required
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              defaultValue={invite?.email || ""}
+              readOnly={Boolean(invite?.email)}
+              className="field-input read-only:bg-mist"
               placeholder="admin@agency.com"
             />
           </div>
@@ -96,7 +171,7 @@ export default function RegisterPage() {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-ink-soft"
             >
               Password
             </label>
@@ -106,24 +181,30 @@ export default function RegisterPage() {
               type="password"
               required
               minLength={6}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="••••••••"
+              className="field-input"
+              placeholder="Minimal 6 karakter"
             />
           </div>
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={
+              loading || Boolean(inviteToken && (inviteLoading || !invite))
+            }
+            className="btn-primary w-full"
           >
-            {loading ? "Memproses..." : "Daftar"}
+            {loading
+              ? "Memproses..."
+              : inviteToken
+                ? "Gabung Agency"
+                : "Buat akun agency"}
           </button>
 
-          <p className="text-center text-sm text-gray-600">
+          <p className="text-center text-sm text-muted">
             Sudah punya akun?{" "}
             <Link
               href="/login"
-              className="font-semibold text-blue-600 hover:text-blue-500"
+              className="font-semibold text-ink underline-offset-2 hover:underline"
             >
               Masuk
             </Link>
@@ -131,5 +212,19 @@ export default function RegisterPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-atmosphere text-muted">
+          Memuat...
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }

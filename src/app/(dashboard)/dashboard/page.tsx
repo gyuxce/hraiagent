@@ -1,12 +1,22 @@
+import Link from "next/link";
 import {
   Briefcase,
   Users,
   UserCheck,
   Clock,
-  TrendingUp,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
+import { isClientViewer } from "@/lib/auth/roles";
+import {
+  ClientDashboard,
+  type PortalCandidateRow,
+  type PortalJobRow,
+} from "@/components/portal/client-dashboard";
+import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
+import { EmptyState } from "@/components/onboarding/empty-state";
+import { AiUsageCard } from "@/components/usage/ai-usage-card";
+import { getAgencyAiUsage } from "@/lib/ai/usage";
 
 function formatRelativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -26,24 +36,23 @@ export default async function DashboardPage() {
 
   if (ensured.error && !ensured.profile?.agency_id) {
     return (
-      <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+      <div className="rounded-xl bg-accent-soft p-4 text-sm text-accent-hover">
         {ensured.error}
       </div>
     );
   }
 
-  // Fetch counts
+  const viewer = isClientViewer(ensured.profile);
+
   const [
-    { count: totalClients },
+    { data: clients },
     { data: jobs },
     { data: candidates },
     { data: recentCandidates },
   ] = await Promise.all([
-    supabase
-      .from("client_companies")
-      .select("*", { count: "exact", head: true }),
-    supabase.from("job_requisitions").select("id, status"),
-    supabase.from("candidates").select("id, status, ai_score"),
+    supabase.from("client_companies").select("id, name").order("name"),
+    supabase.from("job_requisitions").select("id, title, status, client_id"),
+    supabase.from("candidates").select("id, status, ai_score, job_id, name, created_at"),
     supabase
       .from("candidates")
       .select("id, name, status, ai_score, created_at, job_requisitions(title)")
@@ -51,30 +60,131 @@ export default async function DashboardPage() {
       .limit(5),
   ]);
 
+  // Client portal: dedicated report-like dashboard
+  if (viewer) {
+    const clientName = clients?.[0]?.name || "Client Anda";
+    const openJobs = jobs?.filter((j) => j.status === "open").length || 0;
+    const totalCandidates = candidates?.length || 0;
+    const inPipeline =
+      candidates?.filter(
+        (c) => c.status !== "hired" && c.status !== "rejected"
+      ).length || 0;
+    const scored = candidates?.filter((c) => c.ai_score != null) || [];
+    const avgScore =
+      scored.length > 0
+        ? Math.round(
+            scored.reduce((sum, c) => sum + (c.ai_score || 0), 0) /
+              scored.length
+          )
+        : null;
+
+    const pipeline: Record<string, number> = {};
+    for (const c of candidates || []) {
+      pipeline[c.status] = (pipeline[c.status] || 0) + 1;
+    }
+
+    const jobRows: PortalJobRow[] = (jobs || []).map((j) => {
+      const related = (candidates || []).filter((c) => c.job_id === j.id);
+      const scores = related
+        .map((c) => c.ai_score)
+        .filter((s): s is number => s != null);
+      return {
+        id: j.id,
+        title: j.title,
+        status: j.status,
+        candidateCount: related.length,
+        avgScore:
+          scores.length > 0
+            ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+            : null,
+      };
+    });
+
+    const recent: PortalCandidateRow[] = (recentCandidates || []).map((c) => {
+      const jr = c.job_requisitions as unknown as
+        | { title?: string }
+        | { title?: string }[]
+        | null;
+      const jobTitle = Array.isArray(jr)
+        ? jr[0]?.title || "—"
+        : jr?.title || "—";
+      return {
+        id: c.id,
+        name: c.name,
+        status: c.status,
+        ai_score: c.ai_score,
+        created_at: c.created_at,
+        jobTitle,
+      };
+    });
+
+    return (
+      <ClientDashboard
+        stats={{
+          clientName,
+          openJobs,
+          totalCandidates,
+          inPipeline,
+          avgScore,
+        }}
+        jobs={jobRows}
+        recent={recent}
+        pipeline={pipeline}
+      />
+    );
+  }
+
+  const totalClients = clients?.length || 0;
   const totalJobs = jobs?.length || 0;
   const openJobs = jobs?.filter((j) => j.status === "open").length || 0;
   const totalCandidates = candidates?.length || 0;
   const inPipeline =
     candidates?.filter(
-      (c) =>
-        c.status !== "hired" && c.status !== "rejected"
+      (c) => c.status !== "hired" && c.status !== "rejected"
     ).length || 0;
+  const scored = candidates?.filter((c) => c.ai_score != null) || [];
   const avgScore =
-    candidates?.length && candidates.filter((c) => c.ai_score != null).length
+    scored.length > 0
       ? Math.round(
-          (candidates
-            .filter((c) => c.ai_score != null)
-            .reduce((sum, c) => sum + (c.ai_score || 0), 0) /
-            candidates.filter((c) => c.ai_score != null).length)
+          scored.reduce((sum, c) => sum + (c.ai_score || 0), 0) / scored.length
         )
       : null;
 
+  const clientStats = (clients || []).map((client) => {
+    const clientJobs = (jobs || []).filter((j) => j.client_id === client.id);
+    const clientJobIds = new Set(clientJobs.map((j) => j.id));
+    const clientCands = (candidates || []).filter((c) =>
+      clientJobIds.has(c.job_id)
+    );
+    const scores = clientCands
+      .map((c) => c.ai_score)
+      .filter((s): s is number => s != null);
+    return {
+      id: client.id,
+      name: client.name,
+      openJobs: clientJobs.filter((j) => j.status === "open").length,
+      candidates: clientCands.length,
+      pipeline: clientCands.filter(
+        (c) => c.status !== "hired" && c.status !== "rejected"
+      ).length,
+      avgScore:
+        scores.length > 0
+          ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+          : null,
+    };
+  });
+
   const stats = [
     { name: "Open Jobs", value: String(openJobs), icon: Briefcase },
-    { name: "Total Clients", value: String(totalClients || 0), icon: Users },
+    { name: "Total Clients", value: String(totalClients), icon: Users },
     { name: "Total Kandidat", value: String(totalCandidates), icon: UserCheck },
     { name: "Dalam Pipeline", value: String(inPipeline), icon: Clock },
   ];
+
+  const aiUsage = await getAgencyAiUsage(
+    supabase,
+    ensured.profile?.agency_id || undefined
+  );
 
   const statusLabel: Record<string, string> = {
     submitted: "Baru",
@@ -85,79 +195,155 @@ export default async function DashboardPage() {
     rejected: "Ditolak",
   };
   const statusColor: Record<string, string> = {
-    submitted: "bg-gray-100 text-gray-600",
-    screened: "bg-blue-100 text-blue-600",
-    interview: "bg-purple-100 text-purple-600",
-    offer: "bg-amber-100 text-amber-600",
-    hired: "bg-green-100 text-green-600",
-    rejected: "bg-red-100 text-red-600",
+    submitted: "bg-mist text-muted",
+    screened: "bg-teal-soft text-teal",
+    interview: "bg-accent-soft text-accent-hover",
+    offer: "bg-amber-50 text-amber-800",
+    hired: "bg-teal-soft text-teal",
+    rejected: "bg-red-50 text-red-700",
   };
 
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Overview aktivitas rekrutmen Anda
+        <p className="page-kicker">Agency workspace</p>
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-sub">
+          Overview performa rekrutmen lintas klien
+          {avgScore != null && (
+            <span className="text-ink-soft">
+              {" "}
+              · AI rata-rata {avgScore}/100 · {totalJobs} job
+            </span>
+          )}
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+      <OnboardingChecklist
+        progress={{
+          hasClient: totalClients > 0,
+          hasJob: totalJobs > 0,
+          hasCandidate: totalCandidates > 0,
+        }}
+      />
+
+      <AiUsageCard usage={aiUsage} />
+
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
-          <div
-            key={stat.name}
-            className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
-          >
-            <div className="flex items-center justify-between">
+          <div key={stat.name} className="surface-panel p-5">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-gray-500">{stat.name}</p>
-                <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+                <p className="text-sm font-medium text-muted">{stat.name}</p>
+                <p className="mt-2 font-display text-3xl font-bold tracking-tight text-ink">
+                  {stat.value}
+                </p>
               </div>
-              <div className="rounded-lg bg-blue-50 p-3">
-                <stat.icon className="h-6 w-6 text-blue-600" />
+              <div className="rounded-lg bg-mist p-2.5 text-ink-soft">
+                <stat.icon className="h-5 w-5" />
               </div>
-            </div>
-            <div className="mt-4 flex items-center text-sm">
-              <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-              <span className="text-gray-500">
-                {totalJobs} total job
-                {avgScore != null && (
-                  <span className="text-gray-400"> • AI rata² {avgScore}/100</span>
-                )}
-              </span>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Recent Candidates */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+      <div className="mb-8 surface-panel overflow-hidden">
+        <div className="flex items-center justify-between border-b border-line px-6 py-4">
+          <div>
+            <h2 className="font-display text-lg font-bold text-ink">
+              Performa Multi-Klien
+            </h2>
+            <p className="text-sm text-muted">Breakdown pipeline per client</p>
+          </div>
+          <Link
+            href="/reports"
+            className="text-sm font-semibold text-accent hover:text-accent-hover"
+          >
+            Lihat reports
+          </Link>
+        </div>
+        {clientStats.length === 0 ? (
+          <EmptyState
+            stepLabel="Langkah 1 dari 3"
+            title="Belum ada client"
+            description="Tambah client company untuk melihat breakdown pipeline di sini."
+            action={
+              <Link href="/clients" className="btn-primary">
+                Tambah client
+              </Link>
+            }
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-line">
+              <thead className="bg-mist/70">
+                <tr>
+                  {["Client", "Open Jobs", "Kandidat", "Pipeline", "Avg AI"].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted"
+                      >
+                        {h}
+                      </th>
+                    )
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {clientStats.map((c) => (
+                  <tr key={c.id} className="hover:bg-mist/40">
+                    <td className="px-6 py-3 text-sm font-medium text-ink">
+                      {c.name}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-muted">{c.openJobs}</td>
+                    <td className="px-6 py-3 text-sm text-muted">
+                      {c.candidates}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-muted">{c.pipeline}</td>
+                    <td className="px-6 py-3 text-sm text-muted">
+                      {c.avgScore != null ? `${c.avgScore}/100` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="surface-panel overflow-hidden">
+        <div className="border-b border-line px-6 py-4">
+          <h2 className="font-display text-lg font-bold text-ink">
             Kandidat Terbaru
           </h2>
         </div>
         {!recentCandidates?.length ? (
-          <div className="px-6 py-12 text-center text-sm text-gray-500">
-            Belum ada kandidat. Tambah kandidat pertama.
-          </div>
+          <EmptyState
+            stepLabel="Langkah 3 dari 3"
+            title="Belum ada kandidat"
+            description="Setelah ada job, upload CV atau import CSV — kandidat terbaru muncul di sini."
+            action={
+              <Link href="/candidates" className="btn-primary">
+                Ke Candidates
+              </Link>
+            }
+          />
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-line">
             {recentCandidates.map((c) => (
-              <div
+              <Link
                 key={c.id}
-                className="flex items-center justify-between px-6 py-4"
+                href={`/candidates/${c.id}`}
+                className="flex items-center justify-between px-6 py-4 transition hover:bg-mist/50"
               >
                 <div className="flex items-center gap-x-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100">
-                    <UserCheck className="h-5 w-5 text-gray-600" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-mist text-ink-soft">
+                    <UserCheck className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {c.name}
-                    </p>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm font-semibold text-ink">{c.name}</p>
+                    <p className="text-sm text-muted">
                       {(() => {
                         const jr = c.job_requisitions as unknown as
                           | { title?: string }
@@ -167,9 +353,9 @@ export default async function DashboardPage() {
                         return jr?.title || "—";
                       })()}
                       {c.ai_score != null && (
-                        <span className="text-gray-400">
+                        <span className="text-ink-soft/80">
                           {" "}
-                          • Skor {c.ai_score}/100
+                          · Skor {c.ai_score}/100
                         </span>
                       )}
                     </p>
@@ -177,17 +363,17 @@ export default async function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span
-                    className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                    className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${
                       statusColor[c.status] || statusColor.submitted
                     }`}
                   >
                     {statusLabel[c.status] || c.status}
                   </span>
-                  <span className="text-xs text-gray-400">
+                  <span className="hidden text-xs text-muted sm:inline">
                     {formatRelativeTime(c.created_at)}
                   </span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
 import { summarizeInterviewTranscript } from "@/lib/ai/openrouter";
+import {
+  consumeAiQuota,
+  quotaExceededMessage,
+} from "@/lib/ai/usage";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -89,35 +93,47 @@ export async function createInterviewNote(formData: FormData) {
   let aiSummary: string | null = null;
 
   if (runAi) {
-    try {
-      const job = candidate.job_requisitions as unknown as
-        | {
-            title?: string;
-            description?: string;
-            requirements?: string[];
-          }
-        | {
-            title?: string;
-            description?: string;
-            requirements?: string[];
-          }[]
-        | null;
+    const quota = await consumeAiQuota(supabase, {
+      agencyId: profile.agency_id,
+      eventType: "interview_summary",
+      userId: profile.id,
+      resourceType: "candidate",
+      resourceId: candidateId,
+    });
 
-      const jobObj = Array.isArray(job) ? job[0] : job;
+    if (!quota.ok && !quota.soft) {
+      aiSummary = quotaExceededMessage(quota);
+    } else {
+      try {
+        const job = candidate.job_requisitions as unknown as
+          | {
+              title?: string;
+              description?: string;
+              requirements?: string[];
+            }
+          | {
+              title?: string;
+              description?: string;
+              requirements?: string[];
+            }[]
+          | null;
 
-      const result = await summarizeInterviewTranscript({
-        candidateName: candidate.name,
-        jobTitle: jobObj?.title || "Posisi",
-        jobDescription: jobObj?.description || "",
-        requirements: Array.isArray(jobObj?.requirements)
-          ? jobObj.requirements
-          : [],
-        transcript,
-        interviewerNotes,
-      });
-      aiSummary = formatAiSummary(result);
-    } catch (err) {
-      aiSummary = "AI summary gagal: " + formatError(err);
+        const jobObj = Array.isArray(job) ? job[0] : job;
+
+        const result = await summarizeInterviewTranscript({
+          candidateName: candidate.name,
+          jobTitle: jobObj?.title || "Posisi",
+          jobDescription: jobObj?.description || "",
+          requirements: Array.isArray(jobObj?.requirements)
+            ? jobObj.requirements
+            : [],
+          transcript,
+          interviewerNotes,
+        });
+        aiSummary = formatAiSummary(result);
+      } catch (err) {
+        aiSummary = "AI summary gagal: " + formatError(err);
+      }
     }
   }
 
@@ -168,8 +184,10 @@ export async function deleteInterviewNote(id: string, candidateId: string) {
 }
 
 export async function regenerateInterviewSummary(noteId: string) {
-  const { supabase, error: authError } = await getCurrentProfile();
-  if (authError) return { error: authError };
+  const { supabase, error: authError, profile } = await getCurrentProfile();
+  if (authError || !profile?.agency_id) {
+    return { error: authError || "Akun belum terhubung ke agency" };
+  }
 
   const { data: note, error: nErr } = await supabase
     .from("interview_notes")
@@ -191,6 +209,17 @@ export async function regenerateInterviewSummary(noteId: string) {
 
   const jobRaw = cand?.job_requisitions;
   const job = Array.isArray(jobRaw) ? jobRaw[0] : jobRaw;
+
+  const quota = await consumeAiQuota(supabase, {
+    agencyId: profile.agency_id,
+    eventType: "interview_summary",
+    userId: profile.id,
+    resourceType: "interview_note",
+    resourceId: noteId,
+  });
+  if (!quota.ok && !quota.soft) {
+    return { error: quotaExceededMessage(quota) };
+  }
 
   try {
     const result = await summarizeInterviewTranscript({

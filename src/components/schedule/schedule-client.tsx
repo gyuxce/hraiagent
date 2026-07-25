@@ -66,9 +66,9 @@ function toIcs(schedule: ScheduleRow) {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//RecruitAI//Schedule//ID",
+    "PRODID:-//Saring//Schedule//ID",
     "BEGIN:VEVENT",
-    `UID:${schedule.id}@recruitai`,
+    `UID:${schedule.id}@saring.app`,
     `DTSTAMP:${fmt(new Date())}`,
     `DTSTART:${fmt(start)}`,
     `DTEND:${fmt(end)}`,

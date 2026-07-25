@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import type { ClientCompany } from "@/types/database";
 import { deleteJob } from "@/lib/actions/jobs";
 import { JobFormModal, type JobWithClient } from "./job-form-modal";
+import { EmptyState } from "@/components/onboarding/empty-state";
+import Link from "next/link";
 
 type Props = {
   jobs: JobWithClient[];
@@ -89,18 +91,28 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
 
       <div className="surface-panel overflow-hidden">
         {jobs.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <p className="text-sm text-muted">Belum ada job requisition.</p>
-            {canWrite && (
-              <button
-                type="button"
-                onClick={openCreate}
-                className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-500"
-              >
-                + Buat job pertama
-              </button>
-            )}
-          </div>
+          <EmptyState
+            stepLabel="Langkah 2 dari 3"
+            title="Belum ada lowongan"
+            description={
+              clients.length === 0
+                ? "Buat client company dulu, baru bisa membuat job requisition dengan requirement yang jelas untuk AI scoring."
+                : "Buat job dengan requirement spesifik agar skor AI lebih tajam saat screening CV."
+            }
+            action={
+              canWrite ? (
+                clients.length === 0 ? (
+                  <Link href="/clients" className="btn-primary">
+                    Tambah client dulu
+                  </Link>
+                ) : (
+                  <button type="button" onClick={openCreate} className="btn-primary">
+                    + Buat job pertama
+                  </button>
+                )
+              ) : undefined
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-line">

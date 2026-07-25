@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ClientCompany } from "@/types/database";
 import { deleteClientCompany } from "@/lib/actions/clients";
 import { ClientFormModal } from "./client-form-modal";
+import { EmptyState } from "@/components/onboarding/empty-state";
 
 type ClientWithJobs = ClientCompany & {
   job_count?: number;
@@ -76,18 +77,18 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
 
       <div className="surface-panel overflow-hidden">
         {clients.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <p className="text-sm text-muted">Belum ada client.</p>
-            {canWrite && (
-              <button
-                type="button"
-                onClick={openCreate}
-                className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-500"
-              >
-                + Tambah client pertama
-              </button>
-            )}
-          </div>
+          <EmptyState
+            stepLabel="Langkah 1 dari 3"
+            title="Belum ada client company"
+            description="Tambah perusahaan klien dulu. Setelah itu buat job requisition per klien, lalu upload CV kandidat."
+            action={
+              canWrite ? (
+                <button type="button" onClick={openCreate} className="btn-primary">
+                  + Tambah client pertama
+                </button>
+              ) : undefined
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-line">

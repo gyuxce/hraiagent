@@ -13,6 +13,8 @@ import {
   type PortalCandidateRow,
   type PortalJobRow,
 } from "@/components/portal/client-dashboard";
+import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
+import { EmptyState } from "@/components/onboarding/empty-state";
 
 function formatRelativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -210,6 +212,14 @@ export default async function DashboardPage() {
         </p>
       </div>
 
+      <OnboardingChecklist
+        progress={{
+          hasClient: totalClients > 0,
+          hasJob: totalJobs > 0,
+          hasCandidate: totalCandidates > 0,
+        }}
+      />
+
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
           <div key={stat.name} className="surface-panel p-5">
@@ -244,9 +254,16 @@ export default async function DashboardPage() {
           </Link>
         </div>
         {clientStats.length === 0 ? (
-          <p className="px-6 py-10 text-center text-sm text-muted">
-            Belum ada client. Tambah client untuk melihat breakdown.
-          </p>
+          <EmptyState
+            stepLabel="Langkah 1 dari 3"
+            title="Belum ada client"
+            description="Tambah client company untuk melihat breakdown pipeline di sini."
+            action={
+              <Link href="/clients" className="btn-primary">
+                Tambah client
+              </Link>
+            }
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-line">
@@ -293,9 +310,16 @@ export default async function DashboardPage() {
           </h2>
         </div>
         {!recentCandidates?.length ? (
-          <div className="px-6 py-12 text-center text-sm text-muted">
-            Belum ada kandidat.
-          </div>
+          <EmptyState
+            stepLabel="Langkah 3 dari 3"
+            title="Belum ada kandidat"
+            description="Setelah ada job, upload CV atau import CSV — kandidat terbaru muncul di sini."
+            action={
+              <Link href="/candidates" className="btn-primary">
+                Ke Candidates
+              </Link>
+            }
+          />
         ) : (
           <div className="divide-y divide-line">
             {recentCandidates.map((c) => (

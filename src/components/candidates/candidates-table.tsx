@@ -13,6 +13,7 @@ import {
   type JobOption,
 } from "./candidate-form-modal";
 import { ImportCandidatesModal } from "./import-candidates-modal";
+import { EmptyState } from "@/components/onboarding/empty-state";
 import { effectiveScore } from "@/lib/candidates/score";
 
 export type CandidateRow = {
@@ -166,18 +167,41 @@ export function CandidatesTable({
 
       <div className="surface-panel overflow-hidden">
         {candidates.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <p className="text-sm text-muted">Belum ada kandidat.</p>
-            {canWrite && (
-              <button
-                type="button"
-                onClick={() => setModalOpen(true)}
-                className="mt-4 text-sm font-semibold text-blue-600 hover:text-blue-500"
-              >
-                + Tambah kandidat pertama
-              </button>
-            )}
-          </div>
+          <EmptyState
+            stepLabel="Langkah 3 dari 3"
+            title="Belum ada kandidat"
+            description={
+              jobs.length === 0
+                ? "Buat job dulu, lalu upload CV (PDF/DOCX) atau import CSV agar AI bisa men-score kecocokan."
+                : "Upload CV atau import spreadsheet. Centang AI screening agar skor + breakdown muncul otomatis."
+            }
+            action={
+              canWrite ? (
+                jobs.length === 0 ? (
+                  <Link href="/jobs" className="btn-primary">
+                    Buat job dulu
+                  </Link>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setImportOpen(true)}
+                      className="btn-secondary"
+                    >
+                      Import CSV
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModalOpen(true)}
+                      className="btn-primary"
+                    >
+                      + Tambah kandidat
+                    </button>
+                  </>
+                )
+              ) : undefined
+            }
+          />
         ) : (
           <>
             {/* Mobile cards */}

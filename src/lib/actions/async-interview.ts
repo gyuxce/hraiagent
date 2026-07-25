@@ -85,7 +85,7 @@ export async function createAsyncInterview(candidateId: string) {
       jobDescription: job.description || "",
       requirements: Array.isArray(job.requirements) ? job.requirements : [],
       candidateName: candidate.name,
-      count: 5,
+      count: 3,
     });
   } catch (err) {
     return { error: "Gagal generate pertanyaan AI: " + formatError(err) };
@@ -600,6 +600,34 @@ async function loadSessionForUpload(token: string) {
   return { error: null, supabase, session };
 }
 
+/**
+ * Prepare a storage path for direct browser→Supabase upload.
+ * Avoids shipping large video bytes through the Next.js server action (timeouts).
+ */
+export async function prepareInterviewVideoUpload(
+  token: string,
+  questionId: string
+) {
+  const t = String(token || "").trim();
+  const qid = String(questionId || "").trim();
+  if (!t || !qid) return { error: "Data tidak lengkap" };
+
+  const loaded = await loadSessionForUpload(t);
+  if (loaded.error || !loaded.session) return { error: loaded.error || "Invalid" };
+  if (!loaded.session.selfie_path) {
+    return { error: "Ambil selfie dulu sebelum merekam jawaban." };
+  }
+
+  const path = `${loaded.session.agency_id}/${loaded.session.id}/${qid}-${Date.now()}.webm`;
+  return {
+    success: true,
+    path,
+    // Soft limit for UX; client also constrains bitrate/duration
+    maxBytes: 12 * 1024 * 1024,
+  };
+}
+
+/** Fallback server upload for small clips / environments where direct upload fails. */
 export async function uploadInterviewVideo(formData: FormData) {
   const token = String(formData.get("token") || "").trim();
   const questionId = String(formData.get("question_id") || "").trim();
@@ -609,8 +637,11 @@ export async function uploadInterviewVideo(formData: FormData) {
     return { error: "Video tidak valid" };
   }
 
-  if (file.size > 50 * 1024 * 1024) {
-    return { error: "Ukuran video maksimal 50MB" };
+  if (file.size > 12 * 1024 * 1024) {
+    return {
+      error:
+        "Video terlalu besar (maks ~12MB). Rekam lebih pendek (≤90 detik).",
+    };
   }
 
   const loaded = await loadSessionForUpload(token);

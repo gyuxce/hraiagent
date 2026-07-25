@@ -360,37 +360,31 @@ export async function generateInterviewQuestions(params: {
   candidateName?: string;
   count?: number;
 }): Promise<{ question_text: string; focus_area: string }[]> {
-  const count = params.count ?? 5;
+  // Keep default small — AI latency dominates "buat link" time.
+  const count = params.count ?? 3;
   const requirementsText =
     params.requirements.length > 0
-      ? params.requirements.map((r, i) => `${i + 1}. ${r}`).join("\n")
+      ? params.requirements
+          .slice(0, 6)
+          .map((r, i) => `${i + 1}. ${r}`)
+          .join("\n")
       : "(umum)";
+  const jobDesc = (params.jobDescription || "").trim().slice(0, 700);
 
-  const prompt = `Buat ${count} pertanyaan interview async (bukan real-time) untuk posisi berikut.
-Pertanyaan harus dijawab dengan rekaman video pendek (bicara ke kamera, 1-3 menit). Jangan buat pertanyaan yang mengharapkan jawaban tertulis.
+  const prompt = `Buat tepat ${count} pertanyaan interview video async (jawab bicara 30-90 detik). Ringkas.
 
 JOB: ${params.jobTitle}
 KANDIDAT: ${params.candidateName || "Kandidat"}
-
-DESKRIPSI:
-${params.jobDescription}
-
+DESKRIPSI: ${jobDesc || "(tidak ada)"}
 REQUIREMENTS:
 ${requirementsText}
 
-Campur: behavioral, teknis/relevan job, situational, dan komunikasi.
-Bahasa Indonesia, jelas, netral (hindari bias demografi).
-
-JSON saja:
-{
-  "questions": [
-    { "question_text": "...", "focus_area": "behavioral|teknis|situational|komunikasi" }
-  ]
-}`;
+Campur behavioral/teknis/situational. Bahasa Indonesia, netral.
+JSON saja: {"questions":[{"question_text":"...","focus_area":"behavioral|teknis|situational|komunikasi"}]}`;
 
   const parsed = await chatJson(
     prompt,
-    "You generate fair async interview questions. Valid JSON only. Bahasa Indonesia."
+    "Generate short async video interview questions. Valid JSON only. Bahasa Indonesia. Be concise."
   );
 
   const list = Array.isArray(parsed.questions) ? parsed.questions : [];

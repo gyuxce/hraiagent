@@ -146,7 +146,9 @@ export function AsyncInterviewSection({
             disabled={loading}
             className="btn-primary disabled:opacity-50"
           >
-            {loading ? "Generate pertanyaan..." : "+ Buat Interview Async"}
+            {loading
+              ? "Generate pertanyaan AI (~3–5 dtk)..."
+              : "+ Buat Interview Async"}
           </button>
         )}
       </div>
@@ -188,7 +190,7 @@ export function AsyncInterviewSection({
           {canWrite ? (
             <>
               Belum ada sesi. Klik <strong>+ Buat Interview Async</strong> — AI
-              akan generate ~5 pertanyaan + link.
+              akan generate ~3 pertanyaan video + link.
             </>
           ) : (
             "Belum ada sesi interview async untuk kandidat ini."

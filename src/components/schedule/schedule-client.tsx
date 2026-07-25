@@ -111,9 +111,10 @@ export function ScheduleClient({
 
   async function handleCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
     setBusy(true);
     setError(null);
-    const result = await createInterviewSchedule(new FormData(e.currentTarget));
+    const result = await createInterviewSchedule(new FormData(form));
     setBusy(false);
     if (result.error) {
       setError(result.error);
@@ -121,7 +122,7 @@ export function ScheduleClient({
       return;
     }
     toast.success("Jadwal interview dibuat");
-    e.currentTarget.reset();
+    form.reset();
     router.refresh();
   }
 

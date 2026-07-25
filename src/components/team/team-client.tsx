@@ -78,10 +78,11 @@ export function TeamClient({
 
   async function handleInvite(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const form = e.currentTarget;
     setInviting(true);
     setError(null);
     setInviteUrl(null);
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(form);
     const result = await createTeamInvite(formData);
     setInviting(false);
     if (result.error) {
@@ -98,7 +99,7 @@ export function TeamClient({
           : "Undangan dibuat — salin link di bawah"
       );
     }
-    e.currentTarget.reset();
+    form.reset();
     setRole("recruiter");
     router.refresh();
   }

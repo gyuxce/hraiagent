@@ -439,7 +439,7 @@ export async function completePublicInterview(token: string) {
       const ans = q.answer;
       const text =
         (ans?.text_answer || ans?.transcript || "").trim() ||
-        "(tidak ada jawaban teks)";
+        "(tidak ada transkrip — jawaban video tanpa teks otomatis)";
 
       try {
         const result = await analyzeInterviewAnswer({

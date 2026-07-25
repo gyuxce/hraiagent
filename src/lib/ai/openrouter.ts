@@ -405,7 +405,7 @@ export async function analyzeInterviewAnswer(params: {
   focusArea?: string | null;
   answerText: string;
 }): Promise<{ score: number; feedback: string }> {
-  const prompt = `Nilai jawaban interview async untuk recruiter.
+  const prompt = `Nilai jawaban interview async untuk recruiter. Jujur dan ketat.
 
 JOB: ${params.jobTitle}
 FOKUS: ${params.focusArea || "umum"}
@@ -414,16 +414,22 @@ PERTANYAAN: ${params.question}
 JAWABAN KANDIDAT:
 ${params.answerText.slice(0, 8000)}
 
-Nilai 0-100 untuk: relevansi, kejelasan komunikasi, kedalaman, contoh konkret.
-JSON saja:
-{
-  "score": 75,
-  "feedback": "2-4 kalimat Bahasa Indonesia: kekuatan + saran"
-}`;
+Rubrik skor (WAJIB diikuti):
+- 0-25: kosong, off-topic, atau tidak menjawab pertanyaan
+- 26-45: relevan tipis, dangkal, tanpa contoh
+- 46-65: cukup relevan tapi kurang detail/contoh
+- 66-80: relevan, jelas, ada contoh
+- 81-100: sangat kuat, spesifik, siap kerja
+
+Jika jawaban tidak relevan / tidak direkomendasikan untuk pertanyaan ini, skor HARUS ≤ 40.
+Jangan pakai skor contoh; hitung dari rubrik di atas.
+
+JSON saja (tanpa markdown):
+{"score":<angka 0-100>,"feedback":"2-4 kalimat Bahasa Indonesia: kekuatan + kelemahan + saran"}`;
 
   const parsed = await chatJson(
     prompt,
-    "You grade async interview answers fairly. Valid JSON only. Bahasa Indonesia."
+    "Grade async interview answers strictly by the rubric. Never invent a high score for irrelevant answers. Valid JSON only. Bahasa Indonesia."
   );
 
   return {
@@ -435,10 +441,38 @@ JSON saja:
   };
 }
 
+/** Average of per-answer scores — overall number is never taken from the LLM. */
+export function averageInterviewScore(
+  scores: Array<number | null | undefined>
+): number | null {
+  const nums = scores.filter(
+    (s): s is number => typeof s === "number" && !Number.isNaN(s)
+  );
+  if (nums.length === 0) return null;
+  return clampScore(nums.reduce((a, b) => a + b, 0) / nums.length);
+}
+
+function recommendationBand(score: number): string {
+  if (score <= 39) return "tidak direkomendasikan";
+  if (score <= 59) return "lemah — cadangan / perlu interview lanjutan";
+  if (score <= 74) return "cukup — pertimbangkan dengan hati-hati";
+  if (score <= 84) return "baik — layak lanjut";
+  return "sangat kuat — direkomendasikan";
+}
+
 export async function rankInterviewSession(params: {
   jobTitle: string;
-  answers: { question: string; answer: string; score: number | null; feedback: string | null }[];
+  answers: {
+    question: string;
+    answer: string;
+    score: number | null;
+    feedback: string | null;
+  }[];
+  /** Precomputed mean of answer scores — returned as overall_score. */
+  overallScore: number;
 }): Promise<{ overall_score: number; overall_summary: string }> {
+  const overallScore = clampScore(params.overallScore);
+  const band = recommendationBand(overallScore);
   const body = params.answers
     .map(
       (a, i) =>
@@ -446,24 +480,28 @@ export async function rankInterviewSession(params: {
     )
     .join("\n\n");
 
-  const prompt = `Rangkum keseluruhan async interview untuk job ${params.jobTitle}.
+  const prompt = `Rangkum async interview untuk job ${params.jobTitle}.
+
+SKOR KESELURUHAN (sudah dihitung, JANGAN ubah): ${overallScore}/100
+REKOMENDASI YANG HARUS SELARAS: ${band}
 
 HASIL PER PERTANYAAN:
 ${body}
 
-JSON:
-{
-  "overall_score": 78,
-  "overall_summary": "3-6 kalimat Bahasa Indonesia: gambaran umum, kekuatan, risiko, rekomendasi recruiter"
-}`;
+Tulis overall_summary 3-6 kalimat Bahasa Indonesia: gambaran umum, kekuatan, risiko, dan rekomendasi recruiter.
+Rekomendasi di ringkasan HARUS selaras dengan skor ${overallScore} (${band}).
+Jika skor rendah / jawaban tidak relevan, katakan jelas tidak / belum direkomendasikan — jangan memuji berlebihan.
+
+JSON saja (tanpa markdown):
+{"overall_summary":"..."}`;
 
   const parsed = await chatJson(
     prompt,
-    "You summarize full async interviews. Valid JSON only. Bahasa Indonesia."
+    "Summarize async interviews. Do not invent or change the overall score. Recommendation text must match the given score band. Valid JSON only. Bahasa Indonesia."
   );
 
   return {
-    overall_score: clampScore(parseScore(parsed.overall_score)),
+    overall_score: overallScore,
     overall_summary:
       typeof parsed.overall_summary === "string" && parsed.overall_summary
         ? parsed.overall_summary

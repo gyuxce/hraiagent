@@ -148,7 +148,19 @@ export default async function RankingPage({ searchParams }: Props) {
                       : "—"}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700">
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs font-medium ${
+                        r.overall_score == null
+                          ? "bg-gray-100 text-gray-600"
+                          : r.overall_score <= 39
+                            ? "bg-red-50 text-red-700"
+                            : r.overall_score <= 59
+                              ? "bg-amber-50 text-amber-800"
+                              : r.overall_score <= 74
+                                ? "bg-slate-100 text-slate-700"
+                                : "bg-green-50 text-green-700"
+                      }`}
+                    >
                       {r.overall_score != null
                         ? `${r.overall_score}/100`
                         : "Belum dianalisi"}

@@ -37,6 +37,13 @@ type Props = {
   loadError?: string | null;
 };
 
+function scoreBadgeClass(score: number): string {
+  if (score <= 39) return "bg-red-50 text-red-700";
+  if (score <= 59) return "bg-amber-50 text-amber-800";
+  if (score <= 74) return "bg-slate-100 text-slate-700";
+  return "bg-green-50 text-green-700";
+}
+
 async function copyToClipboard(text: string): Promise<boolean> {
   try {
     if (navigator.clipboard?.writeText) {
@@ -222,101 +229,104 @@ export function AsyncInterviewSection({
                 key={s.id}
                 className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold capitalize text-gray-900">
-                      Status: {s.status}
-                      {s.overall_score != null && (
-                        <span className="ml-2 rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
-                          Score {s.overall_score}/100
-                        </span>
-                      )}
-                      {s.status === "completed" && s.overall_score == null && (
-                        <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
-                          Analisis pending
-                        </span>
-                      )}
-                      {s.needs_manual_review && (
-                        <span className="ml-2 rounded-full bg-orange-50 px-2 py-0.5 text-xs text-orange-700">
-                          Review identitas
-                        </span>
-                      )}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-400">
-                      Dibuat {new Date(s.created_at).toLocaleString("id-ID")}
-                      {s.expires_at &&
-                        ` · Expired ${new Date(s.expires_at).toLocaleDateString("id-ID")}`}
-                      {questions.length > 0 &&
-                        ` · ${questions.length} pertanyaan`}
-                    </p>
-
-                    <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:items-center">
-                      <input
-                        readOnly
-                        value={url}
-                        onFocus={(e) => e.currentTarget.select()}
-                        className="w-full rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-700"
-                      />
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 w-full sm:flex-1">
+                      <p className="text-sm font-semibold capitalize text-gray-900">
+                        Status: {s.status}
+                        {s.overall_score != null && (
+                          <span
+                            className={`ml-2 rounded-full px-2 py-0.5 text-xs ${scoreBadgeClass(s.overall_score)}`}
+                          >
+                            Score {s.overall_score}/100
+                          </span>
+                        )}
+                        {s.status === "completed" && s.overall_score == null && (
+                          <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
+                            Analisis pending
+                          </span>
+                        )}
+                        {s.needs_manual_review && (
+                          <span className="ml-2 rounded-full bg-orange-50 px-2 py-0.5 text-xs text-orange-700">
+                            Review identitas
+                          </span>
+                        )}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-400">
+                        Dibuat {new Date(s.created_at).toLocaleString("id-ID")}
+                        {s.expires_at &&
+                          ` · Expired ${new Date(s.expires_at).toLocaleDateString("id-ID")}`}
+                        {questions.length > 0 &&
+                          ` · ${questions.length} pertanyaan`}
+                      </p>
                     </div>
 
-                    {s.overall_summary && (
-                      <p className="prose-read mt-2 whitespace-pre-wrap text-gray-700">
-                        {s.overall_summary}
-                      </p>
-                    )}
+                    <div className="flex w-full flex-wrap gap-x-3 gap-y-2 sm:w-auto sm:justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(url)}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                      >
+                        {copied === url ? "✓ Tersalin" : "Salin Link"}
+                      </button>
+                      <Link
+                        href={url}
+                        target="_blank"
+                        className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                      >
+                        Buka (preview)
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpanded(isOpen ? null : s.id)
+                        }
+                        className="text-sm font-medium text-gray-600 hover:text-gray-800"
+                      >
+                        {isOpen ? "Sembunyikan soal" : "Lihat soal AI"}
+                      </button>
+                      {canWrite &&
+                        (s.status === "completed" ||
+                          s.status === "in_progress") &&
+                        s.overall_score == null && (
+                          <button
+                            type="button"
+                            disabled={busyId === s.id}
+                            onClick={() => handleAnalyze(s.id)}
+                            className="text-sm font-medium text-green-700 hover:text-green-600 disabled:opacity-50"
+                          >
+                            {busyId === s.id
+                              ? "Analisis..."
+                              : "Jalankan Analisis AI"}
+                          </button>
+                        )}
+                      {canWrite &&
+                        s.status === "completed" &&
+                        s.overall_score != null && (
+                          <button
+                            type="button"
+                            disabled={busyId === s.id}
+                            onClick={() => handleAnalyze(s.id)}
+                            className="text-sm font-medium text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                          >
+                            {busyId === s.id ? "..." : "Re-analisis"}
+                          </button>
+                        )}
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(url)}
-                      className="text-sm font-medium text-blue-600 hover:text-blue-500"
-                    >
-                      {copied === url ? "✓ Tersalin" : "Salin Link"}
-                    </button>
-                    <Link
-                      href={url}
-                      target="_blank"
-                      className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
-                    >
-                      Buka (preview)
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpanded(isOpen ? null : s.id)
-                      }
-                      className="text-sm font-medium text-gray-600 hover:text-gray-800"
-                    >
-                      {isOpen ? "Sembunyikan soal" : "Lihat soal AI"}
-                    </button>
-                    {canWrite &&
-                      (s.status === "completed" || s.status === "in_progress") &&
-                      s.overall_score == null && (
-                        <button
-                          type="button"
-                          disabled={busyId === s.id}
-                          onClick={() => handleAnalyze(s.id)}
-                          className="text-sm font-medium text-green-700 hover:text-green-600 disabled:opacity-50"
-                        >
-                          {busyId === s.id
-                            ? "Analisis..."
-                            : "Jalankan Analisis AI"}
-                        </button>
-                      )}
-                    {canWrite &&
-                      s.status === "completed" &&
-                      s.overall_score != null && (
-                        <button
-                          type="button"
-                          disabled={busyId === s.id}
-                          onClick={() => handleAnalyze(s.id)}
-                          className="text-sm font-medium text-gray-600 hover:text-gray-800 disabled:opacity-50"
-                        >
-                          {busyId === s.id ? "..." : "Re-analisis"}
-                        </button>
-                      )}
-                  </div>
+                  <input
+                    readOnly
+                    value={url}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="w-full min-w-0 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-700"
+                  />
+
+                  {s.overall_summary && (
+                    <p className="prose-read w-full min-w-0 max-w-full break-words whitespace-pre-wrap text-gray-700">
+                      {s.overall_summary}
+                    </p>
+                  )}
                 </div>
 
                 {isOpen && (

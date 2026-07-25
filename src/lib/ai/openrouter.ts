@@ -1,3 +1,5 @@
+import { detectProvider, missingAiKeyMessage } from "@/lib/ai/config";
+
 export type ParsedCvData = {
   name: string | null;
   email: string | null;
@@ -26,72 +28,6 @@ export type ScreeningResult = {
   breakdown: ScoreBreakdown;
 };
 
-/**
- * AI Provider — swap via AI_PROVIDER env:
- *   "openrouter" → OpenRouter
- *   "opencode"   → OpenCode Go
- *
- * Jika tidak diset → auto-detect dari API key yang tersedia
- */
-const PROVIDERS: Record<
-  string,
-  { baseUrl: string; defaultModel: string }
-> = {
-  openrouter: {
-    baseUrl: "https://openrouter.ai/api/v1",
-    defaultModel: "deepseek/deepseek-v4-flash",
-  },
-  opencode: {
-    baseUrl: "https://opencode.ai/zen/go/v1",
-    defaultModel: "deepseek-v4-flash",
-  },
-};
-
-function envKey(name: string): string {
-  return (process.env[name] || "").trim();
-}
-
-function detectProvider(): { baseUrl: string; model: string; apiKey: string } {
-  // 1. Explicit AI_PROVIDER
-  const explicit = process.env.AI_PROVIDER?.toLowerCase().trim();
-  if (explicit && PROVIDERS[explicit]) {
-    const p = PROVIDERS[explicit];
-    const key =
-      explicit === "openrouter"
-        ? envKey("OPENROUTER_API_KEY") || envKey("AI_API_KEY")
-        : envKey("OPENCODE_API_KEY") || envKey("AI_API_KEY");
-    return {
-      baseUrl: process.env.AI_BASE_URL || p.baseUrl,
-      model: process.env.AI_MODEL || p.defaultModel,
-      apiKey: key,
-    };
-  }
-
-  // 2. Auto-detect from available keys
-  const openRouterKey = envKey("OPENROUTER_API_KEY");
-  const openCodeKey = envKey("OPENCODE_API_KEY");
-
-  if (openRouterKey) {
-    return {
-      baseUrl: process.env.AI_BASE_URL || PROVIDERS.openrouter.baseUrl,
-      model: process.env.AI_MODEL || PROVIDERS.openrouter.defaultModel,
-      apiKey: openRouterKey,
-    };
-  }
-
-  if (openCodeKey) {
-    return {
-      baseUrl: process.env.AI_BASE_URL || PROVIDERS.opencode.baseUrl,
-      model: process.env.AI_MODEL || PROVIDERS.opencode.defaultModel,
-      apiKey: openCodeKey,
-    };
-  }
-
-  throw new Error(
-    "API key AI belum diset. Tambahkan OPENROUTER_API_KEY di Environment Variables (Vercel) atau .env.local, lalu redeploy."
-  );
-}
-
 export async function screenCandidateWithAI(params: {
   cvText: string;
   jobTitle: string;
@@ -101,9 +37,7 @@ export async function screenCandidateWithAI(params: {
   const { baseUrl, model, apiKey } = detectProvider();
 
   if (!apiKey) {
-    throw new Error(
-      "API key AI belum diset. Tambahkan OPENROUTER_API_KEY di Environment Variables (Vercel) atau .env.local, lalu redeploy."
-    );
+    throw new Error(missingAiKeyMessage());
   }
 
   const requirementsText =
@@ -286,9 +220,7 @@ export async function summarizeInterviewTranscript(params: {
 }): Promise<{ summary: string; strengths: string[]; concerns: string[]; recommendation: string }> {
   const { baseUrl, model, apiKey } = detectProvider();
   if (!apiKey) {
-    throw new Error(
-      "API key AI belum diset. Tambahkan OPENROUTER_API_KEY di Environment Variables (Vercel) atau .env.local, lalu redeploy."
-    );
+    throw new Error(missingAiKeyMessage());
   }
 
   const requirementsText =
@@ -377,9 +309,7 @@ Jawab HANYA JSON valid:
 async function chatJson(prompt: string, system: string): Promise<Record<string, unknown>> {
   const { baseUrl, model, apiKey } = detectProvider();
   if (!apiKey) {
-    throw new Error(
-      "API key AI belum diset. Tambahkan OPENROUTER_API_KEY di Environment Variables (Vercel) atau .env.local, lalu redeploy."
-    );
+    throw new Error(missingAiKeyMessage());
   }
 
   const response = await fetch(`${baseUrl}/chat/completions`, {

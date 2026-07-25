@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
+import { getSupabase } from "@/lib/auth/session";
 import { canWriteAgencyData, isAdminAgency } from "@/lib/auth/roles";
 import { InterviewNotesSection } from "@/components/candidates/interview-notes-section";
 import { AsyncInterviewSection } from "@/components/candidates/async-interview-section";
@@ -108,7 +108,7 @@ function clientName(job: unknown): string {
 
 export default async function CandidateDetailPage({ params }: Props) {
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = await getSupabase();
   const ensured = await ensureUserHasAgency();
 
   if (ensured.error && !ensured.profile?.agency_id) {
@@ -119,29 +119,32 @@ export default async function CandidateDetailPage({ params }: Props) {
     );
   }
 
-  const { data: candidate, error } = await supabase
-    .from("candidates")
-    .select(
-      "*, job_requisitions(id, title, client_companies(name))"
-    )
-    .eq("id", id)
-    .single();
+  // Parallel fetch — avoids 3 sequential round-trips that made Detail feel 3–4s
+  const [
+    { data: candidate, error },
+    { data: notes },
+    { data: asyncSessions },
+  ] = await Promise.all([
+    supabase
+      .from("candidates")
+      .select("*, job_requisitions(id, title, client_companies(name))")
+      .eq("id", id)
+      .single(),
+    supabase
+      .from("interview_notes")
+      .select("*")
+      .eq("candidate_id", id)
+      .order("conducted_at", { ascending: false }),
+    supabase
+      .from("async_interview_sessions")
+      .select(
+        "id, invite_token, status, overall_score, overall_summary, created_at, completed_at, expires_at, async_interview_questions(id, question_text, focus_area, sort_order)"
+      )
+      .eq("candidate_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (error || !candidate) notFound();
-
-  const { data: notes } = await supabase
-    .from("interview_notes")
-    .select("*")
-    .eq("candidate_id", id)
-    .order("conducted_at", { ascending: false });
-
-  const { data: asyncSessions } = await supabase
-    .from("async_interview_sessions")
-    .select(
-      "id, invite_token, status, overall_score, overall_summary, created_at, completed_at, expires_at, async_interview_questions(id, question_text, focus_area, sort_order)"
-    )
-    .eq("candidate_id", id)
-    .order("created_at", { ascending: false });
 
   const sessionsForUi = (asyncSessions || []).map((s) => {
     const qs = s.async_interview_questions as unknown;

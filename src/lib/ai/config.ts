@@ -78,6 +78,14 @@ export function missingAiKeyMessage(): string {
   ].join(" ");
 }
 
+/** Cheap vision model for selfie ↔ video face check (OpenRouter). */
+export function getVisionModel(): string {
+  return (
+    cleanEnv(process.env.AI_VISION_MODEL) ||
+    "google/gemini-2.0-flash-001"
+  );
+}
+
 export function detectProvider(): AiProviderConfig {
   const explicit = cleanEnv(process.env.AI_PROVIDER).toLowerCase();
   const openRouterKey = readKey(

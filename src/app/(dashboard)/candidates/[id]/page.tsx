@@ -138,7 +138,7 @@ export default async function CandidateDetailPage({ params }: Props) {
     supabase
       .from("async_interview_sessions")
       .select(
-        "id, invite_token, status, overall_score, overall_summary, created_at, completed_at, expires_at, async_interview_questions(id, question_text, focus_area, sort_order)"
+        "id, invite_token, status, overall_score, overall_summary, created_at, completed_at, expires_at, challenge_code, challenge_passed, face_match_status, face_match_note, needs_manual_review, identity_summary, selfie_path, async_interview_questions(id, question_text, focus_area, sort_order)"
       )
       .eq("candidate_id", id)
       .order("created_at", { ascending: false }),
@@ -162,6 +162,13 @@ export default async function CandidateDetailPage({ params }: Props) {
       created_at: s.created_at,
       completed_at: s.completed_at,
       expires_at: s.expires_at,
+      challenge_code: s.challenge_code,
+      challenge_passed: s.challenge_passed,
+      face_match_status: s.face_match_status,
+      face_match_note: s.face_match_note,
+      needs_manual_review: s.needs_manual_review,
+      identity_summary: s.identity_summary,
+      selfie_path: s.selfie_path,
       questions: questions as {
         id: string;
         question_text: string;

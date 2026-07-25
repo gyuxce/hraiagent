@@ -7,6 +7,7 @@ import {
   analyzeCompletedInterview,
   createAsyncInterview,
 } from "@/lib/actions/async-interview";
+import { InterviewIdentityPanel } from "@/components/candidates/interview-identity-panel";
 import { useToast } from "@/components/ui/toast";
 
 export type AsyncSessionRow = {
@@ -18,6 +19,13 @@ export type AsyncSessionRow = {
   created_at: string;
   completed_at: string | null;
   expires_at: string | null;
+  challenge_code?: string | null;
+  challenge_passed?: boolean | null;
+  face_match_status?: string | null;
+  face_match_note?: string | null;
+  needs_manual_review?: boolean | null;
+  identity_summary?: string | null;
+  selfie_path?: string | null;
   questions?: { id: string; question_text: string; focus_area: string | null; sort_order: number }[];
 };
 
@@ -127,9 +135,8 @@ export function AsyncInterviewSection({
           </h2>
           <p className="mt-1 text-sm text-muted">
             Skor di sini = kualitas jawaban interview (bukan skor screening CV).
-            Alur: generate ~5 pertanyaan → salin link → kandidat jawab{" "}
-            <strong>video saja</strong> (bicara ke kamera) → analisis AI →
-            Ranking.
+            Alur: selfie wajib → video + kode tantangan → AI skor (hanya jika
+            transkrip bagus) → face match ringan → Ranking.
           </p>
         </div>
         {canWrite && (
@@ -206,6 +213,11 @@ export function AsyncInterviewSection({
                       {s.overall_score != null && (
                         <span className="ml-2 rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
                           Score {s.overall_score}/100
+                        </span>
+                      )}
+                      {s.needs_manual_review && (
+                        <span className="ml-2 rounded-full bg-orange-50 px-2 py-0.5 text-xs text-orange-700">
+                          Review identitas
                         </span>
                       )}
                     </p>
@@ -287,31 +299,42 @@ export function AsyncInterviewSection({
                 </div>
 
                 {isOpen && (
-                  <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-4">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Pertanyaan yang di-generate AI
-                    </p>
-                    {questions.length === 0 ? (
-                      <p className="text-sm text-gray-500">
-                        Pertanyaan tidak termuat. Refresh halaman.
+                  <div className="mt-4 space-y-3">
+                    <InterviewIdentityPanel
+                      sessionId={s.id}
+                      challengeCode={s.challenge_code}
+                      challengePassed={s.challenge_passed}
+                      faceMatchStatus={s.face_match_status}
+                      faceMatchNote={s.face_match_note}
+                      needsManualReview={s.needs_manual_review}
+                      identitySummary={s.identity_summary}
+                    />
+                    <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Pertanyaan yang di-generate AI
                       </p>
-                    ) : (
-                      <ol className="list-decimal space-y-2 pl-5 text-sm text-gray-800">
-                        {questions
-                          .slice()
-                          .sort((a, b) => a.sort_order - b.sort_order)
-                          .map((q) => (
-                            <li key={q.id}>
-                              <span>{q.question_text}</span>
-                              {q.focus_area && (
-                                <span className="ml-2 rounded-full bg-white px-1.5 py-0.5 text-xs capitalize text-gray-500">
-                                  {q.focus_area}
-                                </span>
-                              )}
-                            </li>
-                          ))}
-                      </ol>
-                    )}
+                      {questions.length === 0 ? (
+                        <p className="text-sm text-gray-500">
+                          Pertanyaan tidak termuat. Refresh halaman.
+                        </p>
+                      ) : (
+                        <ol className="list-decimal space-y-2 pl-5 text-sm text-gray-800">
+                          {questions
+                            .slice()
+                            .sort((a, b) => a.sort_order - b.sort_order)
+                            .map((q) => (
+                              <li key={q.id}>
+                                <span>{q.question_text}</span>
+                                {q.focus_area && (
+                                  <span className="ml-2 rounded-full bg-white px-1.5 py-0.5 text-xs capitalize text-gray-500">
+                                    {q.focus_area}
+                                  </span>
+                                )}
+                              </li>
+                            ))}
+                        </ol>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

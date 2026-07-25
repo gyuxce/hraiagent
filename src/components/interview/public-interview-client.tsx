@@ -5,6 +5,8 @@ import {
   completePublicInterview,
   getPublicInterview,
   submitPublicAnswer,
+  uploadInterviewFaceFrame,
+  uploadInterviewSelfie,
   uploadInterviewVideo,
 } from "@/lib/actions/async-interview";
 
@@ -22,7 +24,14 @@ type Question = {
 };
 
 type Payload = {
-  session: { id: string; status: string; expires_at: string | null };
+  session: {
+    id: string;
+    status: string;
+    expires_at: string | null;
+    selfie_path?: string | null;
+    challenge_code?: string | null;
+    challenge_question_id?: string | null;
+  };
   candidate: { name: string; email: string };
   job: { title: string; description: string };
   questions: Question[];
@@ -39,11 +48,16 @@ export function PublicInterviewClient({ token }: { token: string }) {
   const [recording, setRecording] = useState(false);
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selfieReady, setSelfieReady] = useState(false);
+  const [selfieBusy, setSelfieBusy] = useState(false);
+  const [faceFrameSent, setFaceFrameSent] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const selfieVideoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const selfieStreamRef = useRef<MediaStream | null>(null);
   const recognitionRef = useRef<{ stop: () => void } | null>(null);
   const previewUrlRef = useRef<string | null>(null);
   const idxRef = useRef(0);
@@ -69,6 +83,14 @@ export function PublicInterviewClient({ token }: { token: string }) {
     }
   }
 
+  function stopSelfieTracks() {
+    selfieStreamRef.current?.getTracks().forEach((t) => t.stop());
+    selfieStreamRef.current = null;
+    if (selfieVideoRef.current) {
+      selfieVideoRef.current.srcObject = null;
+    }
+  }
+
   const load = useCallback(
     async (opts?: { resetIdx?: boolean }) => {
       setLoading(true);
@@ -79,10 +101,10 @@ export function PublicInterviewClient({ token }: { token: string }) {
         return null;
       }
       const payload = result.data as Payload;
-      // Guard against AI returning odd counts
       payload.questions = (payload.questions || []).slice(0, 10);
       setData(payload);
       if (payload.session.status === "completed") setDone(true);
+      setSelfieReady(Boolean(payload.session.selfie_path));
 
       if (opts?.resetIdx !== false) {
         const firstUnanswered = payload.questions.findIndex(
@@ -102,14 +124,13 @@ export function PublicInterviewClient({ token }: { token: string }) {
     void load({ resetIdx: true });
     return () => {
       stopMediaTracks();
+      stopSelfieTracks();
       recognitionRef.current?.stop();
       if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
     };
-    // intentionally only on mount / token change — NOT on previewUrl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // Sync form fields when navigating questions (do not remount/reload session)
   useEffect(() => {
     if (!data) return;
     const q = data.questions[idx];
@@ -120,6 +141,132 @@ export function PublicInterviewClient({ token }: { token: string }) {
     setRecording(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
+
+  // Start selfie camera when gate is shown
+  useEffect(() => {
+    if (!data || selfieReady || done) {
+      stopSelfieTracks();
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: false,
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        selfieStreamRef.current = stream;
+        if (selfieVideoRef.current) {
+          selfieVideoRef.current.srcObject = stream;
+          selfieVideoRef.current.muted = true;
+          selfieVideoRef.current.playsInline = true;
+          await selfieVideoRef.current.play().catch(() => undefined);
+        }
+      } catch {
+        setError(
+          "Tidak bisa akses kamera untuk selfie. Izinkan permission browser lalu refresh."
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      stopSelfieTracks();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Boolean(data), selfieReady, done]);
+
+  async function captureSelfie() {
+    const video = selfieVideoRef.current;
+    if (!video || !video.videoWidth) {
+      setError("Kamera selfie belum siap. Tunggu sebentar.");
+      return;
+    }
+    setSelfieBusy(true);
+    setError(null);
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas tidak tersedia");
+      ctx.drawImage(video, 0, 0);
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), "image/jpeg", 0.9)
+      );
+      if (!blob) throw new Error("Gagal ambil foto");
+
+      const fd = new FormData();
+      fd.set("token", token);
+      fd.set("selfie", new File([blob], "selfie.jpg", { type: "image/jpeg" }));
+      const up = await uploadInterviewSelfie(fd);
+      if (up.error) {
+        setError(up.error);
+        setSelfieBusy(false);
+        return;
+      }
+      stopSelfieTracks();
+      setSelfieReady(true);
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              session: {
+                ...prev.session,
+                selfie_path: up.selfiePath || "ok",
+              },
+            }
+          : prev
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal ambil selfie");
+    }
+    setSelfieBusy(false);
+  }
+
+  async function captureFaceFrameFromStream(stream: MediaStream) {
+    if (faceFrameSent) return;
+    const track = stream.getVideoTracks()[0];
+    if (!track) return;
+
+    try {
+      const video = document.createElement("video");
+      video.srcObject = stream;
+      video.muted = true;
+      video.playsInline = true;
+      await video.play();
+      await new Promise((r) => setTimeout(r, 250));
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext("2d");
+      if (!ctx || !video.videoWidth) return;
+      ctx.drawImage(video, 0, 0);
+      video.pause();
+      video.srcObject = null;
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), "image/jpeg", 0.85)
+      );
+      if (!blob) return;
+
+      const fd = new FormData();
+      fd.set("token", token);
+      fd.set(
+        "face_frame",
+        new File([blob], "face-frame.jpg", { type: "image/jpeg" })
+      );
+      const up = await uploadInterviewFaceFrame(fd);
+      if (!up.error) setFaceFrameSent(true);
+    } catch {
+      /* non-blocking */
+    }
+  }
 
   async function startRecording() {
     try {
@@ -136,6 +283,8 @@ export function PublicInterviewClient({ token }: { token: string }) {
         videoRef.current.playsInline = true;
         await videoRef.current.play().catch(() => undefined);
       }
+
+      void captureFaceFrameFromStream(stream);
 
       chunksRef.current = [];
       const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
@@ -170,7 +319,6 @@ export function PublicInterviewClient({ token }: { token: string }) {
       recorder.start(250);
       setRecording(true);
 
-      // Optional live transcript from speech (for AI scoring later)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const w = window as any;
       const SR = w.SpeechRecognition || w.webkitSpeechRecognition;
@@ -204,7 +352,6 @@ export function PublicInterviewClient({ token }: { token: string }) {
   }
 
   function stopRecording() {
-    // Do NOT reload the page/session here — that was the refresh bug.
     try {
       if (
         mediaRecorderRef.current &&
@@ -228,6 +375,11 @@ export function PublicInterviewClient({ token }: { token: string }) {
     if (!data) return false;
     const q = data.questions[currentIdx];
     if (!q) return false;
+
+    if (!data.session.selfie_path && !selfieReady) {
+      setError("Ambil selfie dulu sebelum menjawab.");
+      return false;
+    }
 
     if (!videoBlob && !q.answer?.video_path) {
       setError("Rekam video jawaban dulu sebelum lanjut.");
@@ -275,7 +427,6 @@ export function PublicInterviewClient({ token }: { token: string }) {
       return false;
     }
 
-    // Soft-update local answered state (no full reload / no idx reset)
     setData((prev) => {
       if (!prev) return prev;
       const questions = prev.questions.map((item, i) =>
@@ -358,10 +509,63 @@ export function PublicInterviewClient({ token }: { token: string }) {
     );
   }
 
+  // --- Selfie gate ---
+  if (!selfieReady) {
+    return (
+      <div className="relative min-h-screen bg-atmosphere px-4 py-8">
+        <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-50" />
+        <div className="relative mx-auto max-w-lg">
+          <p className="font-display text-sm font-extrabold text-ink">Saring</p>
+          <h1 className="mt-2 font-display text-2xl font-bold text-ink">
+            Verifikasi wajah
+          </h1>
+          <p className="mt-2 text-sm text-muted">
+            Halo {data.candidate.name}. Sebelum interview video untuk{" "}
+            <strong className="text-ink">{data.job.title}</strong>, ambil selfie
+            wajah Anda. Ini dipakai untuk cek identitas (bukan orang lain).
+          </p>
+
+          {error && (
+            <div className="mt-4 rounded-lg bg-accent-soft p-3 text-sm text-accent-hover">
+              {error}
+            </div>
+          )}
+
+          <div className="surface-panel mt-6 p-5">
+            <div className="overflow-hidden rounded-xl bg-ink">
+              <video
+                ref={selfieVideoRef}
+                className="aspect-[4/3] w-full object-cover"
+                playsInline
+                muted
+              />
+            </div>
+            <p className="mt-3 text-xs text-muted">
+              Pastikan wajah jelas, pencahayaan cukup, tanpa filter. Wajib
+              kandidat yang sama dengan data lamaran.
+            </p>
+            <button
+              type="button"
+              disabled={selfieBusy}
+              onClick={captureSelfie}
+              className="btn-primary mt-4 w-full disabled:opacity-50"
+            >
+              {selfieBusy ? "Menyimpan..." : "Ambil Selfie & Lanjut"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const total = data.questions.length;
   const safeIdx = Math.min(Math.max(idx, 0), Math.max(total - 1, 0));
   const q = data.questions[safeIdx];
   const progress = total > 0 ? Math.round(((safeIdx + 1) / total) * 100) : 0;
+  const isChallenge =
+    Boolean(data.session.challenge_question_id) &&
+    q?.id === data.session.challenge_question_id;
+  const challengeCode = data.session.challenge_code || "";
 
   return (
     <div className="relative min-h-screen bg-atmosphere px-4 py-8">
@@ -373,9 +577,9 @@ export function PublicInterviewClient({ token }: { token: string }) {
             Interview Video — {data.job.title}
           </h1>
           <p className="mt-1 text-sm text-muted">
-            Halo {data.candidate.name}. Jawab setiap pertanyaan dengan{" "}
-            <strong className="text-ink">rekaman video</strong> (bicara ke
-            kamera). Tidak ada opsi teks.
+            Halo {data.candidate.name}. Jawab dengan{" "}
+            <strong className="text-ink">rekaman video</strong>. Selfie sudah
+            tersimpan untuk cek identitas.
           </p>
         </div>
 
@@ -404,6 +608,20 @@ export function PublicInterviewClient({ token }: { token: string }) {
           <h2 className="mt-2 font-display text-lg font-bold text-ink">
             {q?.question_text}
           </h2>
+
+          {isChallenge && challengeCode && (
+            <div className="mt-4 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-accent-hover">
+                Tantangan identitas
+              </p>
+              <p className="mt-1 text-sm text-ink">
+                Di <strong>awal jawaban</strong>, sebutkan kode ini dengan jelas:
+              </p>
+              <p className="mt-2 font-display text-4xl font-extrabold tracking-[0.35em] text-ink">
+                {challengeCode}
+              </p>
+            </div>
+          )}
 
           <div className="mt-5">
             <label className="block text-sm font-medium text-ink-soft">

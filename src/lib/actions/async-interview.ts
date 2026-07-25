@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import {
   analyzeInterviewAnswer,
+  compareInterviewFaces,
   generateInterviewQuestions,
   rankInterviewSession,
 } from "@/lib/ai/openrouter";
@@ -13,6 +14,14 @@ import {
   quotaExceededMessage,
 } from "@/lib/ai/usage";
 import { requireAgencyContext } from "@/lib/auth/agency-context";
+import {
+  buildIdentitySummary,
+  generateChallengeCode,
+  isUsableTranscript,
+  pickChallengeQuestionIndex,
+  transcriptMentionsChallengeCode,
+  type FaceMatchStatus,
+} from "@/lib/interview/identity";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -89,6 +98,8 @@ export async function createAsyncInterview(candidateId: string) {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7);
 
+  const challengeCode = generateChallengeCode();
+
   const { data: session, error: sErr } = await supabase
     .from("async_interview_sessions")
     .insert({
@@ -97,6 +108,9 @@ export async function createAsyncInterview(candidateId: string) {
       job_id: candidate.job_id,
       status: "sent",
       expires_at: expiresAt.toISOString(),
+      challenge_code: challengeCode,
+      face_match_status: "pending",
+      needs_manual_review: false,
     })
     .select("id, invite_token")
     .single();
@@ -105,7 +119,7 @@ export async function createAsyncInterview(candidateId: string) {
     return {
       error:
         formatError(sErr) +
-        " — Pastikan sudah run 00006_async_interview.sql di Supabase.",
+        " — Pastikan sudah run 00006 + 00011_interview_identity_guards.sql di Supabase.",
     };
   }
 
@@ -117,13 +131,26 @@ export async function createAsyncInterview(candidateId: string) {
     sort_order: i + 1,
   }));
 
-  const { error: qErr } = await supabase
+  const { data: insertedQuestions, error: qErr } = await supabase
     .from("async_interview_questions")
-    .insert(rows);
+    .insert(rows)
+    .select("id, sort_order");
 
-  if (qErr) {
+  if (qErr || !insertedQuestions?.length) {
     await supabase.from("async_interview_sessions").delete().eq("id", session.id);
-    return { error: formatError(qErr) };
+    return { error: formatError(qErr) || "Gagal simpan pertanyaan" };
+  }
+
+  const sorted = [...insertedQuestions].sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+  );
+  const challengeIdx = pickChallengeQuestionIndex(sorted.length);
+  const challengeQuestionId = sorted[challengeIdx]?.id;
+  if (challengeQuestionId) {
+    await supabase
+      .from("async_interview_sessions")
+      .update({ challenge_question_id: challengeQuestionId })
+      .eq("id", session.id);
   }
 
   await supabase
@@ -148,6 +175,224 @@ export async function createAsyncInterview(candidateId: string) {
   };
 }
 
+type GradeItem = {
+  question: string;
+  answer: string;
+  score: number | null;
+  feedback: string | null;
+};
+
+async function gradeAnswersFromText(params: {
+  jobTitle: string;
+  questions: Array<{
+    id?: string;
+    question_text: string;
+    focus_area?: string | null;
+    answer?: {
+      id?: string;
+      text_answer?: string | null;
+      transcript?: string | null;
+    } | null;
+  }>;
+  onScored?: (answerId: string, score: number, feedback: string) => Promise<void>;
+}): Promise<{
+  graded: GradeItem[];
+  answerScores: Array<Record<string, unknown>>;
+  weakTranscriptCount: number;
+}> {
+  const graded: GradeItem[] = [];
+  const answerScores: Array<Record<string, unknown>> = [];
+  let weakTranscriptCount = 0;
+
+  for (const q of params.questions) {
+    const ans = q.answer;
+    const text = (ans?.text_answer || ans?.transcript || "").trim();
+
+    if (!isUsableTranscript(text)) {
+      weakTranscriptCount += 1;
+      const feedback =
+        "Transkrip tidak memadai untuk skor AI — review rekaman video secara manual.";
+      if (ans?.id) {
+        answerScores.push({
+          answer_id: ans.id,
+          clear_score: true,
+          score: null,
+          feedback,
+        });
+      }
+      graded.push({
+        question: q.question_text,
+        answer: text || "(transkrip kosong)",
+        score: null,
+        feedback,
+      });
+      continue;
+    }
+
+    try {
+      const result = await analyzeInterviewAnswer({
+        jobTitle: params.jobTitle,
+        question: q.question_text,
+        focusArea: q.focus_area || null,
+        answerText: text,
+      });
+
+      if (ans?.id) {
+        answerScores.push({
+          answer_id: ans.id,
+          score: result.score,
+          feedback: result.feedback,
+        });
+        if (params.onScored) {
+          await params.onScored(ans.id, result.score, result.feedback);
+        }
+      }
+
+      graded.push({
+        question: q.question_text,
+        answer: text,
+        score: result.score,
+        feedback: result.feedback,
+      });
+    } catch (err) {
+      graded.push({
+        question: q.question_text,
+        answer: text,
+        score: null,
+        feedback: "Analisis gagal: " + formatError(err),
+      });
+    }
+  }
+
+  return { graded, answerScores, weakTranscriptCount };
+}
+
+async function storagePathToDataUrl(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  path: string
+): Promise<string | null> {
+  const { data, error } = await supabase.storage
+    .from("interview-videos")
+    .download(path);
+  if (error || !data) return null;
+  const buffer = Buffer.from(await data.arrayBuffer());
+  const lower = path.toLowerCase();
+  const mime = lower.endsWith(".png")
+    ? "image/png"
+    : lower.endsWith(".webp")
+      ? "image/webp"
+      : "image/jpeg";
+  return `data:${mime};base64,${buffer.toString("base64")}`;
+}
+
+async function runIdentityChecks(params: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any;
+  token?: string;
+  sessionId?: string;
+  selfiePath: string | null;
+  faceFramePath: string | null;
+  challengeCode: string | null;
+  challengeQuestionId: string | null;
+  questions: Array<{
+    id?: string;
+    answer?: { transcript?: string | null; text_answer?: string | null } | null;
+  }>;
+  weakTranscriptCount: number;
+  totalAnswers: number;
+}): Promise<{
+  challengePassed: boolean | null;
+  faceMatchStatus: FaceMatchStatus;
+  faceMatchNote: string;
+  needsManualReview: boolean;
+  identitySummary: string;
+}> {
+  let challengePassed: boolean | null = null;
+  if (params.challengeCode && params.challengeQuestionId) {
+    const challengeQ = params.questions.find(
+      (q) => q.id === params.challengeQuestionId
+    );
+    const t =
+      challengeQ?.answer?.transcript ||
+      challengeQ?.answer?.text_answer ||
+      "";
+    challengePassed = transcriptMentionsChallengeCode(t, params.challengeCode);
+  }
+
+  let faceMatchStatus: FaceMatchStatus = "manual";
+  let faceMatchNote =
+    "Bandingkan selfie awal dengan wajah di video secara manual.";
+
+  if (params.selfiePath && params.faceFramePath) {
+    const selfieDataUrl = await storagePathToDataUrl(
+      params.supabase,
+      params.selfiePath
+    );
+    const frameDataUrl = await storagePathToDataUrl(
+      params.supabase,
+      params.faceFramePath
+    );
+    if (selfieDataUrl && frameDataUrl) {
+      const cmp = await compareInterviewFaces({
+        selfieDataUrl,
+        faceFrameDataUrl: frameDataUrl,
+      });
+      faceMatchStatus = cmp.status;
+      faceMatchNote = cmp.note;
+    } else {
+      faceMatchStatus = "manual";
+      faceMatchNote =
+        "Tidak bisa membaca selfie/frame dari storage — cek manual.";
+    }
+  } else if (!params.selfiePath) {
+    faceMatchStatus = "skipped";
+    faceMatchNote = "Selfie tidak ada.";
+  } else {
+    faceMatchStatus = "manual";
+    faceMatchNote =
+      "Frame wajah dari video belum ada — cek selfie vs video manual.";
+  }
+
+  const { needsManualReview, summary } = buildIdentitySummary({
+    hasSelfie: Boolean(params.selfiePath),
+    challengePassed,
+    faceMatchStatus,
+    weakTranscriptCount: params.weakTranscriptCount,
+    totalAnswers: params.totalAnswers,
+  });
+
+  if (params.token) {
+    await params.supabase.rpc("save_async_interview_identity", {
+      p_token: params.token,
+      p_challenge_passed: challengePassed,
+      p_face_match_status: faceMatchStatus,
+      p_face_match_note: faceMatchNote,
+      p_needs_manual_review: needsManualReview,
+      p_identity_summary: summary,
+    });
+  } else if (params.sessionId) {
+    await params.supabase
+      .from("async_interview_sessions")
+      .update({
+        challenge_passed: challengePassed,
+        face_match_status: faceMatchStatus,
+        face_match_note: faceMatchNote,
+        needs_manual_review: needsManualReview,
+        identity_summary: summary,
+      })
+      .eq("id", params.sessionId);
+  }
+
+  return {
+    challengePassed,
+    faceMatchStatus,
+    faceMatchNote,
+    needsManualReview,
+    identitySummary: summary,
+  };
+}
+
 export async function analyzeCompletedInterview(sessionId: string) {
   const { supabase, error: authError, profile } = await getProfile();
   if (authError || !profile?.agency_id) {
@@ -156,7 +401,9 @@ export async function analyzeCompletedInterview(sessionId: string) {
 
   const { data: session, error: sErr } = await supabase
     .from("async_interview_sessions")
-    .select("id, status, job_id, agency_id, job_requisitions(title)")
+    .select(
+      "id, status, job_id, agency_id, invite_token, selfie_path, face_frame_path, challenge_code, challenge_question_id, job_requisitions(title)"
+    )
     .eq("id", sessionId)
     .single();
 
@@ -186,14 +433,7 @@ export async function analyzeCompletedInterview(sessionId: string) {
     ? jobTitleRaw[0]?.title
     : (jobTitleRaw as { title?: string } | null)?.title;
 
-  const graded: {
-    question: string;
-    answer: string;
-    score: number | null;
-    feedback: string | null;
-  }[] = [];
-
-  for (const q of questions) {
+  const normalized = questions.map((q) => {
     const answers = q.async_interview_answers as unknown;
     const ans = Array.isArray(answers)
       ? answers[0]
@@ -202,81 +442,92 @@ export async function analyzeCompletedInterview(sessionId: string) {
           text_answer?: string | null;
           transcript?: string | null;
         } | null);
+    return {
+      id: q.id as string,
+      question_text: q.question_text as string,
+      focus_area: q.focus_area as string | null,
+      answer: ans || null,
+    };
+  });
 
-    const text =
-      (ans?.text_answer || ans?.transcript || "").trim() ||
-      "(tidak ada transkrip — jawaban video tanpa teks otomatis)";
+  const { graded, weakTranscriptCount } = await gradeAnswersFromText({
+    jobTitle: jobTitle || "Posisi",
+    questions: normalized,
+    onScored: async (answerId, score, feedback) => {
+      await supabase
+        .from("async_interview_answers")
+        .update({ ai_score: score, ai_feedback: feedback })
+        .eq("id", answerId);
+    },
+  });
 
-    try {
-      const result = await analyzeInterviewAnswer({
-        jobTitle: jobTitle || "Posisi",
-        question: q.question_text,
-        focusArea: q.focus_area,
-        answerText: text,
-      });
-
-      if (ans?.id) {
-        await supabase
-          .from("async_interview_answers")
-          .update({
-            ai_score: result.score,
-            ai_feedback: result.feedback,
-          })
-          .eq("id", ans.id);
-      }
-
-      graded.push({
-        question: q.question_text,
-        answer: text,
-        score: result.score,
-        feedback: result.feedback,
-      });
-    } catch (err) {
-      graded.push({
-        question: q.question_text,
-        answer: text,
-        score: null,
-        feedback: "Analisis gagal: " + formatError(err),
-      });
+  // Persist null scores + feedback for weak transcripts
+  for (const q of normalized) {
+    const g = graded.find((x) => x.question === q.question_text);
+    if (g && g.score == null && q.answer?.id) {
+      await supabase
+        .from("async_interview_answers")
+        .update({ ai_score: null, ai_feedback: g.feedback })
+        .eq("id", q.answer.id);
     }
   }
 
-  try {
-    const overall = await rankInterviewSession({
-      jobTitle: jobTitle || "Posisi",
-      answers: graded,
-    });
+  const identity = await runIdentityChecks({
+    supabase,
+    sessionId,
+    token: session.invite_token as string,
+    selfiePath: session.selfie_path as string | null,
+    faceFramePath: session.face_frame_path as string | null,
+    challengeCode: session.challenge_code as string | null,
+    challengeQuestionId: session.challenge_question_id as string | null,
+    questions: normalized,
+    weakTranscriptCount,
+    totalAnswers: normalized.length,
+  });
 
-    await supabase
-      .from("async_interview_sessions")
-      .update({
-        overall_score: overall.overall_score,
-        overall_summary: overall.overall_summary,
-        status: "completed",
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", sessionId);
-  } catch (err) {
-    const avg =
-      graded.filter((g) => g.score != null).length > 0
-        ? Math.round(
-            graded
-              .filter((g) => g.score != null)
-              .reduce((s, g) => s + (g.score || 0), 0) /
-              graded.filter((g) => g.score != null).length
-          )
-        : 0;
+  const scored = graded.filter((g) => g.score != null);
+  let overallScore: number | null = null;
+  let overallSummary = "";
 
-    await supabase
-      .from("async_interview_sessions")
-      .update({
-        overall_score: avg,
-        overall_summary: "Ringkasan AI gagal: " + formatError(err),
-        status: "completed",
-        completed_at: new Date().toISOString(),
-      })
-      .eq("id", sessionId);
+  if (scored.length === 0) {
+    overallScore = null;
+    overallSummary =
+      "Skor AI ditunda: tidak ada transkrip yang cukup jelas. Putar video + cek identitas. " +
+      identity.identitySummary;
+  } else {
+    try {
+      const overall = await rankInterviewSession({
+        jobTitle: jobTitle || "Posisi",
+        answers: graded,
+      });
+      overallScore = overall.overall_score;
+      overallSummary =
+        overall.overall_summary +
+        (identity.needsManualReview
+          ? `\n\n[Identitas] ${identity.identitySummary}`
+          : `\n\n[Identitas] ${identity.identitySummary}`);
+    } catch (err) {
+      overallScore = Math.round(
+        scored.reduce((s, g) => s + (g.score || 0), 0) / scored.length
+      );
+      overallSummary =
+        "Ringkasan AI gagal: " +
+        formatError(err) +
+        `\n\n[Identitas] ${identity.identitySummary}`;
+    }
   }
+
+  await supabase
+    .from("async_interview_sessions")
+    .update({
+      overall_score: overallScore,
+      overall_summary: overallSummary,
+      status: "completed",
+      completed_at: new Date().toISOString(),
+      needs_manual_review: identity.needsManualReview,
+      identity_summary: identity.identitySummary,
+    })
+    .eq("id", sessionId);
 
   revalidatePath("/candidates");
   revalidatePath("/ranking");
@@ -321,8 +572,35 @@ export async function submitPublicAnswer(formData: FormData) {
   return { success: true };
 }
 
-export async function uploadInterviewVideo(formData: FormData) {
+async function loadSessionForUpload(token: string) {
   const supabase = await createClient();
+  const { data: sessionData, error: loadErr } = await supabase.rpc(
+    "get_async_interview_by_token",
+    { p_token: token }
+  );
+
+  if (loadErr || !sessionData) {
+    return { error: "Interview tidak valid", supabase, session: null };
+  }
+
+  const session = (
+    sessionData as {
+      session?: {
+        agency_id?: string;
+        id?: string;
+        selfie_path?: string | null;
+      };
+    }
+  ).session;
+
+  if (!session?.agency_id || !session?.id) {
+    return { error: "Sesi tidak valid", supabase, session: null };
+  }
+
+  return { error: null, supabase, session };
+}
+
+export async function uploadInterviewVideo(formData: FormData) {
   const token = String(formData.get("token") || "").trim();
   const questionId = String(formData.get("question_id") || "").trim();
   const file = formData.get("video") as File | null;
@@ -335,21 +613,13 @@ export async function uploadInterviewVideo(formData: FormData) {
     return { error: "Ukuran video maksimal 50MB" };
   }
 
-  const { data: sessionData, error: loadErr } = await supabase.rpc(
-    "get_async_interview_by_token",
-    { p_token: token }
-  );
-
-  if (loadErr || !sessionData) {
-    return { error: "Interview tidak valid" };
+  const loaded = await loadSessionForUpload(token);
+  if (loaded.error || !loaded.session) return { error: loaded.error || "Invalid" };
+  if (!loaded.session.selfie_path) {
+    return { error: "Ambil selfie dulu sebelum merekam jawaban." };
   }
 
-  const session = (sessionData as { session?: { agency_id?: string; id?: string } })
-    .session;
-  if (!session?.agency_id || !session?.id) {
-    return { error: "Sesi tidak valid" };
-  }
-
+  const { supabase, session } = loaded;
   const ext = file.type.includes("mp4") ? "mp4" : "webm";
   const path = `${session.agency_id}/${session.id}/${questionId}-${Date.now()}.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -371,6 +641,129 @@ export async function uploadInterviewVideo(formData: FormData) {
   }
 
   return { success: true, videoPath: path };
+}
+
+export async function uploadInterviewSelfie(formData: FormData) {
+  const token = String(formData.get("token") || "").trim();
+  const file = formData.get("selfie") as File | null;
+
+  if (!token || !file || file.size === 0) {
+    return { error: "Selfie tidak valid" };
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    return { error: "Ukuran selfie maksimal 8MB" };
+  }
+
+  const loaded = await loadSessionForUpload(token);
+  if (loaded.error || !loaded.session) return { error: loaded.error || "Invalid" };
+
+  const { supabase, session } = loaded;
+  const mime = file.type || "image/jpeg";
+  const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
+  const path = `${session.agency_id}/${session.id}/selfie-${Date.now()}.${ext}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error: upErr } = await supabase.storage
+    .from("interview-videos")
+    .upload(path, buffer, { contentType: mime, upsert: true });
+
+  if (upErr) {
+    return {
+      error:
+        "Gagal upload selfie: " +
+        upErr.message +
+        " — pastikan migration 00011 sudah dijalankan (izin image di bucket).",
+    };
+  }
+
+  const { error: saveErr } = await supabase.rpc("save_async_interview_selfie", {
+    p_token: token,
+    p_selfie_path: path,
+  });
+
+  if (saveErr) {
+    return {
+      error:
+        formatError(saveErr) +
+        " — pastikan migration 00011_interview_identity_guards.sql sudah dijalankan.",
+    };
+  }
+
+  return { success: true, selfiePath: path };
+}
+
+export async function uploadInterviewFaceFrame(formData: FormData) {
+  const token = String(formData.get("token") || "").trim();
+  const file = formData.get("face_frame") as File | null;
+
+  if (!token || !file || file.size === 0) {
+    return { error: "Frame wajah tidak valid" };
+  }
+
+  const loaded = await loadSessionForUpload(token);
+  if (loaded.error || !loaded.session) return { error: loaded.error || "Invalid" };
+
+  const { supabase, session } = loaded;
+  const path = `${session.agency_id}/${session.id}/face-frame-${Date.now()}.jpg`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const { error: upErr } = await supabase.storage
+    .from("interview-videos")
+    .upload(path, buffer, { contentType: "image/jpeg", upsert: true });
+
+  if (upErr) return { error: "Gagal upload frame: " + upErr.message };
+
+  const { error: saveErr } = await supabase.rpc(
+    "save_async_interview_face_frame",
+    {
+      p_token: token,
+      p_face_frame_path: path,
+    }
+  );
+
+  if (saveErr) return { error: formatError(saveErr) };
+  return { success: true, faceFramePath: path };
+}
+
+/** Signed URLs for recruiter to view selfie / face frame. */
+export async function getInterviewIdentityMedia(sessionId: string) {
+  const { supabase, error: authError, profile } = await getProfile();
+  if (authError || !profile) return { error: authError || "Unauthorized" };
+
+  const { data: session, error } = await supabase
+    .from("async_interview_sessions")
+    .select(
+      "id, agency_id, selfie_path, face_frame_path, challenge_code, challenge_passed, face_match_status, face_match_note, needs_manual_review, identity_summary"
+    )
+    .eq("id", sessionId)
+    .single();
+
+  if (error || !session) return { error: "Sesi tidak ditemukan" };
+  if (session.agency_id !== profile.agency_id) {
+    return { error: "Tidak punya akses" };
+  }
+
+  async function sign(path: string | null) {
+    if (!path) return null;
+    const { data } = await supabase.storage
+      .from("interview-videos")
+      .createSignedUrl(path, 60 * 60);
+    return data?.signedUrl || null;
+  }
+
+  return {
+    error: null,
+    data: {
+      selfieUrl: await sign(session.selfie_path),
+      faceFrameUrl: await sign(session.face_frame_path),
+      challengeCode: session.challenge_code as string | null,
+      challengePassed: session.challenge_passed as boolean | null,
+      faceMatchStatus: session.face_match_status as string | null,
+      faceMatchNote: session.face_match_note as string | null,
+      needsManualReview: Boolean(session.needs_manual_review),
+      identitySummary: session.identity_summary as string | null,
+    },
+  };
 }
 
 export async function completePublicInterview(token: string) {
@@ -409,8 +802,15 @@ export async function completePublicInterview(token: string) {
     }
 
     const data = payload as {
+      session?: {
+        selfie_path?: string | null;
+        face_frame_path?: string | null;
+        challenge_code?: string | null;
+        challenge_question_id?: string | null;
+      };
       job?: { title?: string };
       questions?: Array<{
+        id?: string;
         question_text: string;
         focus_area?: string | null;
         answer?: {
@@ -422,75 +822,57 @@ export async function completePublicInterview(token: string) {
     };
 
     const jobTitle = data.job?.title || "Posisi";
-    const questions = data.questions || [];
-    const answerScores: Array<{
-      answer_id: string;
-      score: number;
-      feedback: string;
-    }> = [];
-    const graded: {
-      question: string;
-      answer: string;
-      score: number | null;
-      feedback: string | null;
-    }[] = [];
+    const questions = (data.questions || []).map((q) => ({
+      id: q.id,
+      question_text: q.question_text,
+      focus_area: q.focus_area,
+      answer: q.answer || null,
+    }));
 
-    for (const q of questions) {
-      const ans = q.answer;
-      const text =
-        (ans?.text_answer || ans?.transcript || "").trim() ||
-        "(tidak ada transkrip — jawaban video tanpa teks otomatis)";
-
-      try {
-        const result = await analyzeInterviewAnswer({
-          jobTitle,
-          question: q.question_text,
-          focusArea: q.focus_area || null,
-          answerText: text,
-        });
-
-        if (ans?.id) {
-          answerScores.push({
-            answer_id: ans.id,
-            score: result.score,
-            feedback: result.feedback,
-          });
-        }
-
-        graded.push({
-          question: q.question_text,
-          answer: text,
-          score: result.score,
-          feedback: result.feedback,
-        });
-      } catch (err) {
-        graded.push({
-          question: q.question_text,
-          answer: text,
-          score: null,
-          feedback: "Analisis gagal: " + formatError(err),
-        });
-      }
-    }
-
-    let overallScore = 0;
-    let overallSummary = "";
-    try {
-      const overall = await rankInterviewSession({
+    const { graded, answerScores, weakTranscriptCount } =
+      await gradeAnswersFromText({
         jobTitle,
-        answers: graded,
+        questions,
       });
-      overallScore = overall.overall_score;
-      overallSummary = overall.overall_summary;
-    } catch (err) {
-      const scored = graded.filter((g) => g.score != null);
-      overallScore =
-        scored.length > 0
-          ? Math.round(
-              scored.reduce((s, g) => s + (g.score || 0), 0) / scored.length
-            )
-          : 0;
-      overallSummary = "Ringkasan AI gagal: " + formatError(err);
+
+    const identity = await runIdentityChecks({
+      supabase,
+      token,
+      selfiePath: data.session?.selfie_path || null,
+      faceFramePath: data.session?.face_frame_path || null,
+      challengeCode: data.session?.challenge_code || null,
+      challengeQuestionId: data.session?.challenge_question_id || null,
+      questions,
+      weakTranscriptCount,
+      totalAnswers: questions.length,
+    });
+
+    const scored = graded.filter((g) => g.score != null);
+    let overallScore: number | null = null;
+    let overallSummary = "";
+
+    if (scored.length === 0) {
+      overallScore = null;
+      overallSummary =
+        "Skor AI ditunda: tidak ada transkrip yang cukup jelas. Putar video + cek identitas. " +
+        identity.identitySummary;
+    } else {
+      try {
+        const overall = await rankInterviewSession({
+          jobTitle,
+          answers: graded,
+        });
+        overallScore = overall.overall_score;
+        overallSummary = `${overall.overall_summary}\n\n[Identitas] ${identity.identitySummary}`;
+      } catch (err) {
+        overallScore = Math.round(
+          scored.reduce((s, g) => s + (g.score || 0), 0) / scored.length
+        );
+        overallSummary =
+          "Ringkasan AI gagal: " +
+          formatError(err) +
+          `\n\n[Identitas] ${identity.identitySummary}`;
+      }
     }
 
     const { error: saveErr } = await supabase.rpc(
@@ -500,12 +882,10 @@ export async function completePublicInterview(token: string) {
         p_answer_scores: answerScores,
         p_overall_score: overallScore,
         p_overall_summary: overallSummary,
+        p_allow_null_overall: overallScore == null,
       }
     );
-
-    if (saveErr) {
-      throw new Error(saveErr.message);
-    }
+    if (saveErr) throw new Error(saveErr.message);
 
     analyzed = true;
   } catch (err) {

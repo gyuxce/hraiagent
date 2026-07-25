@@ -8,10 +8,22 @@ export type ParsedCvData = {
   summary: string | null;
 };
 
+export type ScoreBreakdown = {
+  must_have: number;
+  skills: number;
+  experience: number;
+  education: number;
+  overall_fit: number;
+  strengths: string[];
+  gaps: string[];
+  red_flags: string[];
+};
+
 export type ScreeningResult = {
   score: number;
   summary: string;
   parsed: ParsedCvData;
+  breakdown: ScoreBreakdown;
 };
 
 /**
@@ -95,32 +107,54 @@ export async function screenCandidateWithAI(params: {
       ? params.requirements.map((r, i) => `${i + 1}. ${r}`).join("\n")
       : "(tidak ada requirement spesifik)";
 
-  const prompt = `Kamu adalah asisten rekrutmen profesional di Indonesia.
-Analisis dokumen kandidat terhadap job requirement.
+  const prompt = `Kamu adalah asisten screening rekrutmen untuk agency di Indonesia.
+Nilai kecocokan kandidat vs job dengan RUBRIK KETAT (jangan murah angka).
 
 JOB TITLE: ${params.jobTitle}
 
 JOB DESCRIPTION:
 ${params.jobDescription}
 
-REQUIREMENTS:
+REQUIREMENTS (anggap poin awal = must-have kecuali jelas optional):
 ${requirementsText}
 
 DOCUMENT TEXT:
 ${params.cvText.slice(0, 12000)}
 
-Aturan penting:
-1. Jika dokumen BUKAN CV/resume (misal panduan, invoice, artikel, random PDF), set score = 0 dan jelaskan di summary bahwa file bukan CV.
-2. Jika CV tapi tidak cocok job, score rendah (0-40) dengan alasan jelas.
-3. Jika cukup cocok, score 41-70. Jika sangat cocok, 71-100.
-4. score HARUS angka integer 0-100 (bukan string).
-5. Ekstrak data CV jika ada. Jika bukan CV, parsed fields boleh null/array kosong.
+Rubrik (tiap dimensi 0-100 integer):
+- must_have: kecocokan requirement wajib / inti peran
+- skills: tools/teknis/kompetensi yang disebut
+- experience: relevansi durasi + tanggung jawab serupa
+- education: kesesuaian pendidikan/sertifikasi bila relevan (jika job tidak minta, boleh 70 netral)
+- overall_fit: penilaian holistik setelah mempertimbangkan red flags
 
-Jawab HANYA JSON valid (tanpa markdown):
+Hitung score akhir (0-100) dengan bobot:
+must_have 40% + skills 25% + experience 25% + education 10%.
+Lalu sesuaikan ±5 jika ada red_flags berat / strengths luar biasa.
+Jangan bulatkan ke angka "cantik" (80/85/90) tanpa bukti di CV.
+
+Aturan:
+1. Bukan CV → score=0, semua dimensi 0, is_cv=false.
+2. Missing must-have penting → must_have ≤35 dan score akhir biasanya ≤55.
+3. CV generik tanpa bukti konkret → score cenderung 40-60, bukan 80+.
+4. Hanya score tinggi (≥75) jika ada bukti jelas di teks CV.
+5. strengths/gaps/red_flags singkat, Bahasa Indonesia, berbasis bukti.
+
+JSON saja (tanpa markdown):
 {
-  "score": 85,
+  "score": 62,
   "is_cv": true,
-  "summary": "ringkasan 2-4 kalimat Bahasa Indonesia",
+  "summary": "2-4 kalimat: cocok di mana, kurang di mana, rekomendasi singkat",
+  "breakdown": {
+    "must_have": 55,
+    "skills": 70,
+    "experience": 60,
+    "education": 75,
+    "overall_fit": 62,
+    "strengths": ["..."],
+    "gaps": ["..."],
+    "red_flags": ["..."]
+  },
   "parsed": {
     "name": "...",
     "email": "...",
@@ -141,7 +175,7 @@ Jawab HANYA JSON valid (tanpa markdown):
         ? {
             "HTTP-Referer":
               process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-            "X-Title": "RecruitAI",
+            "X-Title": "Saring",
           }
         : {}),
     },
@@ -152,7 +186,7 @@ Jawab HANYA JSON valid (tanpa markdown):
         {
           role: "system",
           content:
-            "You are a recruitment screening assistant. Always respond with valid JSON only.",
+            "You are a strict Indonesian recruitment screener. Prefer evidence over generosity. Valid JSON only.",
         },
         { role: "user", content: prompt },
       ],
@@ -174,13 +208,43 @@ Jawab HANYA JSON valid (tanpa markdown):
   }
 
   const parsed = extractJson(content);
-  const score = clampScore(parseScore(parsed.score));
+  const b = (parsed.breakdown || {}) as Record<string, unknown>;
+  const breakdown: ScoreBreakdown = {
+    must_have: clampScore(parseScore(b.must_have)),
+    skills: clampScore(parseScore(b.skills)),
+    experience: clampScore(parseScore(b.experience)),
+    education: clampScore(parseScore(b.education)),
+    overall_fit: clampScore(parseScore(b.overall_fit ?? parsed.score)),
+    strengths: strArray(b.strengths).slice(0, 5),
+    gaps: strArray(b.gaps).slice(0, 5),
+    red_flags: strArray(b.red_flags).slice(0, 5),
+  };
+
+  const weighted = Math.round(
+    breakdown.must_have * 0.4 +
+      breakdown.skills * 0.25 +
+      breakdown.experience * 0.25 +
+      breakdown.education * 0.1
+  );
+  const modelScore = clampScore(parseScore(parsed.score));
+  // Prefer weighted rubric; blend lightly with model score for stability
+  let score = clampScore(Math.round(weighted * 0.75 + modelScore * 0.25));
+  if (breakdown.red_flags.length >= 2) {
+    score = Math.min(score, 55);
+  }
+
   let summary =
     typeof parsed.summary === "string" && parsed.summary
       ? parsed.summary
       : "Tidak ada ringkasan dari AI.";
 
-  if (parsed.is_cv === false && score === 0) {
+  if (parsed.is_cv === false) {
+    score = 0;
+    breakdown.must_have = 0;
+    breakdown.skills = 0;
+    breakdown.experience = 0;
+    breakdown.education = 0;
+    breakdown.overall_fit = 0;
     summary =
       summary ||
       "Dokumen yang diupload bukan CV/resume, sehingga skor kecocokan = 0.";
@@ -195,6 +259,7 @@ Jawab HANYA JSON valid (tanpa markdown):
   return {
     score,
     summary,
+    breakdown,
     parsed: {
       name: strOrNull(p.name),
       email: strOrNull(p.email),
@@ -259,7 +324,7 @@ Jawab HANYA JSON valid:
         ? {
             "HTTP-Referer":
               process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-            "X-Title": "RecruitAI",
+            "X-Title": "Saring",
           }
         : {}),
     },
@@ -318,7 +383,7 @@ async function chatJson(prompt: string, system: string): Promise<Record<string, 
         ? {
             "HTTP-Referer":
               process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-            "X-Title": "RecruitAI",
+            "X-Title": "Saring",
           }
         : {}),
     },

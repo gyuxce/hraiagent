@@ -5,6 +5,9 @@ import { ensureUserHasAgency } from "@/lib/actions/agency";
 import { canWriteAgencyData, isAdminAgency } from "@/lib/auth/roles";
 import { InterviewNotesSection } from "@/components/candidates/interview-notes-section";
 import { AsyncInterviewSection } from "@/components/candidates/async-interview-section";
+import { ScorePanel } from "@/components/candidates/score-panel";
+import type { ScoreBreakdown } from "@/lib/ai/openrouter";
+import { effectiveScore } from "@/lib/candidates/score";
 import type { InterviewNote } from "@/types/database";
 
 type Props = {
@@ -165,14 +168,18 @@ export default async function CandidateDetailPage({ params }: Props) {
     };
   });
 
+  const score = effectiveScore(candidate);
   const scoreColor =
-    candidate.ai_score == null
+    score == null
       ? "bg-mist text-muted"
-      : candidate.ai_score >= 80
+      : score >= 80
         ? "bg-teal-soft text-teal"
-        : candidate.ai_score >= 60
+        : score >= 60
           ? "bg-mist-deep text-ink-soft"
           : "bg-accent-soft text-accent-hover";
+  const canWrite = canWriteAgencyData(ensured.profile);
+  const breakdown = (candidate.ai_score_breakdown ||
+    null) as ScoreBreakdown | null;
 
   return (
     <div>
@@ -185,11 +192,11 @@ export default async function CandidateDetailPage({ params }: Props) {
         </Link>
       </div>
 
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4 sm:mb-8">
+        <div className="min-w-0">
           <p className="page-kicker">Candidate profile</p>
-          <h1 className="page-title">{candidate.name}</h1>
-          <p className="page-sub">
+          <h1 className="page-title break-words">{candidate.name}</h1>
+          <p className="page-sub break-words">
             {candidate.email}
             {candidate.phone ? ` · ${candidate.phone}` : ""}
           </p>
@@ -200,17 +207,17 @@ export default async function CandidateDetailPage({ params }: Props) {
               : ""}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <span
             className={`inline-flex rounded-md px-3 py-1 text-sm font-medium ${scoreColor}`}
           >
-            AI Score:{" "}
-            {candidate.ai_score != null ? `${candidate.ai_score}/100` : "—"}
+            Score: {score != null ? `${score}/100` : "—"}
+            {candidate.manual_score != null ? " · manual" : ""}
           </span>
           <span className="inline-flex rounded-md bg-mist px-3 py-1 text-sm font-medium capitalize text-ink-soft">
             {candidate.status}
           </span>
-          {candidate.job_id && (
+          {candidate.job_id && canWrite && (
             <Link href={`/compare?job=${candidate.job_id}`} className="btn-secondary">
               Bandingkan Job
             </Link>
@@ -218,23 +225,24 @@ export default async function CandidateDetailPage({ params }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <div className="surface-panel p-6">
-          <h2 className="mb-3 font-display text-lg font-bold text-ink">
-            AI Screening Summary
-          </h2>
-          <p className="whitespace-pre-wrap text-sm text-ink-soft">
-            {candidate.ai_summary || "Belum ada AI screening."}
-          </p>
-        </div>
-        <div className="surface-panel p-6">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+        <ScorePanel
+          candidateId={candidate.id}
+          aiScore={candidate.ai_score}
+          manualScore={candidate.manual_score}
+          manualReason={candidate.manual_score_reason}
+          summary={candidate.ai_summary}
+          breakdown={breakdown}
+          canWrite={canWrite}
+        />
+        <div className="surface-panel p-5 sm:p-6">
           <h2 className="mb-3 font-display text-lg font-bold text-ink">
             Data Parsed CV
           </h2>
           {candidate.parsed_data ? (
             <ParsedCvView data={candidate.parsed_data as Record<string, unknown>} />
           ) : (
-            <p className="text-sm text-gray-500">Tidak ada data parsed.</p>
+            <p className="text-sm text-muted">Tidak ada data parsed.</p>
           )}
         </div>
       </div>
@@ -242,14 +250,14 @@ export default async function CandidateDetailPage({ params }: Props) {
       <AsyncInterviewSection
         candidateId={candidate.id}
         sessions={sessionsForUi}
-        canWrite={canWriteAgencyData(ensured.profile)}
+        canWrite={canWrite}
       />
 
       <InterviewNotesSection
         candidateId={candidate.id}
         notes={(notes || []) as InterviewNote[]}
         isAdmin={isAdminAgency(ensured.profile)}
-        canWrite={canWriteAgencyData(ensured.profile)}
+        canWrite={canWrite}
       />
     </div>
   );

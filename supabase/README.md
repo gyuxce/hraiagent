@@ -13,6 +13,7 @@ Run migrations **in order** in the Supabase SQL Editor:
 7. `00006_async_interview.sql` — Fase 2.5
 8. `00007_team_invites_client_scope.sql` — multi-role invite + client_viewer scope + auto-analyze RPC
 9. `00008_interview_schedules.sql` — Fase 3 scheduling
+10. `00009_score_breakdown_override.sql` — AI rubric breakdown + manual score override
 
 ### Steps:
 

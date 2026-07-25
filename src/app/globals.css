@@ -41,6 +41,8 @@
   --color-accent-soft: var(--accent-soft);
   --color-teal: var(--teal);
   --color-teal-soft: var(--teal-soft);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
 }

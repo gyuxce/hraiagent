@@ -68,6 +68,7 @@ export async function createCandidate(formData: FormData) {
   let cvText = "";
   let aiScore: number | null = null;
   let aiSummary: string | null = null;
+  let aiBreakdown: Record<string, unknown> | null = null;
   let parsedData: Record<string, unknown> | null = null;
   let status: string = "submitted";
 
@@ -135,6 +136,7 @@ export async function createCandidate(formData: FormData) {
 
       aiScore = result.score;
       aiSummary = result.summary;
+      aiBreakdown = result.breakdown as unknown as Record<string, unknown>;
       parsedData = result.parsed as unknown as Record<string, unknown>;
       status = "screened";
 
@@ -161,6 +163,7 @@ export async function createCandidate(formData: FormData) {
     parsed_data: parsedData,
     ai_score: aiScore,
     ai_summary: aiSummary,
+    ai_score_breakdown: aiBreakdown,
     status,
   });
 
@@ -273,8 +276,13 @@ export async function rescreenCandidate(id: string) {
       .update({
         ai_score: result.score,
         ai_summary: result.summary,
+        ai_score_breakdown: result.breakdown,
         parsed_data: result.parsed,
         status: "screened",
+        // fresh AI run clears previous manual override
+        manual_score: null,
+        manual_score_reason: null,
+        manual_score_updated_at: null,
       })
       .eq("id", id);
 
@@ -284,5 +292,74 @@ export async function rescreenCandidate(id: string) {
   }
 
   revalidatePath("/candidates");
+  revalidatePath(`/candidates/${id}`);
+  return { success: true };
+}
+
+export async function overrideCandidateScore(formData: FormData) {
+  const { supabase, error: authError, profile } = await getCurrentProfile();
+  if (authError || !profile) return { error: authError || "Unauthorized" };
+
+  if (profile.role === "client_viewer") {
+    return { error: "Client viewer tidak bisa override skor" };
+  }
+
+  const id = String(formData.get("candidate_id") || "").trim();
+  const scoreRaw = String(formData.get("manual_score") || "").trim();
+  const reason = String(formData.get("manual_score_reason") || "").trim();
+  const clear = formData.get("clear") === "true";
+
+  if (!id) return { error: "Kandidat wajib" };
+
+  if (clear) {
+    const { error } = await supabase
+      .from("candidates")
+      .update({
+        manual_score: null,
+        manual_score_reason: null,
+        manual_score_updated_at: null,
+      })
+      .eq("id", id);
+    if (error) {
+      return {
+        error:
+          formatError(error) +
+          ". Pastikan migration 00009_score_breakdown_override.sql sudah dijalankan.",
+      };
+    }
+    revalidatePath("/candidates");
+    revalidatePath(`/candidates/${id}`);
+    return { success: true };
+  }
+
+  const score = Number(scoreRaw);
+  if (!Number.isFinite(score) || score < 0 || score > 100) {
+    return { error: "Skor manual harus 0-100" };
+  }
+  if (reason.length < 5) {
+    return { error: "Alasan override minimal 5 karakter" };
+  }
+
+  const { error } = await supabase
+    .from("candidates")
+    .update({
+      manual_score: Math.round(score),
+      manual_score_reason: reason,
+      manual_score_updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    return {
+      error:
+        formatError(error) +
+        ". Pastikan migration 00009_score_breakdown_override.sql sudah dijalankan.",
+    };
+  }
+
+  revalidatePath("/candidates");
+  revalidatePath(`/candidates/${id}`);
+  revalidatePath("/compare");
+  revalidatePath("/dashboard");
   return { success: true };
 }

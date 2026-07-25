@@ -242,9 +242,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
       <div className="relative flex min-h-screen items-center justify-center bg-atmosphere p-6">
         <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-60" />
         <div className="relative max-w-lg surface-panel p-8 text-center animate-rise">
-          <p className="font-display text-lg font-extrabold text-ink">
-            Recruit<span className="text-accent">AI</span>
-          </p>
+          <p className="font-display text-lg font-extrabold text-ink">Saring</p>
           <h1 className="mt-4 font-display text-2xl font-bold text-ink">
             Terima kasih!
           </h1>
@@ -267,9 +265,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
       <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-50" />
       <div className="relative mx-auto max-w-2xl">
         <div className="mb-6">
-          <p className="font-display text-sm font-extrabold text-ink">
-            Recruit<span className="text-accent">AI</span>
-          </p>
+          <p className="font-display text-sm font-extrabold text-ink">Saring</p>
           <h1 className="mt-2 font-display text-2xl font-bold text-ink">
             Interview Async — {data.job.title}
           </h1>

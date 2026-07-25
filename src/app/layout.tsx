@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Syne } from "next/font/google";
+import { BRAND } from "@/lib/brand";
 import "./globals.css";
 
 const body = Plus_Jakarta_Sans({
@@ -15,9 +16,8 @@ const display = Syne({
 });
 
 export const metadata: Metadata = {
-  title: "RecruitAI — Platform rekrutmen AI untuk agency",
-  description:
-    "Screening CV, pipeline multi-klien, dan AI interview async untuk agency/vendor rekrutmen.",
+  title: `${BRAND.name} — ${BRAND.slogan}`,
+  description: BRAND.tagline,
 };
 
 export default function RootLayout({

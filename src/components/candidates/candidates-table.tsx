@@ -13,6 +13,7 @@ import {
   type JobOption,
 } from "./candidate-form-modal";
 import { ImportCandidatesModal } from "./import-candidates-modal";
+import { effectiveScore } from "@/lib/candidates/score";
 
 export type CandidateRow = {
   id: string;
@@ -20,6 +21,7 @@ export type CandidateRow = {
   email: string;
   phone: string | null;
   ai_score: number | null;
+  manual_score?: number | null;
   ai_summary: string | null;
   status: string;
   cv_file_path: string | null;
@@ -177,63 +179,45 @@ export function CandidatesTable({
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Nama
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Posisi
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    AI Score
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Aksi
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {candidates.map((c) => (
-                  <tr key={c.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/candidates/${c.id}`}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-500"
-                      >
-                        {c.name}
-                      </Link>
-                      <div className="text-xs text-gray-500">{c.email}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      <div>{c.job_requisitions?.title || "—"}</div>
-                      {c.job_requisitions?.client_companies?.name && (
-                        <div className="text-xs text-gray-400">
-                          {c.job_requisitions.client_companies.name}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+          <>
+            {/* Mobile cards */}
+            <div className="divide-y divide-line md:hidden">
+              {candidates.map((c) => {
+                const score = effectiveScore(c);
+                return (
+                  <div key={c.id} className="space-y-3 px-4 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <Link
+                          href={`/candidates/${c.id}`}
+                          className="text-sm font-semibold text-ink hover:text-accent"
+                        >
+                          {c.name}
+                        </Link>
+                        <p className="truncate text-xs text-muted">{c.email}</p>
+                        <p className="mt-1 text-xs text-ink-soft">
+                          {c.job_requisitions?.title || "—"}
+                          {c.job_requisitions?.client_companies?.name
+                            ? ` · ${c.job_requisitions.client_companies.name}`
+                            : ""}
+                        </p>
+                      </div>
                       <span
-                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${scoreColor(
-                          c.ai_score
+                        className={`shrink-0 inline-flex rounded-md px-2 py-1 text-xs font-medium ${scoreColor(
+                          score
                         )}`}
                       >
-                        {c.ai_score != null ? `${c.ai_score}/100` : "—"}
+                        {score != null ? `${score}` : "—"}
+                        {c.manual_score != null ? " M" : ""}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
                       {canWrite ? (
                         <select
                           value={c.status}
                           disabled={busyId === c.id}
                           onChange={(e) => handleStatus(c.id, e.target.value)}
-                          className={`rounded-full border-0 px-2 py-1 text-xs font-medium focus:ring-2 focus:ring-blue-500 ${
+                          className={`rounded-md border-0 px-2 py-1 text-xs font-medium ${
                             statusStyle[c.status] || statusStyle.submitted
                           }`}
                         >
@@ -245,49 +229,147 @@ export function CandidatesTable({
                         </select>
                       ) : (
                         <span
-                          className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
+                          className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${
                             statusStyle[c.status] || statusStyle.submitted
                           }`}
                         >
                           {c.status}
                         </span>
                       )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link
-                          href={`/candidates/${c.id}`}
-                          className="font-medium text-blue-600 hover:text-blue-500"
+                      <Link
+                        href={`/candidates/${c.id}`}
+                        className="text-xs font-semibold text-accent"
+                      >
+                        Detail
+                      </Link>
+                      {canWrite && c.cv_file_path && (
+                        <button
+                          type="button"
+                          disabled={busyId === c.id}
+                          onClick={() => handleRescreen(c.id)}
+                          className="text-xs font-semibold text-ink-soft"
                         >
-                          Detail
-                        </Link>
-                        {canWrite && c.cv_file_path && (
-                          <button
-                            type="button"
-                            disabled={busyId === c.id}
-                            onClick={() => handleRescreen(c.id)}
-                            className="font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
-                          >
-                            {busyId === c.id ? "..." : "Re-AI"}
-                          </button>
-                        )}
-                        {canWrite && isAdmin && (
-                          <button
-                            type="button"
-                            disabled={busyId === c.id}
-                            onClick={() => handleDelete(c.id, c.name)}
-                            className="font-medium text-red-600 hover:text-red-500 disabled:opacity-50"
-                          >
-                            Hapus
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                          Re-AI
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="min-w-full divide-y divide-line">
+                <thead className="bg-mist/70">
+                  <tr>
+                    {["Nama", "Posisi", "Score", "Status", "Aksi"].map((h) => (
+                      <th
+                        key={h}
+                        className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted"
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {candidates.map((c) => {
+                    const score = effectiveScore(c);
+                    return (
+                      <tr key={c.id} className="hover:bg-mist/40">
+                        <td className="px-6 py-4">
+                          <Link
+                            href={`/candidates/${c.id}`}
+                            className="text-sm font-medium text-accent hover:text-accent-hover"
+                          >
+                            {c.name}
+                          </Link>
+                          <div className="text-xs text-muted">{c.email}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-muted">
+                          <div>{c.job_requisitions?.title || "—"}</div>
+                          {c.job_requisitions?.client_companies?.name && (
+                            <div className="text-xs text-muted/80">
+                              {c.job_requisitions.client_companies.name}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ${scoreColor(
+                              score
+                            )}`}
+                          >
+                            {score != null ? `${score}/100` : "—"}
+                            {c.manual_score != null ? " · M" : ""}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {canWrite ? (
+                            <select
+                              value={c.status}
+                              disabled={busyId === c.id}
+                              onChange={(e) =>
+                                handleStatus(c.id, e.target.value)
+                              }
+                              className={`rounded-md border-0 px-2 py-1 text-xs font-medium ${
+                                statusStyle[c.status] || statusStyle.submitted
+                              }`}
+                            >
+                              {statusOptions.map((s) => (
+                                <option key={s} value={s}>
+                                  {s}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span
+                              className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${
+                                statusStyle[c.status] || statusStyle.submitted
+                              }`}
+                            >
+                              {c.status}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Link
+                              href={`/candidates/${c.id}`}
+                              className="font-medium text-accent hover:text-accent-hover"
+                            >
+                              Detail
+                            </Link>
+                            {canWrite && c.cv_file_path && (
+                              <button
+                                type="button"
+                                disabled={busyId === c.id}
+                                onClick={() => handleRescreen(c.id)}
+                                className="font-medium text-ink-soft hover:text-ink disabled:opacity-50"
+                              >
+                                {busyId === c.id ? "..." : "Re-AI"}
+                              </button>
+                            )}
+                            {canWrite && isAdmin && (
+                              <button
+                                type="button"
+                                disabled={busyId === c.id}
+                                onClick={() => handleDelete(c.id, c.name)}
+                                className="font-medium text-bad hover:opacity-80 disabled:opacity-50"
+                              >
+                                Hapus
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 

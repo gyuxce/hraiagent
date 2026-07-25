@@ -102,23 +102,24 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
             )}
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-line">
+            <thead className="bg-mist/70">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted sm:px-6">
                   Posisi
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted sm:px-6">
                   Client
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted sm:px-6">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted lg:table-cell lg:px-6">
                   Requirements
                 </th>
                 {canWrite && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted sm:px-6">
                     Aksi
                   </th>
                 )}
@@ -142,7 +143,7 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
                       {statusLabel[job.status] || job.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                  <td className="hidden max-w-xs truncate px-4 py-4 text-sm text-muted lg:table-cell lg:px-6">
                     {Array.isArray(job.requirements) && job.requirements.length > 0
                       ? job.requirements.slice(0, 3).join(", ")
                       : "—"}
@@ -174,6 +175,7 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

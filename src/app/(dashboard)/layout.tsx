@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Home,
@@ -7,7 +6,6 @@ import {
   UserCheck,
   Columns2,
   Trophy,
-  LogOut,
   UserCog,
   CalendarDays,
   FileSpreadsheet,
@@ -15,6 +13,10 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/lib/actions/auth";
 import { isAdminAgency, isClientViewer, roleLabel } from "@/lib/auth/roles";
+import {
+  DashboardShell,
+  type NavItem,
+} from "@/components/layout/dashboard-shell";
 
 export default async function DashboardLayout({
   children,
@@ -40,25 +42,26 @@ export default async function DashboardLayout({
   const viewer = isClientViewer(profile);
   const admin = isAdminAgency(profile);
 
-  // Client portal: leaner, report-first navigation
-  const navigation = viewer
+  const navigation: NavItem[] = viewer
     ? [
         { name: "Overview", href: "/dashboard", icon: Home },
         { name: "Jobs", href: "/jobs", icon: Briefcase },
         { name: "Candidates", href: "/candidates", icon: UserCheck },
         { name: "Reports", href: "/reports", icon: FileSpreadsheet },
       ]
-    : [
-        { name: "Dashboard", href: "/dashboard", icon: Home, show: true },
-        { name: "Clients", href: "/clients", icon: Users, show: true },
-        { name: "Jobs", href: "/jobs", icon: Briefcase, show: true },
-        { name: "Candidates", href: "/candidates", icon: UserCheck, show: true },
-        { name: "Compare", href: "/compare", icon: Columns2, show: true },
-        { name: "Ranking", href: "/ranking", icon: Trophy, show: true },
-        { name: "Schedule", href: "/schedule", icon: CalendarDays, show: true },
-        { name: "Reports", href: "/reports", icon: FileSpreadsheet, show: true },
-        { name: "Team", href: "/team", icon: UserCog, show: admin },
-      ].filter((item) => item.show !== false);
+    : (
+        [
+          { name: "Dashboard", href: "/dashboard", icon: Home, show: true },
+          { name: "Clients", href: "/clients", icon: Users, show: true },
+          { name: "Jobs", href: "/jobs", icon: Briefcase, show: true },
+          { name: "Candidates", href: "/candidates", icon: UserCheck, show: true },
+          { name: "Compare", href: "/compare", icon: Columns2, show: true },
+          { name: "Ranking", href: "/ranking", icon: Trophy, show: true },
+          { name: "Schedule", href: "/schedule", icon: CalendarDays, show: true },
+          { name: "Reports", href: "/reports", icon: FileSpreadsheet, show: true },
+          { name: "Team", href: "/team", icon: UserCog, show: admin },
+        ] as Array<NavItem & { show?: boolean }>
+      ).filter((item) => item.show !== false);
 
   const initials = profile?.full_name
     ? profile.full_name
@@ -70,68 +73,15 @@ export default async function DashboardLayout({
     : "U";
 
   return (
-    <div className="flex h-screen bg-mist">
-      <aside className="flex w-64 flex-col border-r border-line bg-ink text-white">
-        <div className="flex h-16 items-center px-6">
-          <Link
-            href="/dashboard"
-            className="font-display text-xl font-extrabold tracking-tight"
-          >
-            Recruit<span className="text-accent">AI</span>
-          </Link>
-        </div>
-
-        {viewer && (
-          <div className="mx-4 mb-2 rounded-lg border border-white/10 bg-white/8 px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-accent">
-              Client portal
-            </p>
-            <p className="mt-0.5 text-xs text-white/65">Read-only progress view</p>
-          </div>
-        )}
-
-        <nav className="flex-1 space-y-1 px-3 py-2">
-          {navigation.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              className="group flex items-center gap-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/75 transition-colors hover:bg-white/8 hover:text-white"
-            >
-              <item.icon className="h-4 w-4 text-white/45 transition-colors group-hover:text-accent" />
-              {item.name}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="border-t border-white/10 p-4">
-          <div className="flex items-center gap-x-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent">
-              {initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-white">
-                {profile?.full_name || "User"}
-              </p>
-              <p className="truncate text-xs text-white/50">
-                {roleLabel(profile?.role)}
-              </p>
-            </div>
-            <form action={logout}>
-              <button
-                type="submit"
-                className="rounded-md p-1.5 text-white/45 transition hover:bg-white/10 hover:text-white"
-                title="Keluar"
-              >
-                <LogOut className="h-4 w-4" />
-              </button>
-            </form>
-          </div>
-        </div>
-      </aside>
-
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8">{children}</div>
-      </main>
-    </div>
+    <DashboardShell
+      navigation={navigation}
+      fullName={profile?.full_name || "User"}
+      roleLabel={roleLabel(profile?.role)}
+      initials={initials}
+      isClientViewer={viewer}
+      logoutAction={logout}
+    >
+      {children}
+    </DashboardShell>
   );
 }

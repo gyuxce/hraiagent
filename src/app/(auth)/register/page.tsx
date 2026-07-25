@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { register } from "@/lib/actions/auth";
 import { getInvitePreview } from "@/lib/actions/team";
 import { roleLabel } from "@/lib/auth/roles";
+import { BRAND } from "@/lib/brand";
 
 type InviteInfo = {
   email?: string;
@@ -69,9 +70,10 @@ function RegisterForm() {
             href="/"
             className="font-display text-3xl font-extrabold tracking-tight text-ink"
           >
-            Recruit<span className="text-accent">AI</span>
+            {BRAND.name}
           </Link>
-          <p className="mt-3 text-sm text-muted">
+          <p className="mt-2 text-sm font-medium text-ink-soft">{BRAND.slogan}</p>
+          <p className="mt-1 text-sm text-muted">
             {inviteToken
               ? "Terima undangan bergabung ke agency"
               : "Buat workspace agency baru"}

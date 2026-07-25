@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { login } from "@/lib/actions/auth";
+import { BRAND } from "@/lib/brand";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -31,11 +32,10 @@ export default function LoginPage() {
             href="/"
             className="font-display text-3xl font-extrabold tracking-tight text-ink"
           >
-            Recruit<span className="text-accent">AI</span>
+            {BRAND.name}
           </Link>
-          <p className="mt-3 text-sm text-muted">
-            Masuk ke workspace agency Anda
-          </p>
+          <p className="mt-2 text-sm font-medium text-ink-soft">{BRAND.slogan}</p>
+          <p className="mt-1 text-sm text-muted">Masuk ke workspace agency Anda</p>
         </div>
 
         <form onSubmit={handleSubmit} className="surface-panel space-y-5 p-8">

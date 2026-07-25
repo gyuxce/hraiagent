@@ -1,34 +1,28 @@
-# RecruitAI — Platform Rekrutmen Berbasis AI
+# Saring
 
-Agency/vendor recruitment platform (B2B2B) sesuai [PRD](./docs/PRD-Platform-Rekrutmen-AI.md).
+**Saring kandidat terbaik — lebih cepat.**
+
+Platform AI untuk agency/vendor rekrutmen (B2B2B): screening CV, pipeline multi-klien, interview async, dan reporting ke client.
+
+PRD: [docs/PRD-Platform-Rekrutmen-AI.md](./docs/PRD-Platform-Rekrutmen-AI.md)
 
 ## Stack
 
-- **Next.js** (App Router)
-- **Supabase** (Postgres + Auth + Storage + RLS)
-- **OpenRouter** (AI screening / interview)
-- **mammoth** (DOCX parsing) + **unpdf** (PDF)
-
-## Fitur (status)
-
-- **Fase 1:** Clients, Jobs, Candidates, CV parse (PDF/DOCX/TXT), AI scoring, pipeline, multi-role invite
-- **Fase 2:** Interview notes + AI summary, compare kandidat
-- **Fase 2.5:** Async AI interview + auto-analyze + ranking
-- **Fase 3:** Schedule (in-app + .ics), dashboard multi-klien, reports CSV
+- Next.js 16 · React 19 · Tailwind 4
+- Supabase (Postgres + Auth + Storage + RLS)
+- OpenRouter (default DeepSeek) · mammoth (DOCX) · unpdf (PDF)
 
 ## Setup
 
-1. Install deps: `npm install`
-2. Setup Supabase — lihat `supabase/README.md` (jalankan migration `00000`–`00008`)
-3. Copy `.env.example` → `.env.local` dan isi key
+1. `npm install`
+2. Jalankan migration Supabase `00000`–`00009` (lihat `supabase/README.md`)
+3. Copy `.env.example` → `.env.local`
 4. `npm run dev` → http://localhost:3000
 
 ## Roles
 
 | Role | Akses |
 |---|---|
-| `admin_agency` | Full + kelola Team |
-| `recruiter` | Write clients/jobs/candidates/interview |
-| `client_viewer` | Read-only, scoped ke satu client company |
-
-Undang anggota via menu **Team** (admin).
+| `admin_agency` | Full + Team |
+| `recruiter` | Write data rekrutmen |
+| `client_viewer` | Portal klien read-only |

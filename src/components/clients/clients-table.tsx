@@ -89,23 +89,24 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
             )}
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-line">
+            <thead className="bg-mist/70">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted sm:px-6">
                   Nama Perusahaan
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted sm:px-6">
                   Industri
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted sm:table-cell sm:px-6">
                   Kontak
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted md:table-cell md:px-6">
                   Telepon
                 </th>
                 {canWrite && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted sm:px-6">
                     Aksi
                   </th>
                 )}
@@ -120,10 +121,10 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {client.industry || "—"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="hidden px-4 py-4 whitespace-nowrap text-sm text-muted sm:table-cell sm:px-6">
                     {client.contact_email || "—"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="hidden px-4 py-4 whitespace-nowrap text-sm text-muted md:table-cell md:px-6">
                     {client.contact_phone || "—"}
                   </td>
                   {canWrite && (
@@ -153,6 +154,7 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

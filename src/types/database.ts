@@ -39,6 +39,10 @@ export interface Candidate {
   parsed_data: Record<string, unknown> | null;
   ai_score: number | null;
   ai_summary: string | null;
+  ai_score_breakdown?: Record<string, unknown> | null;
+  manual_score?: number | null;
+  manual_score_reason?: string | null;
+  manual_score_updated_at?: string | null;
   status:
     | "submitted"
     | "screened"

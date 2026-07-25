@@ -62,17 +62,14 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Jobs</h1>
-          <p className="mt-1 text-sm text-gray-500">Kelola lowongan per klien</p>
+          <p className="page-kicker">Requisitions</p>
+          <h1 className="page-title">Jobs</h1>
+          <p className="page-sub">Kelola lowongan per klien</p>
         </div>
         {canWrite && (
-          <button
-            type="button"
-            onClick={openCreate}
-            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
-          >
+          <button type="button" onClick={openCreate} className="btn-primary">
             + Buat Job
           </button>
         )}
@@ -84,10 +81,10 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="surface-panel overflow-hidden">
         {jobs.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <p className="text-sm text-gray-500">Belum ada job requisition.</p>
+            <p className="text-sm text-muted">Belum ada job requisition.</p>
             {canWrite && (
               <button
                 type="button"

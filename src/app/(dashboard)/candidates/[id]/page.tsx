@@ -167,19 +167,19 @@ export default async function CandidateDetailPage({ params }: Props) {
 
   const scoreColor =
     candidate.ai_score == null
-      ? "bg-gray-100 text-gray-600"
+      ? "bg-mist text-muted"
       : candidate.ai_score >= 80
-        ? "bg-green-50 text-green-700"
+        ? "bg-teal-soft text-teal"
         : candidate.ai_score >= 60
-          ? "bg-blue-50 text-blue-700"
-          : "bg-yellow-50 text-yellow-700";
+          ? "bg-mist-deep text-ink-soft"
+          : "bg-accent-soft text-accent-hover";
 
   return (
     <div>
       <div className="mb-6">
         <Link
           href="/candidates"
-          className="text-sm font-medium text-blue-600 hover:text-blue-500"
+          className="text-sm font-semibold text-accent hover:text-accent-hover"
         >
           ← Kembali ke Candidates
         </Link>
@@ -187,33 +187,31 @@ export default async function CandidateDetailPage({ params }: Props) {
 
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{candidate.name}</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="page-kicker">Candidate profile</p>
+          <h1 className="page-title">{candidate.name}</h1>
+          <p className="page-sub">
             {candidate.email}
             {candidate.phone ? ` · ${candidate.phone}` : ""}
           </p>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-ink-soft">
             {jobTitle(candidate.job_requisitions)}
             {clientName(candidate.job_requisitions)
               ? ` — ${clientName(candidate.job_requisitions)}`
               : ""}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <span
-            className={`inline-flex rounded-full px-3 py-1 text-sm font-medium ${scoreColor}`}
+            className={`inline-flex rounded-md px-3 py-1 text-sm font-medium ${scoreColor}`}
           >
             AI Score:{" "}
             {candidate.ai_score != null ? `${candidate.ai_score}/100` : "—"}
           </span>
-          <span className="inline-flex rounded-full bg-purple-50 px-3 py-1 text-sm font-medium capitalize text-purple-700">
+          <span className="inline-flex rounded-md bg-mist px-3 py-1 text-sm font-medium capitalize text-ink-soft">
             {candidate.status}
           </span>
           {candidate.job_id && (
-            <Link
-              href={`/compare?job=${candidate.job_id}`}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
+            <Link href={`/compare?job=${candidate.job_id}`} className="btn-secondary">
               Bandingkan Job
             </Link>
           )}
@@ -221,16 +219,16 @@ export default async function CandidateDetailPage({ params }: Props) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">
+        <div className="surface-panel p-6">
+          <h2 className="mb-3 font-display text-lg font-bold text-ink">
             AI Screening Summary
           </h2>
-          <p className="whitespace-pre-wrap text-sm text-gray-700">
+          <p className="whitespace-pre-wrap text-sm text-ink-soft">
             {candidate.ai_summary || "Belum ada AI screening."}
           </p>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900">
+        <div className="surface-panel p-6">
+          <h2 className="mb-3 font-display text-lg font-bold text-ink">
             Data Parsed CV
           </h2>
           {candidate.parsed_data ? (

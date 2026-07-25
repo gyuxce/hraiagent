@@ -45,7 +45,7 @@ export default async function DashboardLayout({
     { name: "Clients", href: "/clients", icon: Users, show: !viewer },
     { name: "Jobs", href: "/jobs", icon: Briefcase, show: true },
     { name: "Candidates", href: "/candidates", icon: UserCheck, show: true },
-    { name: "Compare", href: "/compare", icon: Columns2, show: true },
+    { name: "Compare", href: "/compare", icon: Columns2, show: !viewer },
     { name: "Ranking", href: "/ranking", icon: Trophy, show: true },
     { name: "Schedule", href: "/schedule", icon: CalendarDays, show: true },
     { name: "Reports", href: "/reports", icon: FileSpreadsheet, show: true },
@@ -62,53 +62,65 @@ export default async function DashboardLayout({
     : "U";
 
   return (
-    <div className="flex h-screen">
-      <aside className="flex w-64 flex-col border-r border-gray-200 bg-white">
-        <div className="flex h-16 items-center px-6 border-b border-gray-200">
-          <Link href="/dashboard" className="text-xl font-bold text-gray-900">
-            Recruit<span className="text-blue-600">AI</span>
+    <div className="flex h-screen bg-mist">
+      <aside className="flex w-64 flex-col border-r border-line bg-ink text-white">
+        <div className="flex h-16 items-center px-6">
+          <Link
+            href="/dashboard"
+            className="font-display text-xl font-extrabold tracking-tight"
+          >
+            Recruit<span className="text-accent">AI</span>
           </Link>
         </div>
 
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        {viewer && (
+          <div className="mx-4 mb-2 rounded-lg bg-white/8 px-3 py-2 text-xs text-white/70">
+            Portal klien · read-only
+          </div>
+        )}
+
+        <nav className="flex-1 space-y-1 px-3 py-2">
           {navigation.map((item) => (
             <Link
               key={item.name}
               href={item.href}
-              className="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+              className="group flex items-center gap-x-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/75 transition-colors hover:bg-white/8 hover:text-white"
             >
-              <item.icon className="h-5 w-5 text-gray-400" />
+              <item.icon className="h-4 w-4 text-white/45 transition-colors group-hover:text-accent" />
               {item.name}
             </Link>
           ))}
         </nav>
 
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-white/10 p-4">
           <div className="flex items-center gap-x-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-blue-600 font-semibold text-sm">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent">
               {initials}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-white">
                 {profile?.full_name || "User"}
               </p>
-              <p className="text-xs text-gray-500 truncate">
-                {roleLabel(profile?.role)} · {user.email}
+              <p className="truncate text-xs text-white/50">
+                {roleLabel(profile?.role)}
               </p>
             </div>
             <form action={logout}>
               <button
                 type="submit"
-                className="text-gray-400 hover:text-gray-600"
+                className="rounded-md p-1.5 text-white/45 transition hover:bg-white/10 hover:text-white"
+                title="Keluar"
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut className="h-4 w-4" />
               </button>
             </form>
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto bg-gray-50 p-8">{children}</main>
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8">{children}</div>
+      </main>
     </div>
   );
 }

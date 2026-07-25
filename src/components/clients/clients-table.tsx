@@ -55,19 +55,14 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Kelola data perusahaan klien
-          </p>
+          <p className="page-kicker">Portfolio</p>
+          <h1 className="page-title">Clients</h1>
+          <p className="page-sub">Kelola data perusahaan klien agency</p>
         </div>
         {canWrite && (
-          <button
-            type="button"
-            onClick={openCreate}
-            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
-          >
+          <button type="button" onClick={openCreate} className="btn-primary">
             + Tambah Client
           </button>
         )}
@@ -79,10 +74,10 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="surface-panel overflow-hidden">
         {clients.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <p className="text-sm text-gray-500">Belum ada client.</p>
+            <p className="text-sm text-muted">Belum ada client.</p>
             {canWrite && (
               <button
                 type="button"

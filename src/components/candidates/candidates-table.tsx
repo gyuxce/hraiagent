@@ -114,25 +114,23 @@ export function CandidatesTable({
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Candidates</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Pipeline kandidat + AI screening + interview notes
+          <p className="page-kicker">Pipeline</p>
+          <h1 className="page-title">Candidates</h1>
+          <p className="page-sub">
+            Screening AI, status ATS, dan interview dalam satu daftar
           </p>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/compare"
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
+          <Link href="/compare" className="btn-secondary">
             Bandingkan
           </Link>
           {canWrite && (
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 transition-colors"
+              className="btn-primary"
             >
               + Tambah Kandidat
             </button>
@@ -146,10 +144,10 @@ export function CandidatesTable({
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="surface-panel overflow-hidden">
         {candidates.length === 0 ? (
           <div className="px-6 py-16 text-center">
-            <p className="text-sm text-gray-500">Belum ada kandidat.</p>
+            <p className="text-sm text-muted">Belum ada kandidat.</p>
             {canWrite && (
               <button
                 type="button"

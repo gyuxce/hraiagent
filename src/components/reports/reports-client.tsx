@@ -45,8 +45,9 @@ export function ReportsClient({ clients, stats }: Props) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="page-kicker">Client delivery</p>
+        <h1 className="page-title">Reports</h1>
+        <p className="page-sub">
           Ringkasan per klien dan export progress kandidat (CSV)
         </p>
       </div>
@@ -57,19 +58,19 @@ export function ReportsClient({ clients, stats }: Props) {
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-900">
+      <div className="surface-panel p-6">
+        <h2 className="font-display text-base font-bold text-ink">
           Export progress ke klien
         </h2>
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <div className="min-w-[220px] flex-1">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-ink-soft">
               Client
             </label>
             <select
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="field-input"
             >
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -82,16 +83,16 @@ export function ReportsClient({ clients, stats }: Props) {
             type="button"
             disabled={busy || !clientId}
             onClick={handleExport}
-            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+            className="btn-primary disabled:opacity-50"
           >
             {busy ? "Mengexport..." : "Download CSV"}
           </button>
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-sm font-semibold text-gray-900">
+      <div className="surface-panel overflow-hidden">
+        <div className="border-b border-line px-6 py-4">
+          <h2 className="font-display text-base font-bold text-ink">
             Performa multi-klien
           </h2>
         </div>

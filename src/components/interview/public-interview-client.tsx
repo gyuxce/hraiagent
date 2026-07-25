@@ -239,14 +239,20 @@ export function PublicInterviewClient({ token }: { token: string }) {
 
   if (done) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-        <div className="max-w-lg rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-          <h1 className="text-2xl font-bold text-gray-900">Terima kasih!</h1>
-          <p className="mt-3 text-gray-600">
+      <div className="relative flex min-h-screen items-center justify-center bg-atmosphere p-6">
+        <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-60" />
+        <div className="relative max-w-lg surface-panel p-8 text-center animate-rise">
+          <p className="font-display text-lg font-extrabold text-ink">
+            Recruit<span className="text-accent">AI</span>
+          </p>
+          <h1 className="mt-4 font-display text-2xl font-bold text-ink">
+            Terima kasih!
+          </h1>
+          <p className="mt-3 text-muted">
             Jawaban interview async untuk posisi{" "}
-            <strong>{data.job.title}</strong> sudah terkirim. Sistem AI
-            menganalisis jawaban secara otomatis; tim recruiter akan mereview
-            hasilnya.
+            <strong className="text-ink">{data.job.title}</strong> sudah
+            terkirim. Sistem AI menganalisis jawaban secara otomatis; tim
+            recruiter akan mereview hasilnya.
           </p>
         </div>
       </div>
@@ -257,22 +263,25 @@ export function PublicInterviewClient({ token }: { token: string }) {
   const progress = Math.round(((idx + 1) / data.questions.length) * 100);
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-8">
-      <div className="mx-auto max-w-2xl">
+    <div className="relative min-h-screen bg-atmosphere px-4 py-8">
+      <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-50" />
+      <div className="relative mx-auto max-w-2xl">
         <div className="mb-6">
-          <p className="text-sm font-semibold text-indigo-600">RecruitAI</p>
-          <h1 className="mt-1 text-2xl font-bold text-gray-900">
+          <p className="font-display text-sm font-extrabold text-ink">
+            Recruit<span className="text-accent">AI</span>
+          </p>
+          <h1 className="mt-2 font-display text-2xl font-bold text-ink">
             Interview Async — {data.job.title}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted">
             Halo {data.candidate.name}. Jawab setiap pertanyaan dengan teks
             dan/atau rekaman video.
           </p>
         </div>
 
-        <div className="mb-4 h-2 overflow-hidden rounded-full bg-gray-200">
+        <div className="mb-4 h-2 overflow-hidden rounded-full bg-mist-deep">
           <div
-            className="h-full rounded-full bg-indigo-600 transition-all"
+            className="h-full rounded-full bg-accent transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>

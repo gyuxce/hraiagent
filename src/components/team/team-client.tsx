@@ -121,8 +121,9 @@ export function TeamClient({
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Team</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="page-kicker">Access</p>
+        <h1 className="page-title">Team</h1>
+        <p className="page-sub">
           Undang recruiter atau client viewer (read-only) ke agency
         </p>
       </div>
@@ -204,7 +205,7 @@ export function TeamClient({
         <button
           type="submit"
           disabled={busy || (role === "client_viewer" && clients.length === 0)}
-          className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+          className="btn-primary disabled:opacity-50"
         >
           {busy ? "..." : "Buat Undangan"}
         </button>

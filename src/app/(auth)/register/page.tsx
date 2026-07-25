@@ -61,31 +61,32 @@ function RegisterForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-8 bg-gray-50">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Recruit<span className="text-blue-600">AI</span>
-          </h1>
-          <p className="mt-2 text-gray-600">
+    <div className="relative flex min-h-screen items-center justify-center bg-atmosphere px-6 py-12">
+      <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-70" />
+      <div className="relative w-full max-w-md animate-rise">
+        <div className="mb-8 text-center">
+          <Link
+            href="/"
+            className="font-display text-3xl font-extrabold tracking-tight text-ink"
+          >
+            Recruit<span className="text-accent">AI</span>
+          </Link>
+          <p className="mt-3 text-sm text-muted">
             {inviteToken
               ? "Terima undangan bergabung ke agency"
-              : "Buat akun agency baru"}
+              : "Buat workspace agency baru"}
           </p>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-6 bg-white p-8 rounded-xl shadow-sm border border-gray-200"
-        >
+        <form onSubmit={handleSubmit} className="surface-panel space-y-5 p-8">
           {error && (
-            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 break-words">
+            <div className="rounded-lg bg-accent-soft px-4 py-3 text-sm text-accent-hover break-words">
               {error}
             </div>
           )}
 
           {inviteToken && (
-            <div className="rounded-lg bg-blue-50 p-4 text-sm text-blue-800">
+            <div className="rounded-lg bg-teal-soft px-4 py-3 text-sm text-teal">
               {inviteLoading ? (
                 "Memuat undangan..."
               ) : invite ? (
@@ -110,7 +111,7 @@ function RegisterForm() {
             <div>
               <label
                 htmlFor="agency_name"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-ink-soft"
               >
                 Nama Agency
               </label>
@@ -119,7 +120,7 @@ function RegisterForm() {
                 name="agency_name"
                 type="text"
                 required
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="field-input"
                 placeholder="PT Rekrutmen Sejahtera"
               />
             </div>
@@ -128,7 +129,7 @@ function RegisterForm() {
           <div>
             <label
               htmlFor="full_name"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-ink-soft"
             >
               Nama Lengkap
             </label>
@@ -137,15 +138,15 @@ function RegisterForm() {
               name="full_name"
               type="text"
               required
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="John Doe"
+              className="field-input"
+              placeholder="Nama Anda"
             />
           </div>
 
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-ink-soft"
             >
               Email
             </label>
@@ -157,7 +158,7 @@ function RegisterForm() {
               required
               defaultValue={invite?.email || ""}
               readOnly={Boolean(invite?.email)}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 read-only:bg-gray-50"
+              className="field-input read-only:bg-mist"
               placeholder="admin@agency.com"
             />
           </div>
@@ -165,7 +166,7 @@ function RegisterForm() {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-ink-soft"
             >
               Password
             </label>
@@ -175,31 +176,30 @@ function RegisterForm() {
               type="password"
               required
               minLength={6}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="••••••••"
+              className="field-input"
+              placeholder="Minimal 6 karakter"
             />
           </div>
 
           <button
             type="submit"
             disabled={
-              loading ||
-              Boolean(inviteToken && (inviteLoading || !invite))
+              loading || Boolean(inviteToken && (inviteLoading || !invite))
             }
-            className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-primary w-full"
           >
             {loading
               ? "Memproses..."
               : inviteToken
                 ? "Gabung Agency"
-                : "Daftar"}
+                : "Buat akun agency"}
           </button>
 
-          <p className="text-center text-sm text-gray-600">
+          <p className="text-center text-sm text-muted">
             Sudah punya akun?{" "}
             <Link
               href="/login"
-              className="font-semibold text-blue-600 hover:text-blue-500"
+              className="font-semibold text-ink underline-offset-2 hover:underline"
             >
               Masuk
             </Link>
@@ -214,7 +214,7 @@ export default function RegisterPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center text-gray-600">
+        <div className="flex min-h-screen items-center justify-center bg-atmosphere text-muted">
           Memuat...
         </div>
       }

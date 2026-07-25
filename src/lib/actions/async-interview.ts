@@ -8,6 +8,11 @@ import {
   generateInterviewQuestions,
   rankInterviewSession,
 } from "@/lib/ai/openrouter";
+import {
+  consumeAiQuota,
+  consumeAiQuotaForAsyncToken,
+  quotaExceededMessage,
+} from "@/lib/ai/usage";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -61,6 +66,17 @@ export async function createAsyncInterview(candidateId: string) {
       } | null);
 
   if (!candidate.job_id || !job) return { error: "Job kandidat tidak ditemukan" };
+
+  const quota = await consumeAiQuota(supabase, {
+    agencyId: profile.agency_id,
+    eventType: "async_question_gen",
+    userId: profile.id,
+    resourceType: "candidate",
+    resourceId: candidateId,
+  });
+  if (!quota.ok && !quota.soft) {
+    return { error: quotaExceededMessage(quota) };
+  }
 
   let questions: { question_text: string; focus_area: string }[] = [];
   try {
@@ -142,16 +158,29 @@ export async function createAsyncInterview(candidateId: string) {
 }
 
 export async function analyzeCompletedInterview(sessionId: string) {
-  const { supabase, error: authError } = await getProfile();
-  if (authError) return { error: authError };
+  const { supabase, error: authError, profile } = await getProfile();
+  if (authError || !profile?.agency_id) {
+    return { error: authError || "Akun belum terhubung ke agency" };
+  }
 
   const { data: session, error: sErr } = await supabase
     .from("async_interview_sessions")
-    .select("id, status, job_id, job_requisitions(title)")
+    .select("id, status, job_id, agency_id, job_requisitions(title)")
     .eq("id", sessionId)
     .single();
 
   if (sErr || !session) return { error: "Sesi tidak ditemukan" };
+
+  const quota = await consumeAiQuota(supabase, {
+    agencyId: session.agency_id || profile.agency_id,
+    eventType: "async_analyze",
+    userId: profile.id,
+    resourceType: "async_interview_session",
+    resourceId: sessionId,
+  });
+  if (!quota.ok && !quota.soft) {
+    return { error: quotaExceededMessage(quota) };
+  }
 
   const { data: questions } = await supabase
     .from("async_interview_questions")
@@ -367,6 +396,18 @@ export async function completePublicInterview(token: string) {
   let analyzeError: string | null = null;
 
   try {
+    const quota = await consumeAiQuotaForAsyncToken(supabase, {
+      token,
+      eventType: "async_analyze",
+    });
+    if (!quota.ok && !quota.soft) {
+      return {
+        success: true,
+        analyzed: false,
+        analyzeError: quotaExceededMessage(quota),
+      };
+    }
+
     const { data: payload, error: loadErr } = await supabase.rpc(
       "get_async_interview_by_token",
       { p_token: token }

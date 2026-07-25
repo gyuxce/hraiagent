@@ -3,6 +3,8 @@ export type UserRole = "admin_agency" | "recruiter" | "client_viewer";
 export interface Agency {
   id: string;
   name: string;
+  plan_tier?: string;
+  ai_quota_monthly?: number;
   created_at: string;
 }
 

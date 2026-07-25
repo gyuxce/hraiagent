@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
 import { ReportsClient } from "@/components/reports/reports-client";
+import { AiUsageCard } from "@/components/usage/ai-usage-card";
+import { getAgencyAiUsage } from "@/lib/ai/usage";
+import { isClientViewer } from "@/lib/auth/roles";
 import type { ClientCompany } from "@/types/database";
 
 export default async function ReportsPage() {
@@ -15,7 +18,9 @@ export default async function ReportsPage() {
     );
   }
 
-  const [{ data: clients }, { data: jobs }, { data: candidates }] =
+  const viewer = isClientViewer(ensured.profile);
+
+  const [{ data: clients }, { data: jobs }, { data: candidates }, aiUsage] =
     await Promise.all([
       supabase
         .from("client_companies")
@@ -23,6 +28,9 @@ export default async function ReportsPage() {
         .order("name", { ascending: true }),
       supabase.from("job_requisitions").select("id, client_id, status"),
       supabase.from("candidates").select("id, job_id, status, ai_score"),
+      viewer
+        ? Promise.resolve(null)
+        : getAgencyAiUsage(supabase, ensured.profile?.agency_id || undefined),
     ]);
 
   const jobClient = new Map((jobs || []).map((j) => [j.id, j.client_id]));
@@ -68,9 +76,12 @@ export default async function ReportsPage() {
   });
 
   return (
-    <ReportsClient
-      clients={(clients || []) as ClientCompany[]}
-      stats={stats}
-    />
+    <div>
+      {aiUsage && <AiUsageCard usage={aiUsage} />}
+      <ReportsClient
+        clients={(clients || []) as ClientCompany[]}
+        stats={stats}
+      />
+    </div>
   );
 }

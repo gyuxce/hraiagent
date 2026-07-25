@@ -15,6 +15,8 @@ import {
 } from "@/components/portal/client-dashboard";
 import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
 import { EmptyState } from "@/components/onboarding/empty-state";
+import { AiUsageCard } from "@/components/usage/ai-usage-card";
+import { getAgencyAiUsage } from "@/lib/ai/usage";
 
 function formatRelativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -179,6 +181,11 @@ export default async function DashboardPage() {
     { name: "Dalam Pipeline", value: String(inPipeline), icon: Clock },
   ];
 
+  const aiUsage = await getAgencyAiUsage(
+    supabase,
+    ensured.profile?.agency_id || undefined
+  );
+
   const statusLabel: Record<string, string> = {
     submitted: "Baru",
     screened: "Di-screen",
@@ -219,6 +226,8 @@ export default async function DashboardPage() {
           hasCandidate: totalCandidates > 0,
         }}
       />
+
+      <AiUsageCard usage={aiUsage} />
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (

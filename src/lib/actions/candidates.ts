@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
 import { extractTextFromFile } from "@/lib/cv/extract-text";
 import { screenCandidateWithAI } from "@/lib/ai/openrouter";
+import {
+  consumeAiQuota,
+  quotaExceededMessage,
+} from "@/lib/ai/usage";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = [
@@ -122,31 +126,43 @@ export async function createCandidate(formData: FormData) {
 
   // AI screening
   if (runAi && cvText) {
-    try {
-      const requirements = Array.isArray(job.requirements)
-        ? (job.requirements as string[])
-        : [];
+    const quota = await consumeAiQuota(supabase, {
+      agencyId: profile.agency_id,
+      eventType: "cv_screen",
+      userId: profile.id,
+      resourceType: "job",
+      resourceId: jobId,
+    });
 
-      const result = await screenCandidateWithAI({
-        cvText,
-        jobTitle: job.title,
-        jobDescription: job.description,
-        requirements,
-      });
+    if (!quota.ok && !quota.soft) {
+      aiSummary = quotaExceededMessage(quota);
+    } else {
+      try {
+        const requirements = Array.isArray(job.requirements)
+          ? (job.requirements as string[])
+          : [];
 
-      aiScore = result.score;
-      aiSummary = result.summary;
-      aiBreakdown = result.breakdown as unknown as Record<string, unknown>;
-      parsedData = result.parsed as unknown as Record<string, unknown>;
-      status = "screened";
+        const result = await screenCandidateWithAI({
+          cvText,
+          jobTitle: job.title,
+          jobDescription: job.description,
+          requirements,
+        });
 
-      // Fill missing fields from AI parse
-      if (!name && result.parsed.name) name = result.parsed.name;
-      if (!email && result.parsed.email) email = result.parsed.email;
-      if (!phone && result.parsed.phone) phone = result.parsed.phone;
-    } catch (err) {
-      // Don't fail whole create — save without AI
-      aiSummary = "AI screening gagal: " + formatError(err);
+        aiScore = result.score;
+        aiSummary = result.summary;
+        aiBreakdown = result.breakdown as unknown as Record<string, unknown>;
+        parsedData = result.parsed as unknown as Record<string, unknown>;
+        status = "screened";
+
+        // Fill missing fields from AI parse
+        if (!name && result.parsed.name) name = result.parsed.name;
+        if (!email && result.parsed.email) email = result.parsed.email;
+        if (!phone && result.parsed.phone) phone = result.parsed.phone;
+      } catch (err) {
+        // Don't fail whole create — save without AI
+        aiSummary = "AI screening gagal: " + formatError(err);
+      }
     }
   }
 
@@ -225,8 +241,10 @@ export async function deleteCandidate(id: string) {
 }
 
 export async function rescreenCandidate(id: string) {
-  const { supabase, error: authError } = await getCurrentProfile();
-  if (authError) return { error: authError };
+  const { supabase, error: authError, profile } = await getCurrentProfile();
+  if (authError || !profile?.agency_id) {
+    return { error: authError || "Akun belum terhubung ke agency" };
+  }
 
   const { data: candidate, error: cErr } = await supabase
     .from("candidates")
@@ -262,6 +280,17 @@ export async function rescreenCandidate(id: string) {
   } | null;
 
   if (!job) return { error: "Job terkait tidak ditemukan" };
+
+  const quota = await consumeAiQuota(supabase, {
+    agencyId: profile.agency_id,
+    eventType: "cv_screen",
+    userId: profile.id,
+    resourceType: "candidate",
+    resourceId: id,
+  });
+  if (!quota.ok && !quota.soft) {
+    return { error: quotaExceededMessage(quota) };
+  }
 
   try {
     const result = await screenCandidateWithAI({

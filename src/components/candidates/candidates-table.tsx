@@ -277,7 +277,7 @@ export function CandidatesTable({
                       )}
                       <Link
                         href={`/candidates/${c.id}`}
-                        className="text-xs font-semibold text-accent"
+                        className="inline-flex items-center rounded-md border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-ink hover:bg-mist"
                       >
                         Detail
                       </Link>
@@ -286,9 +286,21 @@ export function CandidatesTable({
                           type="button"
                           disabled={busyId === c.id}
                           onClick={() => handleRescreen(c.id)}
-                          className="text-xs font-semibold text-ink-soft"
+                          className="inline-flex items-center rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
                         >
-                          Re-AI
+                          {busyId === c.id ? "..." : "Re-AI"}
+                        </button>
+                      )}
+                      {canWrite && isAdmin && (
+                        <button
+                          type="button"
+                          disabled={busyId === c.id}
+                          onClick={() =>
+                            setPendingDelete({ id: c.id, name: c.name })
+                          }
+                          className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold text-bad hover:bg-accent-soft disabled:opacity-50"
+                        >
+                          Hapus
                         </button>
                       )}
                     </div>
@@ -376,7 +388,7 @@ export function CandidatesTable({
                           <div className="flex flex-wrap items-center gap-2">
                             <Link
                               href={`/candidates/${c.id}`}
-                              className="font-medium text-accent hover:text-accent-hover"
+                              className="inline-flex items-center rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-mist"
                             >
                               Detail
                             </Link>
@@ -385,9 +397,10 @@ export function CandidatesTable({
                                 type="button"
                                 disabled={busyId === c.id}
                                 onClick={() => handleRescreen(c.id)}
-                                className="font-medium text-ink-soft hover:text-ink disabled:opacity-50"
+                                className="inline-flex items-center rounded-md bg-accent px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-accent-hover disabled:opacity-50"
+                                title="Jalankan ulang AI screening"
                               >
-                                {busyId === c.id ? "..." : "Re-AI"}
+                                {busyId === c.id ? "Memproses..." : "Re-AI"}
                               </button>
                             )}
                             {canWrite && isAdmin && (
@@ -397,7 +410,7 @@ export function CandidatesTable({
                                 onClick={() =>
                                   setPendingDelete({ id: c.id, name: c.name })
                                 }
-                                className="font-medium text-bad hover:opacity-80 disabled:opacity-50"
+                                className="inline-flex items-center rounded-md px-2.5 py-1.5 text-xs font-semibold text-bad hover:bg-accent-soft disabled:opacity-50"
                               >
                                 Hapus
                               </button>

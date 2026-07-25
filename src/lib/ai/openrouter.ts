@@ -47,25 +47,29 @@ const PROVIDERS: Record<
   },
 };
 
+function envKey(name: string): string {
+  return (process.env[name] || "").trim();
+}
+
 function detectProvider(): { baseUrl: string; model: string; apiKey: string } {
   // 1. Explicit AI_PROVIDER
-  const explicit = process.env.AI_PROVIDER?.toLowerCase();
+  const explicit = process.env.AI_PROVIDER?.toLowerCase().trim();
   if (explicit && PROVIDERS[explicit]) {
     const p = PROVIDERS[explicit];
     const key =
       explicit === "openrouter"
-        ? process.env.OPENROUTER_API_KEY || process.env.AI_API_KEY
-        : process.env.OPENCODE_API_KEY || process.env.AI_API_KEY;
+        ? envKey("OPENROUTER_API_KEY") || envKey("AI_API_KEY")
+        : envKey("OPENCODE_API_KEY") || envKey("AI_API_KEY");
     return {
       baseUrl: process.env.AI_BASE_URL || p.baseUrl,
       model: process.env.AI_MODEL || p.defaultModel,
-      apiKey: key || "",
+      apiKey: key,
     };
   }
 
   // 2. Auto-detect from available keys
-  const openRouterKey = process.env.OPENROUTER_API_KEY;
-  const openCodeKey = process.env.OPENCODE_API_KEY;
+  const openRouterKey = envKey("OPENROUTER_API_KEY");
+  const openCodeKey = envKey("OPENCODE_API_KEY");
 
   if (openRouterKey) {
     return {
@@ -84,7 +88,7 @@ function detectProvider(): { baseUrl: string; model: string; apiKey: string } {
   }
 
   throw new Error(
-    "OPENROUTER_API_KEY atau OPENCODE_API_KEY belum diset di .env.local"
+    "API key AI belum diset. Tambahkan OPENROUTER_API_KEY di Environment Variables (Vercel) atau .env.local, lalu redeploy."
   );
 }
 
@@ -98,7 +102,7 @@ export async function screenCandidateWithAI(params: {
 
   if (!apiKey) {
     throw new Error(
-      "API key AI belum diset. Isi OPENROUTER_API_KEY di .env.local"
+      "API key AI belum diset. Tambahkan OPENROUTER_API_KEY di Environment Variables (Vercel) atau .env.local, lalu redeploy."
     );
   }
 
@@ -282,7 +286,9 @@ export async function summarizeInterviewTranscript(params: {
 }): Promise<{ summary: string; strengths: string[]; concerns: string[]; recommendation: string }> {
   const { baseUrl, model, apiKey } = detectProvider();
   if (!apiKey) {
-    throw new Error("API key AI belum diset. Isi OPENROUTER_API_KEY di .env.local");
+    throw new Error(
+      "API key AI belum diset. Tambahkan OPENROUTER_API_KEY di Environment Variables (Vercel) atau .env.local, lalu redeploy."
+    );
   }
 
   const requirementsText =
@@ -371,7 +377,9 @@ Jawab HANYA JSON valid:
 async function chatJson(prompt: string, system: string): Promise<Record<string, unknown>> {
   const { baseUrl, model, apiKey } = detectProvider();
   if (!apiKey) {
-    throw new Error("API key AI belum diset. Isi OPENROUTER_API_KEY di .env.local");
+    throw new Error(
+      "API key AI belum diset. Tambahkan OPENROUTER_API_KEY di Environment Variables (Vercel) atau .env.local, lalu redeploy."
+    );
   }
 
   const response = await fetch(`${baseUrl}/chat/completions`, {

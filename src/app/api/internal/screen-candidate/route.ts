@@ -7,8 +7,10 @@ import {
 } from "@/lib/ai/usage";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  extractContactHints,
   looksLikePersonName,
   looksLikePhone,
+  looksLikeSkillOrTitle,
 } from "@/lib/cv/contact-hints";
 import { revalidatePath } from "next/cache";
 
@@ -183,14 +185,20 @@ export async function POST(request: Request) {
       const patch: Record<string, string> = {};
       const currentName = String(row.name || "").trim();
       const aiName = String(result.parsed.name || "").trim();
+      const hintName = extractContactHints(cvText).name;
+      const bestName =
+        (aiName &&
+        looksLikePersonName(aiName) &&
+        !looksLikeSkillOrTitle(aiName)
+          ? aiName
+          : null) || hintName;
       const nameBad =
         !currentName ||
         currentName === "Kandidat" ||
         looksLikePhone(currentName) ||
+        looksLikeSkillOrTitle(currentName) ||
         !looksLikePersonName(currentName);
-      if (nameBad && aiName && looksLikePersonName(aiName)) {
-        patch.name = aiName;
-      }
+      if (nameBad && bestName) patch.name = bestName;
       if (!row.email && result.parsed.email) patch.email = result.parsed.email;
       if (!row.phone && result.parsed.phone) patch.phone = result.parsed.phone;
       if (looksLikePhone(currentName) && !row.phone && !patch.phone) {

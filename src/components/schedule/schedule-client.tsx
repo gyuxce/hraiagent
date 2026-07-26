@@ -157,8 +157,8 @@ export function ScheduleClient({
   return (
     <div className="space-y-8">
       <div>
-        <p className="page-kicker">Calendar</p>
-        <h1 className="page-title">Schedule</h1>
+        <p className="page-kicker">Kalender</p>
+        <h1 className="page-title">Jadwal</h1>
         <p className="page-sub">
           Jadwalkan interview manusia; unduh .ics untuk kalender eksternal
         </p>

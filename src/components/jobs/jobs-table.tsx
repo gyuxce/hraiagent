@@ -74,12 +74,12 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between gap-4">
-        <div>
+      <div className="page-header">
+        <div className="min-w-0">
           <p className="page-kicker">
-            {canWrite ? "Requisitions" : "Client portal"}
+            {canWrite ? "Requisition" : "Portal klien"}
           </p>
-          <h1 className="page-title">Jobs</h1>
+          <h1 className="page-title">Lowongan</h1>
           <p className="page-sub">
             {canWrite
               ? "Kelola lowongan per klien"
@@ -87,9 +87,11 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
           </p>
         </div>
         {canWrite && (
-          <button type="button" onClick={openCreate} className="btn-primary">
-            + Buat Job
-          </button>
+          <div className="page-header-actions">
+            <button type="button" onClick={openCreate} className="btn-primary">
+              + Buat lowongan
+            </button>
+          </div>
         )}
       </div>
 

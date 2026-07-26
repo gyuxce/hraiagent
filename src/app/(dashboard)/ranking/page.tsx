@@ -85,10 +85,10 @@ export default async function RankingPage({ searchParams }: Props) {
     <div>
       <div className="mb-8">
         <p className="page-kicker">Dua skor, dua makna</p>
-        <h1 className="page-title">Ranking AI Interview</h1>
+        <h1 className="page-title">Peringkat AI Interview</h1>
         <p className="page-sub">
-          Diurutkan dari <strong>Interview Score</strong> (kualitas jawaban
-          async). <strong>CV Score</strong> di sampingnya = kecocokan CV dari
+          Diurutkan dari <strong>skor interview</strong> (kualitas jawaban
+          async). <strong>Skor CV</strong> di sampingnya = kecocokan CV dari
           screening — tidak digabung otomatis.
         </p>
       </div>

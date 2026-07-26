@@ -82,11 +82,11 @@ export function ClientDashboard({ stats, jobs, recent, pipeline }: Props) {
   return (
     <div>
       <div className="mb-8">
-        <p className="page-kicker">Client portal</p>
+        <p className="page-kicker">Portal klien</p>
         <h1 className="page-title">{stats.clientName}</h1>
         <p className="page-sub">
           Progress kandidat yang diajukan agency untuk perusahaan Anda — tampilan
-          read-only.
+          hanya baca.
         </p>
       </div>
 

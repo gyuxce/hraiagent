@@ -178,10 +178,10 @@ export default async function DashboardPage() {
   });
 
   const stats = [
-    { name: "Open Jobs", value: String(openJobs), icon: Briefcase },
-    { name: "Total Clients", value: String(totalClients), icon: Users },
-    { name: "Total Kandidat", value: String(totalCandidates), icon: UserCheck },
-    { name: "Dalam Pipeline", value: String(inPipeline), icon: Clock },
+    { name: "Lowongan terbuka", value: String(openJobs), icon: Briefcase },
+    { name: "Total klien", value: String(totalClients), icon: Users },
+    { name: "Total kandidat", value: String(totalCandidates), icon: UserCheck },
+    { name: "Dalam pipeline", value: String(inPipeline), icon: Clock },
   ];
 
   const aiUsage = await getAgencyAiUsage(
@@ -209,14 +209,14 @@ export default async function DashboardPage() {
   return (
     <div>
       <div className="mb-8">
-        <p className="page-kicker">Agency workspace</p>
+        <p className="page-kicker">Ruang kerja agency</p>
         <h1 className="page-title">Dashboard</h1>
         <p className="page-sub">
-          Overview performa rekrutmen lintas klien
+          Ringkasan performa rekrutmen lintas klien
           {avgScore != null && (
             <span className="text-ink-soft">
               {" "}
-              · AI rata-rata {avgScore}/100 · {totalJobs} job
+              · AI rata-rata {avgScore}/100 · {totalJobs} lowongan
             </span>
           )}
         </p>
@@ -281,7 +281,7 @@ export default async function DashboardPage() {
             <table className="min-w-full divide-y divide-line">
               <thead className="bg-mist/70">
                 <tr>
-                  {["Client", "Open Jobs", "Kandidat", "Pipeline", "Avg AI"].map(
+                  {["Klien", "Lowongan", "Kandidat", "Pipeline", "Rata AI"].map(
                     (h) => (
                       <th
                         key={h}
@@ -328,7 +328,7 @@ export default async function DashboardPage() {
             description="Setelah ada job, upload CV atau import CSV — kandidat terbaru muncul di sini."
             action={
               <Link href="/candidates" className="btn-primary">
-                Ke Candidates
+                Ke kandidat
               </Link>
             }
           />

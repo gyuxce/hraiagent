@@ -98,9 +98,19 @@ export function CompareClient({
 
   return (
     <div>
+      <div className="page-header">
+        <div className="min-w-0">
+          <p className="page-kicker">Side-by-side</p>
+          <h1 className="page-title">Bandingkan</h1>
+          <p className="page-sub">
+            Bandingkan kandidat dalam satu lowongan — skor CV dan interview async
+          </p>
+        </div>
+      </div>
+
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700">
-          Pilih Job
+        <label className="block text-sm font-medium text-ink-soft">
+          Pilih lowongan
         </label>
         <select
           value={selectedJobId}

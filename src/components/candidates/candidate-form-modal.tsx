@@ -25,12 +25,20 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (open) setError(null);
+    if (open) {
+      setError(null);
+      setLoading(false);
+    }
   }, [open]);
 
   if (!open) return null;
 
   const openJobs = jobs.filter((j) => j.status === "open" || j.status === "on_hold");
+
+  function requestClose() {
+    if (loading) return;
+    onClose();
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -40,45 +48,41 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
     const formData = new FormData(e.currentTarget);
     const result = await createCandidate(formData);
 
-    setLoading(false);
-
     if (result?.error) {
+      setLoading(false);
       setError(result.error);
       toast.error(result.error);
       return;
     }
 
-    toast.success(
-      result?.pendingScreening
-        ? "Kandidat tersimpan — AI masih jalan, skor menyusul (~beberapa detik)"
-        : "Kandidat ditambahkan"
-    );
+    toast.success("Kandidat tersimpan — screening selesai");
     router.refresh();
+    setLoading(false);
     onClose();
-    if (result?.pendingScreening) {
-      setTimeout(() => router.refresh(), 4000);
-      setTimeout(() => router.refresh(), 10000);
-      setTimeout(() => router.refresh(), 20000);
-    }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
+      <div
+        className="absolute inset-0 bg-ink/45"
+        onClick={requestClose}
+        aria-hidden
+      />
       <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-line bg-surface p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="font-display text-lg font-bold text-ink">Tambah Kandidat</h2>
           <button
             type="button"
-            onClick={onClose}
-            className="text-xl leading-none text-muted hover:text-ink"
+            onClick={requestClose}
+            disabled={loading}
+            className="text-xl leading-none text-muted hover:text-ink disabled:opacity-40"
           >
             ×
           </button>
         </div>
 
         {openJobs.length === 0 ? (
-          <div className="rounded-lg bg-amber-50 p-4 text-sm text-amber-800">
+          <div className="rounded-lg bg-secondary-soft p-4 text-sm text-secondary-hover">
             Belum ada job open. Buat job dulu di menu Jobs.
           </div>
         ) : (
@@ -86,6 +90,13 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
             {error && (
               <div className="rounded-lg bg-accent-soft p-3 text-sm text-accent-hover break-words">
                 {error}
+              </div>
+            )}
+
+            {loading && (
+              <div className="rounded-lg border border-accent/25 bg-accent-soft/70 px-3 py-2.5 text-sm text-ink-soft">
+                Menyimpan CV & menjalankan AI screening… popup tetap terbuka sampai
+                selesai.
               </div>
             )}
 
@@ -98,7 +109,8 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
                 name="job_id"
                 required
                 defaultValue=""
-                className="field-input"
+                disabled={loading}
+                className="field-input disabled:opacity-60"
               >
                 <option value="" disabled>
                   Pilih lowongan
@@ -120,11 +132,12 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
                 id="cv"
                 name="cv"
                 type="file"
+                disabled={loading}
                 accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
-                className="mt-1 block w-full text-sm text-muted"
+                className="mt-1 block w-full text-sm text-muted disabled:opacity-60"
               />
               <p className="mt-1 text-xs text-muted">
-                AI parse & scoring — biasanya selesai dalam beberapa detik
+                Simpan + AI screening selesai dalam satu alur (popup tidak ditutup lebih dulu)
               </p>
             </div>
 
@@ -137,8 +150,9 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
                   id="name"
                   name="name"
                   type="text"
-                  className="field-input"
-                  placeholder="Opsional jika ada CV (AI ekstrak nama — bukan nomor HP)"
+                  disabled={loading}
+                  className="field-input disabled:opacity-60"
+                  placeholder="Opsional jika ada CV (AI ekstrak nama orang)"
                 />
               </div>
               <div>
@@ -149,7 +163,8 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
                   id="email"
                   name="email"
                   type="email"
-                  className="field-input"
+                  disabled={loading}
+                  className="field-input disabled:opacity-60"
                   placeholder="Opsional jika ada CV"
                 />
               </div>
@@ -161,7 +176,8 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
                   id="phone"
                   name="phone"
                   type="text"
-                  className="field-input"
+                  disabled={loading}
+                  className="field-input disabled:opacity-60"
                   placeholder="Opsional"
                 />
               </div>
@@ -173,13 +189,19 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
                 name="run_ai"
                 value="true"
                 defaultChecked
+                disabled={loading}
                 className="rounded border-line text-accent focus:ring-accent"
               />
               Jalankan AI screening setelah upload
             </label>
 
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={onClose} className="btn-secondary">
+              <button
+                type="button"
+                onClick={requestClose}
+                disabled={loading}
+                className="btn-secondary disabled:opacity-50"
+              >
                 Batal
               </button>
               <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">

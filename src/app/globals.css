@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  /* Cullr — charcoal + signal teal (decisive B2B, not purple/cream defaults) */
+  /* Cullr — charcoal + deep lagoon + slate secondary (muted for light UI) */
   --ink: #0e1116;
   --ink-soft: #1c2430;
   --mist: #f1f3f6;
@@ -10,13 +10,18 @@
   --surface: #ffffff;
   --line: #d7dde5;
   --muted: #5c6675;
-  --accent: #12b5a0;
-  --accent-hover: #0e9a88;
-  --accent-soft: #d8f5f0;
-  --teal: #12b5a0;
-  --teal-soft: #d8f5f0;
-  --good: #0e9a88;
-  --warn: #b7791f;
+  /* Primary accent — deeper, less neon on light backgrounds */
+  --accent: #0d6f64;
+  --accent-hover: #0a5a51;
+  --accent-soft: #e4f0ee;
+  /* Secondary — cool slate for secondary CTAs / links */
+  --secondary: #4a5d6e;
+  --secondary-hover: #3a4a58;
+  --secondary-soft: #e8edf1;
+  --teal: #0d6f64;
+  --teal-soft: #e4f0ee;
+  --good: #1f7a5c;
+  --warn: #a67b1f;
   --bad: #c53030;
 
   --background: var(--mist);
@@ -39,6 +44,9 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-soft: var(--secondary-soft);
   --color-teal: var(--teal);
   --color-teal-soft: var(--teal-soft);
   --color-warn: var(--warn);
@@ -165,17 +173,18 @@ textarea:focus {
   justify-content: center;
   border-radius: 0.65rem;
   border: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--secondary-soft);
   padding: 0.7rem 1.15rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--ink);
-  transition: background 160ms ease, border-color 160ms ease;
+  color: var(--secondary-hover);
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 
 .btn-secondary:hover {
-  background: var(--mist);
-  border-color: var(--mist-deep);
+  background: var(--mist-deep);
+  border-color: var(--line);
+  color: var(--ink);
 }
 
 .surface-panel {
@@ -226,11 +235,11 @@ textarea:focus {
   line-height: 1.65;
 }
 
-/* Atmosphere helpers — cool charcoal + signal teal */
+/* Atmosphere helpers — deep lagoon + slate secondary */
 .bg-atmosphere {
   background:
-    radial-gradient(1000px 500px at 8% -8%, rgba(18, 181, 160, 0.16), transparent 55%),
-    radial-gradient(900px 480px at 92% 0%, rgba(28, 36, 48, 0.08), transparent 50%),
+    radial-gradient(1000px 500px at 8% -8%, rgba(13, 111, 100, 0.12), transparent 55%),
+    radial-gradient(900px 480px at 92% 0%, rgba(74, 93, 110, 0.1), transparent 50%),
     linear-gradient(165deg, #f7f8fa 0%, #f1f3f6 45%, #e8eef2 100%);
 }
 

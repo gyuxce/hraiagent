@@ -199,6 +199,7 @@ export async function updateCandidateStatus(id: string, status: string) {
   if (error) return { error: formatError(error) };
 
   revalidatePath("/candidates");
+  revalidatePath(`/candidates/${id}`);
   return { success: true };
 }
 

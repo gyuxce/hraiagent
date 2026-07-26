@@ -423,25 +423,28 @@ export async function createCandidate(formData: FormData) {
       supabase,
     };
 
-    const work = canDetach
-      ? triggerBackgroundScreen({
-          candidateId,
-          userId: profile.id,
-          inline: () => runScreeningInBackground(screenParams),
-        })
-      : runScreeningInBackground(screenParams);
-
-    const raced = await Promise.race([
-      work.then(() => "done" as const),
-      sleep(SCREEN_WAIT_MS).then(() => "timeout" as const),
-    ]);
-
-    if (raced === "timeout") {
-      pendingScreening = true;
-      // Keep the same promise alive after the response returns
-      after(async () => {
-        await work;
+    if (!canDetach) {
+      // No service role — must finish inline while the request still has auth.
+      await runScreeningInBackground(screenParams);
+    } else {
+      const work = triggerBackgroundScreen({
+        candidateId,
+        userId: profile.id,
+        inline: () => runScreeningInBackground(screenParams),
       });
+
+      const raced = await Promise.race([
+        work.then(() => "done" as const),
+        sleep(SCREEN_WAIT_MS).then(() => "timeout" as const),
+      ]);
+
+      if (raced === "timeout") {
+        pendingScreening = true;
+        // Keep the same promise alive after the response returns
+        after(async () => {
+          await work;
+        });
+      }
     }
   }
 

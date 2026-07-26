@@ -1,19 +1,13 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Syne } from "next/font/google";
+import { Manrope } from "next/font/google";
 import { BRAND } from "@/lib/brand";
 import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
-const body = Plus_Jakarta_Sans({
-  variable: "--font-body",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const display = Syne({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -49,7 +43,7 @@ export default function RootLayout({
   return (
     <html
       lang="id"
-      className={`${body.variable} ${display.variable} h-full antialiased`}
+      className={`${manrope.variable} h-full antialiased`}
       style={{ colorScheme: "light" }}
     >
       <body className="min-h-full flex flex-col bg-mist text-ink font-sans">

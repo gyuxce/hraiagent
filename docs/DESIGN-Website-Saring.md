@@ -15,8 +15,8 @@ Saring sudah punya arah di SaaS — **lanjutkan ke marketing**, jangan ganti kul
 | Mood | Agency B2B, tegas, cepat — “filter / saring” |
 | Warna utama | Ink navy `#0b1f33` + coral accent `#e85d4c` + teal `#1f7a6c` |
 | Hindari | Purple gradient AI-default, cream+terracotta klise, dark-glow neon, pill clutter |
-| Display font | **Syne** (sudah) — brand & heading |
-| Body font | **Plus Jakarta Sans** (sudah) — UI & paragraf; pakai `.prose-read` untuk teks panjang |
+| Display font | **Manrope** — brand & heading |
+| Body font | **Manrope** — UI & paragraf; pakai `.prose-read` untuk teks panjang |
 
 ---
 
@@ -69,7 +69,7 @@ Mengikuti aturan landing yang dipakai produk:
 | Komponen | Spec |
 |----------|------|
 | `MarketingNav` | Logo/wordmark + Masuk; mobile: sama, tanpa hamburger kecuali perlu |
-| `Hero` | Full-bleed image, gradient ink, brand Syne besar |
+| `Hero` | Full-bleed image, gradient ink, brand Manrope besar |
 | `Section` | `page-kicker` + title + sub; max-width konten boleh full di bawah hero |
 | `CtaGroup` | Primary coral “Mulai gratis” → `/register`; secondary outline “Chat WA” |
 | `ContactStrip` | Email + WA, ikon sederhana (lucide), bukan card berbayang tebal |
@@ -83,7 +83,8 @@ Jangan buat design system paralel — reuse `.btn-primary`, `.page-title`, CSS v
 
 ### 5.1 Logo — brief untuk generate
 
-- **Konsep:** “saring / filter / sieve” abstrak + huruf S, atau wordmark bersih Syne-like  
+- **Konsep:** “saring / filter / sieve” abstrak + huruf S, atau wordmark bersih Manrope  
+
 - **Bukan:** otak AI, robot, checklist generik  
 - **Warna:** mono putih di navy; versi ink di paper  
 - **Output:** SVG mark + wordmark horizontal  

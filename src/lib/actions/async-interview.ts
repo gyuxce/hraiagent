@@ -82,12 +82,41 @@ export async function createAsyncInterview(candidateId: string) {
     return { error: quotaExceededMessage(quota) };
   }
 
-  // Fast path: session + fallback questions now → invite link instantly.
-  // AI questions replace fallback in after() if kandidat belum mulai.
+  // Prefer AI questions (unique per session). Budget ~4.5s so link stays snappy;
+  // if AI slow → shuffled fallback, then upgrade in after().
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7);
   const challengeCode = generateChallengeCode();
   const jobTitle = job.title || "Posisi";
+  const jobDescription = job.description || "";
+  const requirements = Array.isArray(job.requirements) ? job.requirements : [];
+  const candidateName = candidate.name as string;
+  const varietySeed = `${candidateId.slice(0, 8)}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+
+  const AI_BUDGET_MS = 4500;
+  let questions: { question_text: string; focus_area: string }[] = [];
+  let usedAi = false;
+  try {
+    questions = await Promise.race([
+      generateInterviewQuestions({
+        jobTitle,
+        jobDescription,
+        requirements,
+        candidateName,
+        count: 5,
+        varietySeed,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("ai-timeout")), AI_BUDGET_MS)
+      ),
+    ]);
+    if (questions.length > 0) usedAi = true;
+  } catch {
+    questions = [];
+  }
+  if (questions.length === 0) {
+    questions = buildFallbackInterviewQuestions(jobTitle, 5, varietySeed);
+  }
 
   const { data: session, error: sErr } = await supabase
     .from("async_interview_sessions")
@@ -114,8 +143,7 @@ export async function createAsyncInterview(candidateId: string) {
 
   const sessionId = session.id as string;
   const agencyId = profile.agency_id;
-  const starterQuestions = buildFallbackInterviewQuestions(jobTitle, 5);
-  const starterRows = starterQuestions.map((q, i) => ({
+  const rows = questions.map((q, i) => ({
     session_id: sessionId,
     agency_id: agencyId,
     question_text: q.question_text,
@@ -125,7 +153,7 @@ export async function createAsyncInterview(candidateId: string) {
 
   const { data: insertedQuestions, error: qErr } = await supabase
     .from("async_interview_questions")
-    .insert(starterRows)
+    .insert(rows)
     .select("id, sort_order");
 
   if (qErr || !insertedQuestions?.length) {
@@ -151,84 +179,69 @@ export async function createAsyncInterview(candidateId: string) {
     .eq("id", candidateId)
     .in("status", ["submitted", "screened"]);
 
-  const jobDescription = job.description || "";
-  const requirements = Array.isArray(job.requirements) ? job.requirements : [];
-  const candidateName = candidate.name as string;
+  // If we served fallback, upgrade texts in background (reuse request-scoped client).
+  if (!usedAi) {
+    after(async () => {
+      let aiQuestions: { question_text: string; focus_area: string }[] = [];
+      try {
+        aiQuestions = await generateInterviewQuestions({
+          jobTitle,
+          jobDescription,
+          requirements,
+          candidateName,
+          count: 5,
+          varietySeed: `${varietySeed}-bg`,
+        });
+      } catch {
+        return;
+      }
+      if (aiQuestions.length === 0) return;
 
-  after(async () => {
-    let aiQuestions: { question_text: string; focus_area: string }[] = [];
-    try {
-      aiQuestions = await generateInterviewQuestions({
-        jobTitle,
-        jobDescription,
-        requirements,
-        candidateName,
-        count: 5,
-      });
-    } catch {
-      return;
-    }
-    if (aiQuestions.length === 0) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let db: any = supabase;
+      try {
+        db = createAdminClient();
+      } catch {
+        db = supabase;
+      }
 
-    // Prefer service role in background; fall back to cookie client.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let db: any;
-    try {
-      db = createAdminClient();
-    } catch {
-      db = await createClient();
-    }
+      const { data: live } = await db
+        .from("async_interview_sessions")
+        .select("status, started_at")
+        .eq("id", sessionId)
+        .maybeSingle();
+      if (!live || live.status === "in_progress" || live.status === "completed") {
+        return;
+      }
+      if (live.started_at) return;
 
-    const { data: live } = await db
-      .from("async_interview_sessions")
-      .select("status, started_at")
-      .eq("id", sessionId)
-      .maybeSingle();
-    if (!live || live.status === "in_progress" || live.status === "completed") {
-      return;
-    }
-    if (live.started_at) return;
+      const { count: answerCount } = await db
+        .from("async_interview_answers")
+        .select("id", { count: "exact", head: true })
+        .eq("session_id", sessionId);
+      if ((answerCount || 0) > 0) return;
 
-    const { count: answerCount } = await db
-      .from("async_interview_answers")
-      .select("id", { count: "exact", head: true })
-      .eq("session_id", sessionId);
-    if ((answerCount || 0) > 0) return;
+      // In-place update keeps question ids / challenge link stable
+      const { data: existing } = await db
+        .from("async_interview_questions")
+        .select("id, sort_order")
+        .eq("session_id", sessionId)
+        .order("sort_order", { ascending: true });
+      if (!existing?.length) return;
 
-    await db
-      .from("async_interview_sessions")
-      .update({ challenge_question_id: null })
-      .eq("id", sessionId);
-    await db
-      .from("async_interview_questions")
-      .delete()
-      .eq("session_id", sessionId);
+      for (let i = 0; i < existing.length && i < aiQuestions.length; i++) {
+        await db
+          .from("async_interview_questions")
+          .update({
+            question_text: aiQuestions[i].question_text,
+            focus_area: aiQuestions[i].focus_area,
+          })
+          .eq("id", existing[i].id);
+      }
 
-    const rows = aiQuestions.map((q, i) => ({
-      session_id: sessionId,
-      agency_id: agencyId,
-      question_text: q.question_text,
-      focus_area: q.focus_area,
-      sort_order: i + 1,
-    }));
-    const { data: aiInserted } = await db
-      .from("async_interview_questions")
-      .insert(rows)
-      .select("id, sort_order");
-    if (!aiInserted?.length) return;
-
-    const aiSorted = [...aiInserted].sort(
-      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
-    );
-    const aiChallengeId =
-      aiSorted[pickChallengeQuestionIndex(aiSorted.length)]?.id || null;
-    await db
-      .from("async_interview_sessions")
-      .update({ challenge_question_id: aiChallengeId })
-      .eq("id", sessionId);
-
-    revalidatePath(`/candidates/${candidateId}`);
-  });
+      revalidatePath(`/candidates/${candidateId}`);
+    });
+  }
 
   const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const inviteUrl = `${base.replace(/\/$/, "")}/interview/${session.invite_token}`;
@@ -242,6 +255,7 @@ export async function createAsyncInterview(candidateId: string) {
     sessionId,
     inviteToken: session.invite_token as string,
     inviteUrl,
+    questionsFromAi: usedAi,
   };
 }
 

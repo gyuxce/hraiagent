@@ -367,6 +367,8 @@ export async function generateInterviewQuestions(params: {
   requirements: string[];
   candidateName?: string;
   count?: number;
+  /** Forces variety across sessions — include timestamp/random. */
+  varietySeed?: string;
 }): Promise<{ question_text: string; focus_area: string }[]> {
   const count = params.count ?? 5;
   const requirementsText =
@@ -377,8 +379,11 @@ export async function generateInterviewQuestions(params: {
           .join("\n")
       : "(umum)";
   const jobDesc = (params.jobDescription || "").trim().slice(0, 700);
+  const seed =
+    params.varietySeed ||
+    `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-  const prompt = `Buat tepat ${count} pertanyaan interview video async (jawab bicara 30-90 detik). Ringkas.
+  const prompt = `Buat tepat ${count} pertanyaan interview video async (jawab bicara 30-90 detik).
 
 JOB: ${params.jobTitle}
 KANDIDAT: ${params.candidateName || "Kandidat"}
@@ -386,13 +391,20 @@ DESKRIPSI: ${jobDesc || "(tidak ada)"}
 REQUIREMENTS:
 ${requirementsText}
 
-Campur behavioral/teknis/situational. Bahasa Indonesia.
+SEED VARIASI (jangan diulang ke kandidat; pakai agar soal UNIK): ${seed}
+
+Aturan:
+- Pertanyaan HARUS spesifik ke job + requirements di atas (bukan template generik).
+- Jangan mengulang soal klise yang sama tiap sesi.
+- Campur behavioral / teknis / situational / komunikasi.
+- Bahasa Indonesia, netral, singkat.
+
 JSON saja: {"questions":[{"question_text":"...","focus_area":"behavioral|teknis|situational|komunikasi"}]}`;
 
   const parsed = await chatJson(
     prompt,
-    "Generate short async video interview questions. Valid JSON only. Bahasa Indonesia. Be concise. Prefer speed.",
-    { maxTokens: 900, temperature: 0.4 }
+    "Generate UNIQUE job-specific async video interview questions each call. Never recycle generic templates. Valid JSON only. Bahasa Indonesia.",
+    { maxTokens: 1100, temperature: 0.9 }
   );
 
   const list = Array.isArray(parsed.questions) ? parsed.questions : [];

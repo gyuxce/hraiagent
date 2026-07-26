@@ -100,7 +100,9 @@ export function AsyncInterviewSection({
       return;
     }
     toast.success(
-      "Link siap — pertanyaan langsung tersedia (AI menyempurnakan di background)"
+      result?.questionsFromAi
+        ? "Link siap — pertanyaan AI unik untuk sesi ini"
+        : "Link siap — pertanyaan sementara dipakai; AI menyempurnakan sebentar lagi"
     );
     if (result?.inviteUrl) {
       setInviteUrl(result.inviteUrl);

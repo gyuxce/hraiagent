@@ -193,7 +193,7 @@ export function CandidatesTable({
             description={
               jobs.length === 0
                 ? "Buat job dulu, lalu upload CV (PDF/DOCX) atau import CSV agar AI bisa men-score kecocokan."
-                : "Upload CV atau import spreadsheet. Centang AI screening agar skor + breakdown muncul otomatis."
+                : "Upload CV atau import spreadsheet. Centang screening agar skor muncul otomatis."
             }
             action={
               canWrite ? (

@@ -129,7 +129,7 @@ Footer: © Saring · partnership@ilusa.id · WA.
 ## 10. Dependencies & risiko
 
 - Domain final (saring.id vs ilusa.id/saring) masih keputusan bisnis  
-- Logo belum ada → pakai wordmark Syne dulu, ganti mark tanpa ubah layout  
+- Logo / wordmark pakai Manrope; ganti mark tanpa ubah layout  
 - Overpromise fitur Phase 4 live AI → dihindari di copy
 
 ---

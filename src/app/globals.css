@@ -43,29 +43,50 @@
   --color-teal-soft: var(--teal-soft);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
-  --font-sans: var(--font-body);
-  --font-display: var(--font-display);
+  --font-sans: var(--font-manrope);
+  --font-display: var(--font-manrope);
 }
 
+html,
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-body), "Segoe UI", sans-serif;
+  font-family: var(--font-manrope), "Segoe UI", sans-serif;
+}
+
+h1,
+h2,
+h3,
+.font-display,
+button,
+input,
+textarea,
+select,
+label,
+p,
+a,
+span,
+li,
+td,
+th {
+  font-family: inherit;
 }
 
 h1,
 h2,
 h3,
 .font-display {
-  font-family: var(--font-display), var(--font-body), sans-serif;
+  font-family: var(--font-manrope), sans-serif;
 }
 
 /* Form controls */
 input,
 textarea,
-select {
+select,
+button {
   color: var(--ink);
   background-color: var(--surface);
+  font-family: var(--font-manrope), "Segoe UI", sans-serif;
 }
 
 input::placeholder,
@@ -160,7 +181,7 @@ option {
 
 .page-title {
   margin-top: 0.35rem;
-  font-family: var(--font-display), sans-serif;
+  font-family: var(--font-manrope), sans-serif;
   font-size: 1.75rem;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -175,7 +196,7 @@ option {
 
 /**
  * Long-form reading blocks (AI summary, CV prose, feedback lists).
- * Keeps Syne + Jakarta globally; only loosens metrics where paragraphs get dense.
+ * Manrope globally; only loosens metrics where paragraphs get dense.
  */
 .prose-read {
   font-size: 0.9375rem; /* 15px */

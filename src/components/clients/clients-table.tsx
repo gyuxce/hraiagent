@@ -142,7 +142,7 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
                         <button
                           type="button"
                           onClick={() => openEdit(client)}
-                          className="text-blue-600 hover:text-blue-500 font-medium"
+                          className="text-accent hover:text-accent-hover font-medium"
                         >
                           Edit
                         </button>

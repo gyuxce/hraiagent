@@ -92,7 +92,7 @@ export function JobFormModal({ open, onClose, job, clients }: Props) {
                 name="client_id"
                 required
                 defaultValue={job?.client_id || ""}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               >
                 <option value="" disabled>
                   Pilih client
@@ -115,7 +115,7 @@ export function JobFormModal({ open, onClose, job, clients }: Props) {
                 type="text"
                 required
                 defaultValue={job?.title || ""}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 placeholder="Frontend Developer"
               />
             </div>
@@ -130,7 +130,7 @@ export function JobFormModal({ open, onClose, job, clients }: Props) {
                 required
                 rows={4}
                 defaultValue={job?.description || ""}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 placeholder="Deskripsi pekerjaan, tanggung jawab, dll"
               />
             </div>
@@ -144,7 +144,7 @@ export function JobFormModal({ open, onClose, job, clients }: Props) {
                 name="requirements"
                 rows={3}
                 defaultValue={requirementsText}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                 placeholder="Satu requirement per baris&#10;React&#10;TypeScript&#10;3+ tahun pengalaman"
               />
               <p className="mt-1 text-xs text-gray-400">Pisahkan dengan baris baru atau koma</p>
@@ -158,7 +158,7 @@ export function JobFormModal({ open, onClose, job, clients }: Props) {
                 id="status"
                 name="status"
                 defaultValue={job?.status || "open"}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               >
                 <option value="open">Open</option>
                 <option value="on_hold">On Hold</option>
@@ -177,7 +177,7 @@ export function JobFormModal({ open, onClose, job, clients }: Props) {
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
               >
                 {loading ? "Menyimpan..." : isEdit ? "Simpan" : "Buat Job"}
               </button>

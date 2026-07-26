@@ -53,7 +53,7 @@ function clientLabel(
 function scoreClass(score: number | null) {
   if (score == null) return "bg-gray-100 text-gray-600";
   if (score >= 80) return "bg-green-50 text-green-700";
-  if (score >= 60) return "bg-blue-50 text-blue-700";
+  if (score >= 60) return "bg-accent-soft text-accent-hover";
   if (score >= 40) return "bg-yellow-50 text-yellow-700";
   return "bg-red-50 text-red-700";
 }
@@ -145,7 +145,7 @@ export function CompareClient({
                     <div>
                       <Link
                         href={`/candidates/${c.id}`}
-                        className="font-semibold text-gray-900 hover:text-blue-600"
+                        className="font-semibold text-gray-900 hover:text-accent"
                       >
                         {c.name}
                       </Link>
@@ -179,7 +179,7 @@ export function CompareClient({
                       {skills.map((s) => (
                         <span
                           key={s}
-                          className="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700"
+                          className="rounded bg-accent-soft px-1.5 py-0.5 text-xs text-accent-hover"
                         >
                           {s}
                         </span>
@@ -209,7 +209,7 @@ export function CompareClient({
 
                   <Link
                     href={`/candidates/${c.id}`}
-                    className="mt-4 block text-center text-sm font-semibold text-blue-600 hover:text-blue-500"
+                    className="mt-4 block text-center text-sm font-semibold text-accent hover:text-accent-hover"
                   >
                     Buka detail →
                   </Link>

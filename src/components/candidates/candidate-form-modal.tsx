@@ -50,29 +50,28 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
 
     toast.success(
       result?.pendingScreening
-        ? "Kandidat tersimpan — AI screening jalan di background"
+        ? "Kandidat tersimpan — AI masih jalan, skor menyusul (~beberapa detik)"
         : "Kandidat ditambahkan"
     );
     router.refresh();
     onClose();
-    // Poll a few times so AI score appears without manual reload
     if (result?.pendingScreening) {
-      setTimeout(() => router.refresh(), 6000);
-      setTimeout(() => router.refresh(), 15000);
-      setTimeout(() => router.refresh(), 30000);
+      setTimeout(() => router.refresh(), 4000);
+      setTimeout(() => router.refresh(), 10000);
+      setTimeout(() => router.refresh(), 20000);
     }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-xl border border-gray-200">
+      <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-line bg-surface p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Tambah Kandidat</h2>
+          <h2 className="font-display text-lg font-bold text-ink">Tambah Kandidat</h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+            className="text-xl leading-none text-muted hover:text-ink"
           >
             ×
           </button>
@@ -85,13 +84,13 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700 break-words">
+              <div className="rounded-lg bg-accent-soft p-3 text-sm text-accent-hover break-words">
                 {error}
               </div>
             )}
 
             <div>
-              <label htmlFor="job_id" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="job_id" className="block text-sm font-medium text-ink-soft">
                 Job *
               </label>
               <select
@@ -99,7 +98,7 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
                 name="job_id"
                 required
                 defaultValue=""
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="field-input"
               >
                 <option value="" disabled>
                   Pilih lowongan
@@ -114,7 +113,7 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
             </div>
 
             <div>
-              <label htmlFor="cv" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="cv" className="block text-sm font-medium text-ink-soft">
                 Upload CV (PDF/DOCX/TXT)
               </label>
               <input
@@ -122,77 +121,69 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
                 name="cv"
                 type="file"
                 accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
-                className="mt-1 block w-full text-sm text-gray-600 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+                className="mt-1 block w-full text-sm text-muted"
               />
-              <p className="mt-1 text-xs text-gray-400">
-                AI akan parse CV & scoring (OpenRouter)
+              <p className="mt-1 text-xs text-muted">
+                AI parse & scoring — biasanya selesai dalam beberapa detik
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="name" className="block text-sm font-medium text-ink-soft">
                   Nama
                 </label>
                 <input
                   id="name"
                   name="name"
                   type="text"
-                  className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Opsional jika ada CV (AI ekstrak)"
+                  className="field-input"
+                  placeholder="Opsional jika ada CV (AI ekstrak nama — bukan nomor HP)"
                 />
               </div>
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="email" className="block text-sm font-medium text-ink-soft">
                   Email
                 </label>
                 <input
                   id="email"
                   name="email"
                   type="email"
-                  className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="field-input"
                   placeholder="Opsional jika ada CV"
                 />
               </div>
               <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="phone" className="block text-sm font-medium text-ink-soft">
                   Telepon
                 </label>
                 <input
                   id="phone"
                   name="phone"
                   type="text"
-                  className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="field-input"
                   placeholder="Opsional"
                 />
               </div>
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-gray-700">
+            <label className="flex items-center gap-2 text-sm text-ink-soft">
               <input
                 type="checkbox"
                 name="run_ai"
                 value="true"
                 defaultChecked
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-line text-accent focus:ring-accent"
               />
               Jalankan AI screening setelah upload
             </label>
 
             <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
+              <button type="button" onClick={onClose} className="btn-secondary">
                 Batal
               </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
-              >
-                {loading ? "Menyimpan..." : "Tambah Kandidat"}
+              <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">
+                {loading ? "Menyimpan & screening…" : "Tambah Kandidat"}
               </button>
             </div>
           </form>

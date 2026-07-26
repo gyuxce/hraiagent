@@ -173,7 +173,7 @@ export default async function RankingPage({ searchParams }: Props) {
                     {r.candidates?.id && (
                       <Link
                         href={`/candidates/${r.candidates.id}`}
-                        className="font-medium text-blue-600 hover:text-blue-500"
+                        className="font-medium text-accent hover:text-accent-hover"
                       >
                         Detail
                       </Link>

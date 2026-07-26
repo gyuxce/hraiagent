@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { extractTextFromFile } from "@/lib/cv/extract-text";
-import { extractContactHints } from "@/lib/cv/contact-hints";
+import {
+  extractContactHints,
+  looksLikePersonName,
+  looksLikePhone,
+} from "@/lib/cv/contact-hints";
 import { screenCandidateWithAI } from "@/lib/ai/openrouter";
 import {
   consumeAiQuota,
@@ -23,6 +27,57 @@ const ALLOWED_TYPES = [
 
 const PENDING_SUMMARY =
   "AI screening sedang diproses di background — refresh halaman sebentar lagi.";
+
+/** Wait this long for AI before returning; leftover continues in after(). */
+const SCREEN_WAIT_MS = 4800;
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function sanitizeParsedName(name: string | null | undefined): string | null {
+  if (!name || !looksLikePersonName(name)) return null;
+  return name.trim().replace(/\s+/g, " ");
+}
+
+/** Fill/fix contact fields from AI — overwrite phone-as-name mistakes. */
+async function enrichContactsFromParsed(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  candidateId: string,
+  parsed: {
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  }
+) {
+  const { data: row } = await db
+    .from("candidates")
+    .select("name, email, phone")
+    .eq("id", candidateId)
+    .maybeSingle();
+  if (!row) return;
+
+  const aiName = sanitizeParsedName(parsed.name);
+  const patch: Record<string, string> = {};
+  const currentName = String(row.name || "").trim();
+  const nameBad =
+    !currentName ||
+    currentName === "Kandidat" ||
+    looksLikePhone(currentName) ||
+    !looksLikePersonName(currentName);
+
+  if (nameBad && aiName) patch.name = aiName;
+  if (!row.email && parsed.email) patch.email = String(parsed.email);
+  if (!row.phone && parsed.phone) patch.phone = String(parsed.phone);
+  // If name was wrongly set to a phone, salvage it into phone field
+  if (looksLikePhone(currentName) && !row.phone && !patch.phone) {
+    patch.phone = currentName.replace(/\s*\([^)]*\)\s*/g, "").trim();
+  }
+  if (Object.keys(patch).length) {
+    await db.from("candidates").update(patch).eq("id", candidateId);
+  }
+}
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -206,24 +261,7 @@ async function runScreeningInBackground(params: {
       return;
     }
 
-    // Enrich empty contact fields from AI parse if still blank
-    const { data: row } = await db
-      .from("candidates")
-      .select("name, email, phone")
-      .eq("id", params.candidateId)
-      .maybeSingle();
-
-    if (row) {
-      const patch: Record<string, string> = {};
-      if ((!row.name || row.name === "Kandidat") && result.parsed.name) {
-        patch.name = result.parsed.name;
-      }
-      if (!row.email && result.parsed.email) patch.email = result.parsed.email;
-      if (!row.phone && result.parsed.phone) patch.phone = result.parsed.phone;
-      if (Object.keys(patch).length) {
-        await db.from("candidates").update(patch).eq("id", params.candidateId);
-      }
-    }
+    await enrichContactsFromParsed(db, params.candidateId, result.parsed);
   } catch (err) {
     await markScreeningFailure(
       db,
@@ -309,18 +347,32 @@ export async function createCandidate(formData: FormData) {
       };
     }
 
-    // Fast local fill — don't wait for AI to extract contacts
+    // Fast local fill — never treat phone lines as a name
     const hints = extractContactHints(cvText);
-    if (!name && hints.name) name = hints.name;
+    if (!name && hints.name && looksLikePersonName(hints.name)) {
+      name = hints.name;
+    }
     if (!email && hints.email) email = hints.email;
     if (!phone && hints.phone) phone = hints.phone;
+    // Guard: if user left name blank and heuristic grabbed a phone, clear it
+    if (name && looksLikePhone(name)) {
+      if (!phone) phone = name.replace(/\s*\([^)]*\)\s*/g, "").trim();
+      name = "";
+    }
   }
 
+  const pendingAi = Boolean(runAi && cvText);
+
   if (!name) {
-    return {
-      error:
-        "Nama kandidat wajib diisi (isi manual, atau upload CV teks yang jelas).",
-    };
+    if (pendingAi) {
+      // Placeholder — AI parse will replace; avoid blocking on bad local heuristics
+      name = "Kandidat";
+    } else {
+      return {
+        error:
+          "Nama kandidat wajib diisi (isi manual, atau upload CV teks yang jelas).",
+      };
+    }
   }
   if (!email) {
     return {
@@ -329,9 +381,8 @@ export async function createCandidate(formData: FormData) {
     };
   }
 
-  const pendingAi = Boolean(runAi && cvText);
-  // Background path needs service role — otherwise cookie session dies in after().
-  const useBackground = pendingAi && hasServiceRole();
+  // Prefer short wait for score (~5s), then finish in background if still running.
+  const canDetach = pendingAi && hasServiceRole();
 
   const { data: inserted, error } = await supabase
     .from("candidates")
@@ -344,11 +395,7 @@ export async function createCandidate(formData: FormData) {
       cv_file_path: cvFilePath,
       parsed_data: null,
       ai_score: null,
-      ai_summary: useBackground
-        ? PENDING_SUMMARY
-        : pendingAi
-          ? "AI screening sedang diproses…"
-          : null,
+      ai_summary: pendingAi ? PENDING_SUMMARY : null,
       ai_score_breakdown: null,
       status: "submitted",
     })
@@ -362,6 +409,8 @@ export async function createCandidate(formData: FormData) {
     ? (job.requirements as string[])
     : [];
 
+  let pendingScreening = false;
+
   if (pendingAi) {
     const screenParams = {
       candidateId,
@@ -374,17 +423,25 @@ export async function createCandidate(formData: FormData) {
       supabase,
     };
 
-    if (useBackground) {
-      after(async () => {
-        await triggerBackgroundScreen({
+    const work = canDetach
+      ? triggerBackgroundScreen({
           candidateId,
           userId: profile.id,
           inline: () => runScreeningInBackground(screenParams),
-        });
+        })
+      : runScreeningInBackground(screenParams);
+
+    const raced = await Promise.race([
+      work.then(() => "done" as const),
+      sleep(SCREEN_WAIT_MS).then(() => "timeout" as const),
+    ]);
+
+    if (raced === "timeout") {
+      pendingScreening = true;
+      // Keep the same promise alive after the response returns
+      after(async () => {
+        await work;
       });
-    } else {
-      // No service role → run inline while request still has auth (slower, but skor muncul).
-      await runScreeningInBackground(screenParams);
     }
   }
 
@@ -392,8 +449,39 @@ export async function createCandidate(formData: FormData) {
   return {
     success: true,
     candidateId,
-    pendingScreening: useBackground,
+    pendingScreening,
   };
+}
+
+export async function updateCandidateContact(formData: FormData) {
+  const { supabase, error: authError, profile } = await getCurrentProfile();
+  if (authError || !profile) return { error: authError || "Unauthorized" };
+  if (profile.role === "client_viewer") {
+    return { error: "Client viewer tidak bisa mengubah kandidat" };
+  }
+
+  const id = String(formData.get("candidate_id") || "").trim();
+  const name = String(formData.get("name") || "").trim();
+  const email = String(formData.get("email") || "").trim();
+  const phone = String(formData.get("phone") || "").trim() || null;
+
+  if (!id) return { error: "Kandidat wajib" };
+  if (!name || looksLikePhone(name) || !looksLikePersonName(name)) {
+    return { error: "Nama kandidat tidak valid" };
+  }
+  if (!email || !email.includes("@")) {
+    return { error: "Email tidak valid" };
+  }
+
+  const { error } = await supabase
+    .from("candidates")
+    .update({ name, email, phone })
+    .eq("id", id);
+
+  if (error) return { error: formatError(error) };
+  revalidatePath("/candidates");
+  revalidatePath(`/candidates/${id}`);
+  return { success: true };
 }
 
 export async function updateCandidateStatus(id: string, status: string) {

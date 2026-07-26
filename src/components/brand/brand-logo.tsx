@@ -33,7 +33,8 @@ function LogoMark({
 }) {
   const tile = variant === "light" ? "#F1F3F6" : "#0E1116";
   const ring = variant === "light" ? "#0E1116" : "#F1F3F6";
-  const cut = "#0D6F64";
+  // Slightly brighter cut so the mark reads on both light marketing + grey dashboard
+  const cut = "#3AA894";
 
   return (
     <svg

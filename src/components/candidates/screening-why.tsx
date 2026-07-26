@@ -135,7 +135,7 @@ export function ScreeningWhy({
         </div>
       ) : (
         <p className="mt-4 text-sm text-muted">
-          Belum ada breakdown rubrik. Jalankan AI screening dari daftar kandidat.
+          Belum ada breakdown rubrik. Hitung skor dari daftar kandidat.
         </p>
       )}
 

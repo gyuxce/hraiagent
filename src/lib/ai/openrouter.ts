@@ -122,7 +122,7 @@ JSON saja (tanpa markdown):
         ? {
             "HTTP-Referer":
               process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-            "X-Title": "Saring",
+            "X-Title": "Cullr",
           }
         : {}),
     },
@@ -272,7 +272,7 @@ Jawab HANYA JSON valid:
         ? {
             "HTTP-Referer":
               process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-            "X-Title": "Saring",
+            "X-Title": "Cullr",
           }
         : {}),
     },
@@ -335,7 +335,7 @@ async function chatJson(
         ? {
             "HTTP-Referer":
               process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-            "X-Title": "Saring",
+            "X-Title": "Cullr",
           }
         : {}),
     },
@@ -563,7 +563,7 @@ export async function compareInterviewFaces(params: {
             ? {
                 "HTTP-Referer":
                   process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-                "X-Title": "Saring",
+                "X-Title": "Cullr",
               }
             : {}),
         },

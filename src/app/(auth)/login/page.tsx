@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { login } from "@/lib/actions/auth";
 import { BRAND } from "@/lib/brand";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -28,13 +29,10 @@ export default function LoginPage() {
       <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-70" />
       <div className="relative w-full max-w-md animate-rise">
         <div className="mb-8 text-center">
-          <Link
-            href="/"
-            className="font-display text-3xl font-extrabold tracking-tight text-ink"
-          >
-            {BRAND.name}
+          <Link href="/" className="inline-flex justify-center">
+            <BrandLogo variant="dark" size="lg" />
           </Link>
-          <p className="mt-2 text-sm font-medium text-ink-soft">{BRAND.slogan}</p>
+          <p className="mt-3 text-sm font-medium text-ink-soft">{BRAND.slogan}</p>
           <p className="mt-1 text-sm text-muted">Masuk ke workspace agency Anda</p>
         </div>
 

@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
-import { Manrope } from "next/font/google";
+import { Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
 import { BRAND } from "@/lib/brand";
 import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
-const manrope = Manrope({
-  variable: "--font-manrope",
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
+});
+
+const space = Space_Grotesk({
+  variable: "--font-space",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -20,7 +26,7 @@ export const metadata: Metadata = {
     title: `${BRAND.name} — ${BRAND.slogan}`,
     description: BRAND.tagline,
     images: [{ url: BRAND.assets.og, width: 1200, height: 630, alt: BRAND.name }],
-    locale: "id_ID",
+    locale: "en_US",
     type: "website",
   },
   twitter: {
@@ -30,7 +36,7 @@ export const metadata: Metadata = {
     images: [BRAND.assets.og],
   },
   icons: {
-    icon: [{ url: "/brand/logo.svg", type: "image/svg+xml" }],
+    icon: [{ url: BRAND.assets.logoMark, type: "image/svg+xml" }],
     apple: BRAND.assets.logoRaster,
   },
 };
@@ -42,11 +48,13 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="id"
-      className={`${manrope.variable} ${manrope.className} h-full antialiased`}
+      lang="en"
+      className={`${jakarta.variable} ${space.variable} ${jakarta.className} h-full antialiased`}
       style={{ colorScheme: "light" }}
     >
-      <body className={`${manrope.className} min-h-full flex flex-col bg-mist text-ink font-sans`}>
+      <body
+        className={`${jakarta.className} flex min-h-full flex-col bg-mist font-sans text-ink`}
+      >
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>

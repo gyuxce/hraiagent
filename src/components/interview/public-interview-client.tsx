@@ -11,6 +11,7 @@ import {
   uploadInterviewVideo,
 } from "@/lib/actions/async-interview";
 import { createClient as createBrowserSupabase } from "@/lib/supabase/client";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 const MAX_RECORD_SECONDS = 90;
 const TARGET_RECORD_HINT = "Target 30–90 detik per jawaban";
@@ -734,7 +735,9 @@ export function PublicInterviewClient({ token }: { token: string }) {
       <div className="relative flex min-h-screen items-center justify-center bg-atmosphere p-6">
         <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-60" />
         <div className="relative max-w-lg surface-panel p-8 text-center animate-rise">
-          <p className="font-display text-lg font-extrabold text-ink">Saring</p>
+          <div className="flex justify-center">
+            <BrandLogo variant="dark" size="sm" />
+          </div>
           <h1 className="mt-4 font-display text-2xl font-bold text-ink">
             Terima kasih!
           </h1>
@@ -755,8 +758,8 @@ export function PublicInterviewClient({ token }: { token: string }) {
       <div className="relative min-h-screen bg-atmosphere px-4 py-8">
         <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-50" />
         <div className="relative mx-auto max-w-lg">
-          <p className="font-display text-sm font-extrabold text-ink">Saring</p>
-          <h1 className="mt-2 font-display text-2xl font-bold text-ink">
+          <BrandLogo variant="dark" size="sm" />
+          <h1 className="mt-3 font-display text-2xl font-bold text-ink">
             Verifikasi wajah
           </h1>
           <p className="mt-2 text-sm text-muted">
@@ -820,8 +823,8 @@ export function PublicInterviewClient({ token }: { token: string }) {
       <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-50" />
       <div className="relative mx-auto max-w-2xl">
         <div className="mb-6">
-          <p className="font-display text-sm font-extrabold text-ink">Saring</p>
-          <h1 className="mt-2 font-display text-2xl font-bold text-ink">
+          <BrandLogo variant="dark" size="sm" />
+          <h1 className="mt-3 font-display text-2xl font-bold text-ink">
             Interview Video — {data.job.title}
           </h1>
           <p className="mt-1 text-sm text-muted">

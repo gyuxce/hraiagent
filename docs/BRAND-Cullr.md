@@ -12,16 +12,17 @@
 |---|---|
 | Charcoal `#0E1116` | Primary ink / hero |
 | Mist `#F1F3F6` | App background |
-| Signal teal `#12B5A0` | Accent / CTA / mark cut |
+| Deep lagoon `#0D6F64` | Primary accent / CTA (muted for light UI) |
+| Slate `#4A5D6E` | Secondary buttons / supporting chrome |
 | Cool white `#FFFFFF` | Surfaces |
 
 ## Mark
-Open ring + vertical **cut** in signal teal — a cull gap, not a funnel or badge collage.
+Open ring + vertical **cut** in deep lagoon — a cull gap, not a funnel or badge collage.
 
 ## Type
 - **Display / wordmark:** Space Grotesk
 - **UI body:** Plus Jakarta Sans
 
 ## Do / don’t
-- Do: wordmark + simple mark, full-bleed hero, one job per section
-- Don’t: funnel icons, coral-cream “AI startup” look, `-ly/-fy` naming, purple gradients
+- Do: wordmark + simple mark, full-bleed hero, one job per section, pair accent + secondary
+- Don’t: neon teal on light UI, funnel icons, coral-cream defaults, purple gradients, `-ly/-fy` naming

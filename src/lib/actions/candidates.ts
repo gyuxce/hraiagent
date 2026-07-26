@@ -28,13 +28,6 @@ const ALLOWED_TYPES = [
 const PENDING_SUMMARY =
   "AI screening sedang diproses di background — refresh halaman sebentar lagi.";
 
-/** Wait this long for AI before returning; leftover continues in after(). */
-const SCREEN_WAIT_MS = 4800;
-
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms));
-}
-
 function sanitizeParsedName(name: string | null | undefined): string | null {
   if (!name || !looksLikePersonName(name)) return null;
   return name.trim().replace(/\s+/g, " ");
@@ -381,9 +374,6 @@ export async function createCandidate(formData: FormData) {
     };
   }
 
-  // Prefer short wait for score (~5s), then finish in background if still running.
-  const canDetach = pendingAi && hasServiceRole();
-
   const { data: inserted, error } = await supabase
     .from("candidates")
     .insert({
@@ -395,7 +385,7 @@ export async function createCandidate(formData: FormData) {
       cv_file_path: cvFilePath,
       parsed_data: null,
       ai_score: null,
-      ai_summary: pendingAi ? PENDING_SUMMARY : null,
+      ai_summary: pendingAi ? "AI screening sedang diproses…" : null,
       ai_score_breakdown: null,
       status: "submitted",
     })
@@ -409,10 +399,10 @@ export async function createCandidate(formData: FormData) {
     ? (job.requirements as string[])
     : [];
 
-  let pendingScreening = false;
-
   if (pendingAi) {
-    const screenParams = {
+    // Await fully so the modal can stay open until name + score are ready.
+    // Use admin client inline (skip HTTP hop) for lower latency.
+    await runScreeningInBackground({
       candidateId,
       agencyId: profile.agency_id,
       userId: profile.id,
@@ -421,38 +411,15 @@ export async function createCandidate(formData: FormData) {
       jobDescription: (job.description || "") as string,
       requirements,
       supabase,
-    };
-
-    if (!canDetach) {
-      // No service role — must finish inline while the request still has auth.
-      await runScreeningInBackground(screenParams);
-    } else {
-      const work = triggerBackgroundScreen({
-        candidateId,
-        userId: profile.id,
-        inline: () => runScreeningInBackground(screenParams),
-      });
-
-      const raced = await Promise.race([
-        work.then(() => "done" as const),
-        sleep(SCREEN_WAIT_MS).then(() => "timeout" as const),
-      ]);
-
-      if (raced === "timeout") {
-        pendingScreening = true;
-        // Keep the same promise alive after the response returns
-        after(async () => {
-          await work;
-        });
-      }
-    }
+    });
   }
 
   revalidatePath("/candidates");
+  revalidatePath(`/candidates/${candidateId}`);
   return {
     success: true,
     candidateId,
-    pendingScreening,
+    pendingScreening: false,
   };
 }
 

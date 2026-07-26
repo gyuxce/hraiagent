@@ -53,73 +53,27 @@ export async function screenCandidateWithAI(params: {
       ? params.requirements.map((r, i) => `${i + 1}. ${r}`).join("\n")
       : "(tidak ada requirement spesifik)";
 
-  const jobDesc = (params.jobDescription || "").trim().slice(0, 1200);
-  const prompt = `Kamu adalah asisten screening rekrutmen untuk agency di Indonesia.
-Nilai kecocokan kandidat vs job dengan rubrik jelas dan konsisten (jangan pelit berlebihan, jangan murah tanpa bukti).
+  const jobDesc = (params.jobDescription || "").trim().slice(0, 900);
+  const prompt = `Screen CV vs job. JSON only. Bahasa Indonesia. Cepat & ringkas.
 
-JOB TITLE: ${params.jobTitle}
-
-JOB DESCRIPTION:
-${jobDesc || "(tidak ada)"}
-
-REQUIREMENTS (anggap poin awal = must-have kecuali jelas optional):
+JOB: ${params.jobTitle}
+DESC: ${jobDesc || "-"}
+MUST-HAVE:
 ${requirementsText}
 
-DOCUMENT TEXT:
-${params.cvText.slice(0, 8000)}
+CV:
+${params.cvText.slice(0, 5500)}
 
-Rubrik (tiap dimensi 0-100 integer):
-- must_have: kecocokan requirement wajib / inti peran
-- skills: tools/teknis/kompetensi yang disebut
-- experience: relevansi durasi + tanggung jawab serupa
-- education: kesesuaian pendidikan/sertifikasi bila relevan (jika job tidak minta, boleh 70 netral)
-- overall_fit: penilaian holistik setelah mempertimbangkan gaps / red flags
+Bobot score: must_have40 + skills25 + experience25 + education10.
+Band: 40-59 lemah; 60-69 cukup; 70-79 layak interview; 80+ sangat cocok.
+Must-have terbukti → biasanya ≥65. Gap motivasi = gaps (bukan red_flag keras).
+parsed.name = nama orang saja (BUKAN HP, BUKAN "Keahlian Teratas"/section header).
 
-Hitung score akhir (0-100) dengan bobot:
-must_have 40% + skills 25% + experience 25% + education 10%.
-Lalu sesuaikan ±5 jika ada red_flags berat / strengths luar biasa.
-Jangan bulatkan ke angka "cantik" (80/85/90) tanpa bukti di CV.
-
-Band skor (samakan dengan tone summary):
-- 0: bukan CV / tidak relevan
-- 40-59: lemah / cadangan — jangan tulis "layak interview" di sini
-- 60-69: cukup — bisa interview dengan catatan
-- 70-79: baik — layak interview / lanjut
-- 80+: sangat cocok — bukti kuat di CV
-
-Aturan:
-1. Bukan CV → score=0, semua dimensi 0, is_cv=false.
-2. Missing must-have penting → must_have ≤40 dan score akhir biasanya ≤58.
-3. Must-have terpenuhi dengan bukti konkret (durasi + tanggung jawab relevan) → must_have biasanya ≥70; score akhir biasanya ≥65 meski ada gap motivasi/career path.
-4. Gap "risiko motivasi / ingin pindah jalur" = gaps, BUKAN red_flags keras, kecuali kandidat jelas menolak peran.
-5. CV generik tanpa bukti → 40-60. Score ≥75 hanya jika bukti jelas.
-6. parsed.name harus nama orang (bukan nomor HP / email / label Mobile).
-7. strengths/gaps/red_flags singkat, Bahasa Indonesia, berbasis bukti.
-
-JSON saja (tanpa markdown):
 {
-  "score": 72,
-  "is_cv": true,
-  "summary": "2-4 kalimat: cocok di mana, kurang di mana, rekomendasi singkat",
-  "breakdown": {
-    "must_have": 78,
-    "skills": 70,
-    "experience": 74,
-    "education": 70,
-    "overall_fit": 72,
-    "strengths": ["..."],
-    "gaps": ["..."],
-    "red_flags": ["..."]
-  },
-  "parsed": {
-    "name": "...",
-    "email": "...",
-    "phone": "...",
-    "skills": ["..."],
-    "experience": ["..."],
-    "education": ["..."],
-    "summary": "ringkasan profil singkat"
-  }
+  "score":72,"is_cv":true,
+  "summary":"2-3 kalimat",
+  "breakdown":{"must_have":78,"skills":70,"experience":74,"education":70,"overall_fit":72,"strengths":[".."],"gaps":[".."],"red_flags":[]},
+  "parsed":{"name":"..","email":"..","phone":"..","skills":[".."],"experience":[".."],"education":[".."],"summary":".."}
 }`;
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -137,13 +91,13 @@ JSON saja (tanpa markdown):
     },
     body: JSON.stringify({
       model,
-      temperature: 0.2,
-      max_tokens: 1400,
+      temperature: 0.1,
+      max_tokens: 900,
       messages: [
         {
           role: "system",
           content:
-            "You are an Indonesian recruitment screener. Be evidence-based and consistent: strong must-have match should not score in the mid-50s. Valid JSON only. Be concise.",
+            "Recruitment screener. Evidence-based, concise JSON only. Never put section headers or phone numbers in parsed.name.",
         },
         { role: "user", content: prompt },
       ],
@@ -222,8 +176,18 @@ JSON saja (tanpa markdown):
       name: (() => {
         const n = strOrNull(p.name);
         if (!n) return null;
-        // Reject phone-as-name from model parse
-        if (/^[\d+\s().-]{8,}/.test(n) || /\b(mobile|whatsapp|phone|hp)\b/i.test(n) && /\d{6,}/.test(n)) {
+        if (/^[\d+\s().-]{8,}/.test(n)) return null;
+        if (
+          /\b(mobile|whatsapp|phone|hp)\b/i.test(n) &&
+          /\d{6,}/.test(n)
+        ) {
+          return null;
+        }
+        if (
+          /\b(keahlian|skills?|teratas|pengalaman|experience|pendidikan|education|ringkasan|summary|top\s*skills?)\b/i.test(
+            n
+          )
+        ) {
           return null;
         }
         return n;

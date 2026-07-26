@@ -43,10 +43,10 @@ export default function RootLayout({
   return (
     <html
       lang="id"
-      className={`${manrope.variable} h-full antialiased`}
+      className={`${manrope.variable} ${manrope.className} h-full antialiased`}
       style={{ colorScheme: "light" }}
     >
-      <body className="min-h-full flex flex-col bg-mist text-ink font-sans">
+      <body className={`${manrope.className} min-h-full flex flex-col bg-mist text-ink font-sans`}>
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>

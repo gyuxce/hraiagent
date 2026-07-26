@@ -1,33 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  /* Cullr — charcoal + deep lagoon + slate secondary (muted for light UI) */
-  --ink: #0e1116;
-  --ink-soft: #1c2430;
-  --mist: #f1f3f6;
-  --mist-deep: #dde2e8;
-  --paper: #f7f8fa;
+  /* Cullr marketing / auth — ink + coral (classic warmth) */
+  --ink: #0b1f33;
+  --ink-soft: #16324a;
+  --mist: #eef3f7;
+  --mist-deep: #d9e4ee;
+  --paper: #f7f4ef;
   --surface: #ffffff;
-  --line: #d7dde5;
-  --muted: #5c6675;
-  /* Primary accent — deeper, less neon on light backgrounds */
-  --accent: #0d6f64;
-  --accent-hover: #0a5a51;
-  --accent-soft: #e4f0ee;
-  /* Secondary — cool slate for secondary CTAs / links */
-  --secondary: #4a5d6e;
-  --secondary-hover: #3a4a58;
-  --secondary-soft: #e8edf1;
-  --teal: #0d6f64;
-  --teal-soft: #e4f0ee;
-  --good: #1f7a5c;
-  --warn: #a67b1f;
+  --line: #d5e0ea;
+  --muted: #5b6b7c;
+  --accent: #e85d4c;
+  --accent-hover: #d14a3a;
+  --accent-soft: #fde8e4;
+  --secondary: #1f7a6c;
+  --secondary-hover: #186257;
+  --secondary-soft: #e3f3ef;
+  --teal: #1f7a6c;
+  --teal-soft: #e3f3ef;
+  --good: #1f7a6c;
+  --warn: #b7791f;
   --bad: #c53030;
+  --focus-ring: rgba(232, 93, 76, 0.22);
+  --file-btn-hover: #f8d4ce;
 
   --background: var(--mist);
   --foreground: var(--ink);
   --radius: 0.75rem;
-  --shadow-soft: 0 1px 0 rgba(14, 17, 22, 0.04), 0 12px 32px rgba(14, 17, 22, 0.06);
+  --shadow-soft: 0 1px 0 rgba(11, 31, 51, 0.04), 0 12px 32px rgba(11, 31, 51, 0.06);
 }
 
 @theme inline {
@@ -235,12 +235,12 @@ textarea:focus {
   line-height: 1.65;
 }
 
-/* Atmosphere helpers — deep lagoon + slate secondary */
+/* Atmosphere helpers — coral + teal */
 .bg-atmosphere {
   background:
-    radial-gradient(1000px 500px at 8% -8%, rgba(13, 111, 100, 0.12), transparent 55%),
-    radial-gradient(900px 480px at 92% 0%, rgba(74, 93, 110, 0.1), transparent 50%),
-    linear-gradient(165deg, #f7f8fa 0%, #f1f3f6 45%, #e8eef2 100%);
+    radial-gradient(1000px 500px at 8% -8%, rgba(232, 93, 76, 0.16), transparent 55%),
+    radial-gradient(900px 480px at 92% 0%, rgba(31, 122, 108, 0.12), transparent 50%),
+    linear-gradient(165deg, #f7f4ef 0%, #eef3f7 45%, #e4edf5 100%);
 }
 
 .bg-grid-fade {
@@ -326,10 +326,43 @@ textarea:focus {
 }
 
 /**
- * Dashboard grey theme — Cursor-like soft charcoal (not pure black).
- * Scoped so marketing / auth / public interview stay light.
+ * Dashboard themes — light (coral) + dark grey (Cursor-like).
+ * Toggle via data-theme on .dashboard-theme. Marketing stays on :root.
  */
 .dashboard-theme {
+  background: var(--mist);
+  color: var(--ink);
+}
+
+.dashboard-theme[data-theme="light"] {
+  color-scheme: light;
+  --ink: #0b1f33;
+  --ink-soft: #16324a;
+  --mist: #f3f5f7;
+  --mist-deep: #e4e9ef;
+  --paper: #f7f4ef;
+  --surface: #ffffff;
+  --line: #d5e0ea;
+  --muted: #5b6b7c;
+  --accent: #e85d4c;
+  --accent-hover: #d14a3a;
+  --accent-soft: #fde8e4;
+  --secondary: #1f7a6c;
+  --secondary-hover: #186257;
+  --secondary-soft: #e3f3ef;
+  --teal: #1f7a6c;
+  --teal-soft: #e3f3ef;
+  --good: #1f7a6c;
+  --warn: #b7791f;
+  --bad: #c53030;
+  --sidebar: #0b1f33;
+  --focus-ring: rgba(232, 93, 76, 0.22);
+  --file-btn-hover: #f8d4ce;
+  --shadow-soft: 0 1px 0 rgba(11, 31, 51, 0.04), 0 12px 32px rgba(11, 31, 51, 0.06);
+  --scrollbar-thumb: #c5ced8;
+}
+
+.dashboard-theme[data-theme="dark"] {
   color-scheme: dark;
   --ink: #e8eaed;
   --ink-soft: #c5c9d1;
@@ -339,29 +372,41 @@ textarea:focus {
   --surface: #3a3c42;
   --line: #4d5058;
   --muted: #9aa0a8;
-  --accent: #3aa894;
-  --accent-hover: #4db8a4;
-  --accent-soft: #2f4541;
-  --secondary: #8b95a3;
-  --secondary-hover: #b0b8c3;
-  --secondary-soft: #3d434d;
-  --teal: #3aa894;
-  --teal-soft: #2f4541;
+  --accent: #f07a6a;
+  --accent-hover: #e85d4c;
+  --accent-soft: #4a3532;
+  --secondary: #3d9b8c;
+  --secondary-hover: #5ab3a4;
+  --secondary-soft: #2f403d;
+  --teal: #3d9b8c;
+  --teal-soft: #2f403d;
   --good: #5cbf90;
   --warn: #d4a84b;
   --bad: #e06b6b;
-  --background: var(--mist);
-  --foreground: var(--ink);
   --sidebar: #232528;
-  --focus-ring: rgba(58, 168, 148, 0.28);
-  --file-btn-hover: #3a5550;
+  --focus-ring: rgba(240, 122, 106, 0.28);
+  --file-btn-hover: #5a403c;
   --shadow-soft: 0 1px 0 rgba(0, 0, 0, 0.25), 0 14px 36px rgba(0, 0, 0, 0.28);
-  background: var(--mist);
-  color: var(--ink);
+  --scrollbar-thumb: #555861;
 }
 
 .dashboard-theme .dashboard-sidebar {
   background: var(--sidebar);
+  color: #e8eaed;
+}
+
+.dashboard-theme[data-theme="light"] .dashboard-sidebar {
+  color: #f3f5f7;
+}
+
+.dashboard-theme .dashboard-sidebar .text-ink {
+  color: #f3f5f7 !important;
+}
+.dashboard-theme .dashboard-sidebar .text-muted {
+  color: rgba(243, 245, 247, 0.55) !important;
+}
+.dashboard-theme .dashboard-sidebar .text-accent {
+  color: #f07a6a !important;
 }
 
 .dashboard-theme .bg-white {
@@ -469,8 +514,25 @@ textarea:focus {
   height: 10px;
 }
 .dashboard-theme ::-webkit-scrollbar-thumb {
-  background: #555861;
+  background: var(--scrollbar-thumb, #555861);
   border-radius: 999px;
+}
+
+@keyframes spin-soft {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 999px;
+  animation: spin-soft 0.7s linear infinite;
+  vertical-align: -0.15em;
 }
 .dashboard-theme ::-webkit-scrollbar-track {
   background: transparent;

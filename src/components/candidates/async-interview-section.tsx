@@ -143,7 +143,7 @@ export function AsyncInterviewSection({
       toast.error(result.error);
       return;
     }
-    toast.success("Analisis AI selesai");
+    toast.success("Skor siap");
     router.refresh();
   }
 
@@ -194,10 +194,9 @@ export function AsyncInterviewSection({
       )}
 
       {analyzingPending && (
-        <div className="mb-4 rounded-lg border border-accent/25 bg-accent-soft/70 px-4 py-3 text-sm text-ink-soft">
-          Analisis AI interview sedang diproses di background — halaman ini
-          refresh otomatis tiap beberapa detik (hingga ~2 menit). Tidak perlu
-          refresh manual terus-menerus.
+        <div className="mb-4 flex items-center gap-2 text-sm text-muted">
+          <span className="loading-spinner" aria-hidden />
+          <span>Memproses…</span>
         </div>
       )}
 
@@ -273,8 +272,9 @@ export function AsyncInterviewSection({
                           </span>
                         )}
                         {s.status === "completed" && s.overall_score == null && (
-                          <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
-                            Analisis pending
+                          <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
+                            <span className="loading-spinner !h-3 !w-3" aria-hidden />
+                            …
                           </span>
                         )}
                         {s.needs_manual_review && (
@@ -333,9 +333,14 @@ export function AsyncInterviewSection({
                             onClick={() => handleAnalyze(s.id)}
                             className="btn-primary px-3 py-1.5 text-xs disabled:opacity-50"
                           >
-                            {busyId === s.id
-                              ? "Analisis..."
-                              : "Jalankan Analisis AI"}
+                            {busyId === s.id ? (
+                              <span className="inline-flex items-center gap-1.5">
+                                <span className="loading-spinner !h-3 !w-3" />
+                                …
+                              </span>
+                            ) : (
+                              "Hitung skor"
+                            )}
                           </button>
                         )}
                       {canWrite &&
@@ -347,7 +352,7 @@ export function AsyncInterviewSection({
                             onClick={() => handleAnalyze(s.id)}
                             className="btn-secondary px-3 py-1.5 text-xs disabled:opacity-50"
                           >
-                            {busyId === s.id ? "..." : "Re-analisis"}
+                            {busyId === s.id ? "…" : "Hitung ulang"}
                           </button>
                         )}
                     </div>

@@ -5,34 +5,26 @@
 
 ## Voice
 - Short, decisive, international (not slang-local)
-- Product UI may stay bilingual; brand lines prefer English
+- Product UI bilingual (ID / EN) via dashboard language toggle
 
 ## Visual
 | Token | Role |
 |---|---|
-| Charcoal `#0E1116` | Marketing ink / hero |
-| Mist `#F1F3F6` | Marketing / auth background |
-| Deep lagoon `#0D6F64` | Primary accent (light UI) |
-| Slate `#4A5D6E` | Secondary (light UI) |
+| Charcoal / ink `#0B1F33` | Marketing ink / light-theme sidebar |
+| Coral `#E85D4C` | Primary accent / CTA (classic warmth) |
+| Teal `#1F7A6C` | Secondary support |
+| Mist / grey canvas | Light `#F3F5F7` · Dark `#2B2D31` |
 
-### Dashboard grey theme (Cursor-like)
-Scoped via `.dashboard-theme` — soft charcoal, not pure black.
-
-| Token | Value |
-|---|---|
-| Page `#2B2D31` | Main canvas |
-| Sidebar `#232528` | Nav rail |
-| Surface `#3A3C42` | Panels / cards |
-| Line `#4D5058` | Borders |
-| Accent `#3AA894` | CTA / active (brighter on grey) |
+### Dashboard themes
+See [ARCHITECTURE-Theme-i18n.md](./ARCHITECTURE-Theme-i18n.md) for light/dark tokens, toggles, and i18n.
 
 ## Mark
-Open ring + vertical **cut** in deep lagoon — a cull gap, not a funnel or badge collage.
+Open ring + vertical **coral cut** — a cull gap, not a funnel.
 
 ## Type
 - **Display / wordmark:** Space Grotesk
 - **UI body:** Plus Jakarta Sans
 
 ## Do / don’t
-- Do: wordmark + simple mark, full-bleed hero, one job per section, pair accent + secondary
-- Don’t: neon teal on light UI, funnel icons, coral-cream defaults, purple gradients, `-ly/-fy` naming
+- Do: coral accent, dual theme, short loading states (spinner)
+- Don’t: neon teal-only UI, long “AI processing…” copy in the dashboard, purple gradients

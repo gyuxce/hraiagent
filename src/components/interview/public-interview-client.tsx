@@ -745,9 +745,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
           <p className="mt-3 text-muted">
             Jawaban video untuk posisi{" "}
             <strong className="text-ink">{data.job.title}</strong> sudah
-            terkirim. Analisis AI diproses di background — recruiter bisa refresh
-            halaman kandidat atau klik <em>Jalankan Analisis AI</em> jika skor
-            belum muncul.
+            terkirim. Tim rekrutmen akan meninjau hasilnya.
           </p>
         </div>
       </div>

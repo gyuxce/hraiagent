@@ -20,6 +20,9 @@ import {
 } from "lucide-react";
 import { BRAND } from "@/lib/brand";
 import { BrandLogo } from "@/components/brand/brand-logo";
+import { DashboardPrefsProvider, useDashboardPrefs } from "@/components/prefs/dashboard-prefs";
+import { PrefsToggles } from "@/components/prefs/prefs-toggles";
+import { navLabel } from "@/lib/i18n/dictionary";
 
 export type NavIconName =
   | "home"
@@ -33,7 +36,8 @@ export type NavIconName =
   | "userCog";
 
 export type NavItem = {
-  name: string;
+  /** i18n key suffix under nav.*, e.g. "dashboard" */
+  key: string;
   href: string;
   icon: NavIconName;
 };
@@ -60,7 +64,7 @@ type Props = {
   children: ReactNode;
 };
 
-export function DashboardShell({
+function ShellInner({
   navigation,
   fullName,
   roleLabel,
@@ -71,6 +75,7 @@ export function DashboardShell({
 }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { theme, locale, tr } = useDashboardPrefs();
 
   useEffect(() => {
     setOpen(false);
@@ -95,7 +100,7 @@ export function DashboardShell({
   }
 
   const sidebar = (
-    <div className="dashboard-sidebar flex h-full w-72 max-w-[85vw] flex-col text-ink md:w-64">
+    <div className="dashboard-sidebar flex h-full w-72 max-w-[85vw] flex-col md:w-64">
       <div className="flex h-14 items-center justify-between px-5 md:h-16 md:px-6">
         <Link
           href="/dashboard"
@@ -106,20 +111,20 @@ export function DashboardShell({
         </Link>
         <button
           type="button"
-          className="rounded-md p-2 text-muted hover:bg-white/8 hover:text-ink md:hidden"
+          className="rounded-md p-2 text-white/60 hover:bg-white/10 hover:text-white md:hidden"
           onClick={() => setOpen(false)}
-          aria-label="Tutup menu"
+          aria-label={tr("nav.closeMenu")}
         >
           <X className="h-5 w-5" />
         </button>
       </div>
 
       {isClientViewer && (
-        <div className="mx-4 mb-2 rounded-lg border border-line bg-white/5 px-3 py-2">
+        <div className="mx-4 mb-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-accent">
-            Client portal
+            {tr("nav.clientPortal")}
           </p>
-          <p className="mt-0.5 text-xs text-muted">Read-only progress view</p>
+          <p className="mt-0.5 text-xs text-white/55">{tr("nav.readOnly")}</p>
         </div>
       )}
 
@@ -127,45 +132,47 @@ export function DashboardShell({
         {navigation.map((item) => {
           const active = isActive(item.href);
           const Icon = ICONS[item.icon] || Home;
+          const label = navLabel(item.key, locale);
           return (
             <Link
-              key={item.name}
+              key={item.href}
               href={item.href}
               prefetch
               onClick={() => setOpen(false)}
               className={`group flex items-center gap-x-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 active
-                  ? "bg-white/10 text-ink"
-                  : "text-muted hover:bg-white/6 hover:text-ink"
+                  ? "bg-white/12 text-white"
+                  : "text-white/70 hover:bg-white/8 hover:text-white"
               }`}
             >
               <Icon
                 className={`h-4 w-4 transition-colors ${
                   active
                     ? "text-accent"
-                    : "text-muted group-hover:text-accent"
+                    : "text-white/40 group-hover:text-accent"
                 }`}
               />
-              {item.name}
+              {label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-line p-4">
+      <div className="space-y-3 border-t border-white/10 p-4">
+        <PrefsToggles />
         <div className="flex items-center gap-x-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent">
             {initials}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-ink">{fullName}</p>
-            <p className="truncate text-xs text-muted">{roleLabel}</p>
+            <p className="truncate text-sm font-medium text-white">{fullName}</p>
+            <p className="truncate text-xs text-white/45">{roleLabel}</p>
           </div>
           <form action={logoutAction}>
             <button
               type="submit"
-              className="rounded-md p-1.5 text-muted transition hover:bg-white/8 hover:text-ink"
-              title="Keluar"
+              className="rounded-md p-1.5 text-white/45 transition hover:bg-white/10 hover:text-white"
+              title={tr("nav.logout")}
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -176,7 +183,10 @@ export function DashboardShell({
   );
 
   return (
-    <div className="dashboard-theme flex h-screen bg-mist text-ink">
+    <div
+      className="dashboard-theme flex h-screen bg-mist text-ink"
+      data-theme={theme}
+    >
       <aside className="hidden border-r border-line md:flex">{sidebar}</aside>
 
       {open && (
@@ -184,7 +194,7 @@ export function DashboardShell({
           <button
             type="button"
             className="absolute inset-0 bg-black/50"
-            aria-label="Tutup overlay"
+            aria-label={tr("nav.closeMenu")}
             onClick={() => setOpen(false)}
           />
           <aside className="absolute inset-y-0 left-0 shadow-soft animate-rise">
@@ -199,17 +209,25 @@ export function DashboardShell({
             type="button"
             onClick={() => setOpen(true)}
             className="rounded-lg border border-line bg-surface p-2 text-ink"
-            aria-label="Buka menu"
+            aria-label={tr("nav.openMenu")}
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="min-w-0">
-            <BrandLogo variant="light" size="sm" />
+          <div className="min-w-0 flex-1">
+            <BrandLogo
+              variant={theme === "dark" ? "light" : "dark"}
+              size="sm"
+            />
             <p className="mt-0.5 truncate text-[11px] text-muted">
               {BRAND.slogan}
             </p>
           </div>
+          <PrefsToggles compact />
         </header>
+
+        <div className="hidden items-center justify-end gap-2 border-b border-line bg-mist/60 px-6 py-2 md:flex lg:px-8 xl:px-10">
+          <PrefsToggles />
+        </div>
 
         <main className="flex-1 overflow-y-auto">
           <div className="w-full px-4 py-5 sm:px-6 sm:py-8 lg:px-8 xl:px-10">
@@ -218,5 +236,13 @@ export function DashboardShell({
         </main>
       </div>
     </div>
+  );
+}
+
+export function DashboardShell(props: Props) {
+  return (
+    <DashboardPrefsProvider>
+      <ShellInner {...props} />
+    </DashboardPrefsProvider>
   );
 }

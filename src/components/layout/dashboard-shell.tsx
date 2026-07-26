@@ -71,10 +71,12 @@ export function DashboardShell({
 }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [navPath, setNavPath] = useState(pathname);
 
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  if (pathname !== navPath) {
+    setNavPath(pathname);
+    if (open) setOpen(false);
+  }
 
   useEffect(() => {
     if (!open) return;

@@ -139,17 +139,19 @@ export function CandidatesTable({
 
   return (
     <div>
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="page-kicker">{canWrite ? "Pipeline" : "Client portal"}</p>
-          <h1 className="page-title">Candidates</h1>
+      <div className="page-header">
+        <div className="min-w-0">
+          <p className="page-kicker">
+            {canWrite ? "Pipeline" : "Portal klien"}
+          </p>
+          <h1 className="page-title">Kandidat</h1>
           <p className="page-sub">
             {canWrite
               ? "Screening AI, status ATS, import CSV, dan AI Interview Async (di halaman Detail)"
-              : "Daftar kandidat yang diajukan agency — tampilan read-only"}
+              : "Daftar kandidat yang diajukan agency — tampilan hanya baca"}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="page-header-actions">
           {canWrite && (
             <>
               <Link href="/compare" className="btn-secondary">
@@ -167,7 +169,7 @@ export function CandidatesTable({
                 onClick={() => setModalOpen(true)}
                 className="btn-primary"
               >
-                + Tambah Kandidat
+                + Tambah kandidat
               </button>
             </>
           )}
@@ -261,7 +263,7 @@ export function CandidatesTable({
                           value={c.status}
                           disabled={busyId === c.id}
                           onChange={(e) => handleStatus(c.id, e.target.value)}
-                          className={`rounded-md border-0 px-2 py-1 text-xs font-medium ${
+                          className={`btn-chip border-0 ${
                             statusStyle[c.status] || statusStyle.submitted
                           }`}
                         >
@@ -273,7 +275,7 @@ export function CandidatesTable({
                         </select>
                       ) : (
                         <span
-                          className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${
+                          className={`btn-chip ${
                             statusStyle[c.status] || statusStyle.submitted
                           }`}
                         >
@@ -282,7 +284,7 @@ export function CandidatesTable({
                       )}
                       <Link
                         href={`/candidates/${c.id}`}
-                        className="inline-flex items-center rounded-md border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-ink hover:bg-mist"
+                        className="btn-chip btn-chip-ghost"
                       >
                         Detail
                       </Link>
@@ -291,7 +293,7 @@ export function CandidatesTable({
                           type="button"
                           disabled={busyId === c.id}
                           onClick={() => handleRescreen(c.id)}
-                          className="inline-flex items-center rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
+                          className="btn-chip btn-chip-accent"
                         >
                           {busyId === c.id ? "..." : "Re-AI"}
                         </button>
@@ -303,7 +305,7 @@ export function CandidatesTable({
                           onClick={() =>
                             setPendingDelete({ id: c.id, name: c.name })
                           }
-                          className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold text-bad hover:bg-accent-soft disabled:opacity-50"
+                          className="btn-chip btn-chip-danger"
                         >
                           Hapus
                         </button>
@@ -393,7 +395,7 @@ export function CandidatesTable({
                           <div className="flex flex-wrap items-center gap-2">
                             <Link
                               href={`/candidates/${c.id}`}
-                              className="inline-flex items-center rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs font-semibold text-ink hover:bg-mist"
+                              className="btn-chip btn-chip-ghost"
                             >
                               Detail
                             </Link>
@@ -402,7 +404,7 @@ export function CandidatesTable({
                                 type="button"
                                 disabled={busyId === c.id}
                                 onClick={() => handleRescreen(c.id)}
-                                className="inline-flex items-center rounded-md bg-accent px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-accent-hover disabled:opacity-50"
+                                className="btn-chip btn-chip-accent"
                                 title="Hitung ulang skor"
                               >
                                 {busyId === c.id ? "Memproses..." : "Re-AI"}
@@ -415,7 +417,7 @@ export function CandidatesTable({
                                 onClick={() =>
                                   setPendingDelete({ id: c.id, name: c.name })
                                 }
-                                className="inline-flex items-center rounded-md px-2.5 py-1.5 text-xs font-semibold text-bad hover:bg-accent-soft disabled:opacity-50"
+                                className="btn-chip btn-chip-danger"
                               >
                                 Hapus
                               </button>

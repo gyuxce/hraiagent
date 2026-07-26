@@ -64,16 +64,18 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between gap-4">
-        <div>
-          <p className="page-kicker">Portfolio</p>
-          <h1 className="page-title">Clients</h1>
+      <div className="page-header">
+        <div className="min-w-0">
+          <p className="page-kicker">Portofolio</p>
+          <h1 className="page-title">Klien</h1>
           <p className="page-sub">Kelola data perusahaan klien agency</p>
         </div>
         {canWrite && (
-          <button type="button" onClick={openCreate} className="btn-primary">
-            + Tambah Client
-          </button>
+          <div className="page-header-actions">
+            <button type="button" onClick={openCreate} className="btn-primary">
+              + Tambah klien
+            </button>
+          </div>
         )}
       </div>
 

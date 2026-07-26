@@ -4,19 +4,20 @@
 **Cullr** from *cull*: select the strongest from a larger set. Built for recruiting teams that need to cut noise fast.
 
 ## Voice
-- Short, decisive, international (not slang-local)
-- Product UI bilingual (ID / EN) via dashboard language toggle
+- Short, decisive
+- Product UI: **Bahasa Indonesia**
+- Marketing may use tight English brand lines; dashboard copy stays Indonesian
 
 ## Visual
 | Token | Role |
 |---|---|
-| Charcoal / ink `#0B1F33` | Marketing ink / light-theme sidebar |
-| Coral `#E85D4C` | Primary accent / CTA (classic warmth) |
-| Teal `#1F7A6C` | Secondary support |
-| Mist / grey canvas | Light `#F3F5F7` · Dark `#2B2D31` |
+| Ink `#0B1F33` | Text + sidebar |
+| Coral `#E85D4C` | **Primary** accent / CTA |
+| Teal `#1F7A6C` | **Secondary** support |
+| Mist `#EEF3F7` | Page canvas |
+| White `#FFFFFF` | Panels |
 
-### Dashboard themes
-See [ARCHITECTURE-Theme-i18n.md](./ARCHITECTURE-Theme-i18n.md) for light/dark tokens, toggles, and i18n.
+Single light theme only — see [ARCHITECTURE-UI-Cullr.md](./ARCHITECTURE-UI-Cullr.md).
 
 ## Mark
 Open ring + vertical **coral cut** — a cull gap, not a funnel.
@@ -26,5 +27,5 @@ Open ring + vertical **coral cut** — a cull gap, not a funnel.
 - **UI body:** Plus Jakarta Sans
 
 ## Do / don’t
-- Do: coral accent, dual theme, short loading states (spinner)
-- Don’t: neon teal-only UI, long “AI processing…” copy in the dashboard, purple gradients
+- Do: coral primary, teal secondary, consistent control heights, quiet loading spinners
+- Don’t: dark mode toggle, bilingual chrome toggles, purple gradients, neon teal-only UI

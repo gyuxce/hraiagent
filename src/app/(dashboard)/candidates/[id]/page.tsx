@@ -151,7 +151,7 @@ export default async function CandidateDetailPage({ params }: Props) {
           href="/candidates"
           className="text-sm font-semibold text-accent hover:text-accent-hover"
         >
-          ← Candidates
+          ← Kandidat
         </Link>
       </div>
 

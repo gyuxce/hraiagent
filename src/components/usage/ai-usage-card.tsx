@@ -18,7 +18,7 @@ export function AiUsageCard({ usage }: Props) {
   if (usage.soft) {
     return (
       <div className="surface-panel mb-8 p-5">
-        <p className="page-kicker">AI usage</p>
+        <p className="page-kicker">Pemakaian AI</p>
         <h2 className="mt-1 font-display text-lg font-bold text-ink">
           Metering belum aktif
         </h2>
@@ -52,7 +52,9 @@ export function AiUsageCard({ usage }: Props) {
     <div className="surface-panel mb-8 overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4 sm:px-6">
         <div>
-          <p className="page-kicker">AI usage · {monthLabel(usage.year_month)}</p>
+          <p className="page-kicker">
+            Pemakaian AI · {monthLabel(usage.year_month)}
+          </p>
           <h2 className="mt-1 font-display text-lg font-bold text-ink">
             Kuota screening bulanan
           </h2>

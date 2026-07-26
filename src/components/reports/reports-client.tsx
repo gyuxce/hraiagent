@@ -46,9 +46,9 @@ export function ReportsClient({ clients, stats }: Props) {
     <div className="space-y-8">
       <div>
         <p className="page-kicker">
-          {clients.length === 1 ? "Client portal" : "Client delivery"}
+          {clients.length === 1 ? "Portal klien" : "Delivery klien"}
         </p>
-        <h1 className="page-title">Reports</h1>
+        <h1 className="page-title">Laporan</h1>
         <p className="page-sub">
           {clients.length === 1
             ? "Unduh progress kandidat untuk perusahaan Anda (CSV)"

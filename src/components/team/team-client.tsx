@@ -154,10 +154,10 @@ export function TeamClient({
   return (
     <div className="space-y-8">
       <div>
-        <p className="page-kicker">Access</p>
-        <h1 className="page-title">Team</h1>
+        <p className="page-kicker">Akses</p>
+        <h1 className="page-title">Tim</h1>
         <p className="page-sub">
-          Undang recruiter atau client viewer (read-only) ke agency
+          Undang recruiter atau viewer klien (hanya baca) ke agency
         </p>
       </div>
 

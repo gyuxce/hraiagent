@@ -78,7 +78,7 @@ export function InterviewIdentityPanel({
         </p>
       )}
 
-      <div className="mt-3 grid gap-3 text-xs text-muted sm:grid-cols-3">
+      <div className="mt-3 grid gap-3 text-xs text-muted sm:grid-cols-2">
         <p>
           Kode tantangan:{" "}
           <strong className="text-ink">{challengeCode || "—"}</strong>
@@ -92,8 +92,12 @@ export function InterviewIdentityPanel({
         <p>
           Face match: <strong className="text-ink">{matchLabel}</strong>
         </p>
-        <p className="sm:col-span-1">{faceMatchNote || "—"}</p>
       </div>
+      {faceMatchNote && (
+        <p className="prose-read mt-2 rounded-md bg-mist px-3 py-2 text-xs text-ink-soft">
+          {faceMatchNote}
+        </p>
+      )}
 
       {error && !mediaPurgedAt && (
         <p className="mt-2 text-xs text-bad">{error}</p>

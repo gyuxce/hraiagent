@@ -78,12 +78,24 @@ export function missingAiKeyMessage(): string {
   ].join(" ");
 }
 
-/** Cheap vision model for selfie ↔ video face check (OpenRouter). */
+/**
+ * Vision model for selfie ↔ video face check (OpenRouter).
+ * Fallback list is tried in order when the primary returns 404.
+ */
 export function getVisionModel(): string {
   return (
-    cleanEnv(process.env.AI_VISION_MODEL) ||
-    "google/gemini-2.0-flash-001"
+    cleanEnv(process.env.AI_VISION_MODEL) || "google/gemini-2.5-flash"
   );
+}
+
+export function getVisionModelFallbacks(): string[] {
+  const primary = getVisionModel();
+  const extras = [
+    "google/gemini-2.5-flash",
+    "openai/gpt-4o-mini",
+    "google/gemini-flash-1.5",
+  ];
+  return [primary, ...extras.filter((m) => m !== primary)];
 }
 
 export function detectProvider(): AiProviderConfig {

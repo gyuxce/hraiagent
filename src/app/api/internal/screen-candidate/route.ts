@@ -6,6 +6,10 @@ import {
   quotaExceededMessage,
 } from "@/lib/ai/usage";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  looksLikePersonName,
+  looksLikePhone,
+} from "@/lib/cv/contact-hints";
 import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
@@ -177,11 +181,21 @@ export async function POST(request: Request) {
 
     if (row) {
       const patch: Record<string, string> = {};
-      if ((!row.name || row.name === "Kandidat") && result.parsed.name) {
-        patch.name = result.parsed.name;
+      const currentName = String(row.name || "").trim();
+      const aiName = String(result.parsed.name || "").trim();
+      const nameBad =
+        !currentName ||
+        currentName === "Kandidat" ||
+        looksLikePhone(currentName) ||
+        !looksLikePersonName(currentName);
+      if (nameBad && aiName && looksLikePersonName(aiName)) {
+        patch.name = aiName;
       }
       if (!row.email && result.parsed.email) patch.email = result.parsed.email;
       if (!row.phone && result.parsed.phone) patch.phone = result.parsed.phone;
+      if (looksLikePhone(currentName) && !row.phone && !patch.phone) {
+        patch.phone = currentName.replace(/\s*\([^)]*\)\s*/g, "").trim();
+      }
       if (Object.keys(patch).length) {
         await db.from("candidates").update(patch).eq("id", candidateId);
       }

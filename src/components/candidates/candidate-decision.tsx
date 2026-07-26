@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { updateCandidateStatus } from "@/lib/actions/candidates";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { EditContactForm } from "@/components/candidates/edit-contact-form";
 
 type Props = {
   candidateId: string;
@@ -29,13 +30,19 @@ function scoreTone(score: number | null): {
   if (score == null) {
     return { wrap: "bg-mist text-muted", label: "Belum di-screen" };
   }
-  if (score >= 75) {
+  if (score >= 70) {
     return { wrap: "bg-teal-soft text-teal", label: "Layak lanjut interview" };
   }
-  if (score >= 50) {
+  if (score >= 60) {
     return {
       wrap: "bg-mist-deep text-ink-soft",
-      label: "Pertimbangkan dengan hati-hati",
+      label: "Bisa interview dengan catatan",
+    };
+  }
+  if (score >= 40) {
+    return {
+      wrap: "bg-amber-50 text-amber-800",
+      label: "Lemah / cadangan",
     };
   }
   return { wrap: "bg-accent-soft text-accent-hover", label: "Kurang cocok" };
@@ -84,6 +91,16 @@ export function CandidateDecision({
           </p>
           <p className="mt-1 text-sm text-ink-soft">{jobLabel}</p>
           <p className="mt-1 text-xs capitalize text-muted">Status: {status}</p>
+          {canWrite && (
+            <div className="mt-2">
+              <EditContactForm
+                candidateId={candidateId}
+                name={name}
+                email={email}
+                phone={phone}
+              />
+            </div>
+          )}
         </div>
 
         <div className="shrink-0 text-left lg:text-right">

@@ -261,7 +261,7 @@ export function ScheduleClient({
           <button
             type="submit"
             disabled={busy || candidates.length === 0}
-            className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+            className="rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
           >
             Simpan Jadwal
           </button>
@@ -341,7 +341,7 @@ export function ScheduleClient({
                         <button
                           type="button"
                           onClick={() => downloadIcs(s)}
-                          className="font-medium text-blue-600"
+                          className="font-medium text-accent"
                         >
                           .ics
                         </button>

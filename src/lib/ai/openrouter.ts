@@ -55,7 +55,7 @@ export async function screenCandidateWithAI(params: {
 
   const jobDesc = (params.jobDescription || "").trim().slice(0, 1200);
   const prompt = `Kamu adalah asisten screening rekrutmen untuk agency di Indonesia.
-Nilai kecocokan kandidat vs job dengan RUBRIK KETAT (jangan murah angka).
+Nilai kecocokan kandidat vs job dengan rubrik jelas dan konsisten (jangan pelit berlebihan, jangan murah tanpa bukti).
 
 JOB TITLE: ${params.jobTitle}
 
@@ -73,31 +73,40 @@ Rubrik (tiap dimensi 0-100 integer):
 - skills: tools/teknis/kompetensi yang disebut
 - experience: relevansi durasi + tanggung jawab serupa
 - education: kesesuaian pendidikan/sertifikasi bila relevan (jika job tidak minta, boleh 70 netral)
-- overall_fit: penilaian holistik setelah mempertimbangkan red flags
+- overall_fit: penilaian holistik setelah mempertimbangkan gaps / red flags
 
 Hitung score akhir (0-100) dengan bobot:
 must_have 40% + skills 25% + experience 25% + education 10%.
 Lalu sesuaikan ±5 jika ada red_flags berat / strengths luar biasa.
 Jangan bulatkan ke angka "cantik" (80/85/90) tanpa bukti di CV.
 
+Band skor (samakan dengan tone summary):
+- 0: bukan CV / tidak relevan
+- 40-59: lemah / cadangan — jangan tulis "layak interview" di sini
+- 60-69: cukup — bisa interview dengan catatan
+- 70-79: baik — layak interview / lanjut
+- 80+: sangat cocok — bukti kuat di CV
+
 Aturan:
 1. Bukan CV → score=0, semua dimensi 0, is_cv=false.
-2. Missing must-have penting → must_have ≤35 dan score akhir biasanya ≤55.
-3. CV generik tanpa bukti konkret → score cenderung 40-60, bukan 80+.
-4. Hanya score tinggi (≥75) jika ada bukti jelas di teks CV.
-5. strengths/gaps/red_flags singkat, Bahasa Indonesia, berbasis bukti.
+2. Missing must-have penting → must_have ≤40 dan score akhir biasanya ≤58.
+3. Must-have terpenuhi dengan bukti konkret (durasi + tanggung jawab relevan) → must_have biasanya ≥70; score akhir biasanya ≥65 meski ada gap motivasi/career path.
+4. Gap "risiko motivasi / ingin pindah jalur" = gaps, BUKAN red_flags keras, kecuali kandidat jelas menolak peran.
+5. CV generik tanpa bukti → 40-60. Score ≥75 hanya jika bukti jelas.
+6. parsed.name harus nama orang (bukan nomor HP / email / label Mobile).
+7. strengths/gaps/red_flags singkat, Bahasa Indonesia, berbasis bukti.
 
 JSON saja (tanpa markdown):
 {
-  "score": 62,
+  "score": 72,
   "is_cv": true,
   "summary": "2-4 kalimat: cocok di mana, kurang di mana, rekomendasi singkat",
   "breakdown": {
-    "must_have": 55,
+    "must_have": 78,
     "skills": 70,
-    "experience": 60,
-    "education": 75,
-    "overall_fit": 62,
+    "experience": 74,
+    "education": 70,
+    "overall_fit": 72,
     "strengths": ["..."],
     "gaps": ["..."],
     "red_flags": ["..."]
@@ -134,7 +143,7 @@ JSON saja (tanpa markdown):
         {
           role: "system",
           content:
-            "You are a strict Indonesian recruitment screener. Prefer evidence over generosity. Valid JSON only. Be concise.",
+            "You are an Indonesian recruitment screener. Be evidence-based and consistent: strong must-have match should not score in the mid-50s. Valid JSON only. Be concise.",
         },
         { role: "user", content: prompt },
       ],
@@ -177,8 +186,9 @@ JSON saja (tanpa markdown):
   const modelScore = clampScore(parseScore(parsed.score));
   // Prefer weighted rubric; blend lightly with model score for stability
   let score = clampScore(Math.round(weighted * 0.75 + modelScore * 0.25));
-  if (breakdown.red_flags.length >= 2) {
-    score = Math.min(score, 55);
+  // Soft cap only for many hard red flags — career-motivation gaps alone shouldn't crush a strong CS fit
+  if (breakdown.red_flags.length >= 3) {
+    score = Math.min(score, 62);
   }
 
   let summary =
@@ -209,7 +219,15 @@ JSON saja (tanpa markdown):
     summary,
     breakdown,
     parsed: {
-      name: strOrNull(p.name),
+      name: (() => {
+        const n = strOrNull(p.name);
+        if (!n) return null;
+        // Reject phone-as-name from model parse
+        if (/^[\d+\s().-]{8,}/.test(n) || /\b(mobile|whatsapp|phone|hp)\b/i.test(n) && /\d{6,}/.test(n)) {
+          return null;
+        }
+        return n;
+      })(),
       email: strOrNull(p.email),
       phone: strOrNull(p.phone),
       skills: strArray(p.skills),

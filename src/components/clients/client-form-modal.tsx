@@ -89,7 +89,7 @@ export function ClientFormModal({ open, onClose, client }: Props) {
               type="text"
               required
               defaultValue={client?.name || ""}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               placeholder="PT Contoh Indonesia"
             />
           </div>
@@ -106,7 +106,7 @@ export function ClientFormModal({ open, onClose, client }: Props) {
               name="industry"
               type="text"
               defaultValue={client?.industry || ""}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               placeholder="Technology, Finance, dll"
             />
           </div>
@@ -123,7 +123,7 @@ export function ClientFormModal({ open, onClose, client }: Props) {
               name="contact_email"
               type="email"
               defaultValue={client?.contact_email || ""}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               placeholder="hr@perusahaan.com"
             />
           </div>
@@ -140,7 +140,7 @@ export function ClientFormModal({ open, onClose, client }: Props) {
               name="contact_phone"
               type="text"
               defaultValue={client?.contact_phone || ""}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               placeholder="08123456789"
             />
           </div>
@@ -156,7 +156,7 @@ export function ClientFormModal({ open, onClose, client }: Props) {
             <button
               type="submit"
               disabled={loading}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
             >
               {loading ? "Menyimpan..." : isEdit ? "Simpan" : "Tambah"}
             </button>

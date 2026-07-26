@@ -82,7 +82,7 @@ export function InterviewNotesSection({
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+            className="rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-hover"
           >
             + Tambah Catatan
           </button>
@@ -151,11 +151,11 @@ export function InterviewNotesSection({
               </div>
 
               {note.ai_summary && (
-                <div className="mb-4 rounded-lg bg-blue-50 p-4">
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-blue-700">
+                <div className="mb-4 rounded-lg bg-accent-soft p-4">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-accent-hover">
                     AI Summary
                   </p>
-                  <pre className="prose-read whitespace-pre-wrap font-sans text-blue-950">
+                  <pre className="prose-read whitespace-pre-wrap font-sans text-ink">
                     {note.ai_summary}
                   </pre>
                 </div>
@@ -256,7 +256,7 @@ export function InterviewNotesSection({
                   name="run_ai"
                   value="true"
                   defaultChecked
-                  className="rounded border-gray-300 text-blue-600"
+                  className="rounded border-gray-300 text-accent"
                 />
                 Generate AI summary
               </label>
@@ -271,7 +271,7 @@ export function InterviewNotesSection({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+                  className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
                 >
                   {loading ? "Menyimpan..." : "Simpan"}
                 </button>

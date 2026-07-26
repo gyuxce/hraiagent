@@ -55,9 +55,11 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
     );
     router.refresh();
     onClose();
-    // Refresh again shortly so AI score can appear without manual reload
+    // Poll a few times so AI score appears without manual reload
     if (result?.pendingScreening) {
-      setTimeout(() => router.refresh(), 8000);
+      setTimeout(() => router.refresh(), 6000);
+      setTimeout(() => router.refresh(), 15000);
+      setTimeout(() => router.refresh(), 30000);
     }
   }
 

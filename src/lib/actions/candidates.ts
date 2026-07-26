@@ -39,13 +39,97 @@ async function getCurrentProfile() {
   return requireAgencyContext();
 }
 
+function hasServiceRole(): boolean {
+  return Boolean(
+    (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim() &&
+      (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim()
+  );
+}
+
+function backgroundAuthToken(): string | null {
+  const token = (
+    process.env.CRON_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    ""
+  ).trim();
+  return token || null;
+}
+
+function appBaseUrl(): string {
+  const explicit = (process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
+  if (explicit) return explicit;
+  const vercel = (process.env.VERCEL_URL || "").trim().replace(/\/$/, "");
+  if (vercel) return vercel.startsWith("http") ? vercel : `https://${vercel}`;
+  return "http://localhost:3000";
+}
+
+/** Prefer service-role client — cookie session often dies inside after(). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function dbForBackground(fallback: any) {
-  try {
+async function dbForBackground(fallback?: any) {
+  if (hasServiceRole()) {
     return createAdminClient();
-  } catch {
-    return fallback ?? (await createClient());
   }
+  return fallback ?? (await createClient());
+}
+
+async function markScreeningFailure(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  candidateId: string,
+  message: string
+) {
+  const { error } = await db
+    .from("candidates")
+    .update({ ai_summary: message })
+    .eq("id", candidateId);
+  if (error) {
+    console.error("[screen] failed to write error summary", candidateId, error);
+  }
+  revalidatePath("/candidates");
+  revalidatePath(`/candidates/${candidateId}`);
+}
+
+/**
+ * Hit internal route (fresh maxDuration + admin client).
+ * Falls back to inline screening if fetch fails.
+ */
+async function triggerBackgroundScreen(params: {
+  candidateId: string;
+  userId: string;
+  inline: () => Promise<void>;
+}) {
+  const token = backgroundAuthToken();
+  if (token && hasServiceRole()) {
+    try {
+      const res = await fetch(`${appBaseUrl()}/api/internal/screen-candidate`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          candidateId: params.candidateId,
+          userId: params.userId,
+        }),
+        cache: "no-store",
+      });
+      if (res.ok) return;
+      const body = await res.text().catch(() => "");
+      console.error(
+        "[screen] internal route failed",
+        res.status,
+        body.slice(0, 500)
+      );
+      // Route already tried to persist errors; only fall back if it never ran AI.
+      if (res.status === 401 || res.status >= 500) {
+        await params.inline();
+      }
+      return;
+    } catch (err) {
+      console.error("[screen] internal fetch error", formatError(err));
+    }
+  }
+  await params.inline();
 }
 
 async function runScreeningInBackground(params: {
@@ -57,9 +141,19 @@ async function runScreeningInBackground(params: {
   jobDescription: string;
   requirements: string[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: any;
+  supabase?: any;
 }) {
   const db = await dbForBackground(params.supabase);
+
+  if (!hasServiceRole() && !params.supabase) {
+    await markScreeningFailure(
+      db,
+      params.candidateId,
+      "AI screening gagal: SUPABASE_SERVICE_ROLE_KEY belum di-set di Vercel — skor tidak bisa disimpan di background."
+    );
+    return;
+  }
+
   const quota = await consumeAiQuota(db, {
     agencyId: params.agencyId,
     eventType: "cv_screen",
@@ -69,12 +163,11 @@ async function runScreeningInBackground(params: {
   });
 
   if (!quota.ok && !quota.soft) {
-    await db
-      .from("candidates")
-      .update({ ai_summary: quotaExceededMessage(quota) })
-      .eq("id", params.candidateId);
-    revalidatePath("/candidates");
-    revalidatePath(`/candidates/${params.candidateId}`);
+    await markScreeningFailure(
+      db,
+      params.candidateId,
+      quotaExceededMessage(quota)
+    );
     return;
   }
 
@@ -86,7 +179,7 @@ async function runScreeningInBackground(params: {
       requirements: params.requirements,
     });
 
-    await db
+    const { error: upErr } = await db
       .from("candidates")
       .update({
         ai_score: result.score,
@@ -99,6 +192,19 @@ async function runScreeningInBackground(params: {
         manual_score_updated_at: null,
       })
       .eq("id", params.candidateId);
+
+    if (upErr) {
+      await markScreeningFailure(
+        db,
+        params.candidateId,
+        "AI screening gagal simpan skor: " +
+          upErr.message +
+          (hasServiceRole()
+            ? ""
+            : " (set SUPABASE_SERVICE_ROLE_KEY di Vercel lalu Redeploy)")
+      );
+      return;
+    }
 
     // Enrich empty contact fields from AI parse if still blank
     const { data: row } = await db
@@ -119,12 +225,12 @@ async function runScreeningInBackground(params: {
       }
     }
   } catch (err) {
-    await db
-      .from("candidates")
-      .update({
-        ai_summary: "AI screening gagal: " + formatError(err),
-      })
-      .eq("id", params.candidateId);
+    await markScreeningFailure(
+      db,
+      params.candidateId,
+      "AI screening gagal: " + formatError(err)
+    );
+    return;
   }
 
   revalidatePath("/candidates");
@@ -224,6 +330,9 @@ export async function createCandidate(formData: FormData) {
   }
 
   const pendingAi = Boolean(runAi && cvText);
+  // Background path needs service role — otherwise cookie session dies in after().
+  const useBackground = pendingAi && hasServiceRole();
+
   const { data: inserted, error } = await supabase
     .from("candidates")
     .insert({
@@ -235,7 +344,11 @@ export async function createCandidate(formData: FormData) {
       cv_file_path: cvFilePath,
       parsed_data: null,
       ai_score: null,
-      ai_summary: pendingAi ? PENDING_SUMMARY : null,
+      ai_summary: useBackground
+        ? PENDING_SUMMARY
+        : pendingAi
+          ? "AI screening sedang diproses…"
+          : null,
       ai_score_breakdown: null,
       status: "submitted",
     })
@@ -250,25 +363,36 @@ export async function createCandidate(formData: FormData) {
     : [];
 
   if (pendingAi) {
-    after(async () => {
-      await runScreeningInBackground({
-        candidateId,
-        agencyId: profile.agency_id,
-        userId: profile.id,
-        cvText,
-        jobTitle: job.title,
-        jobDescription: job.description || "",
-        requirements,
-        supabase,
+    const screenParams = {
+      candidateId,
+      agencyId: profile.agency_id,
+      userId: profile.id,
+      cvText,
+      jobTitle: job.title as string,
+      jobDescription: (job.description || "") as string,
+      requirements,
+      supabase,
+    };
+
+    if (useBackground) {
+      after(async () => {
+        await triggerBackgroundScreen({
+          candidateId,
+          userId: profile.id,
+          inline: () => runScreeningInBackground(screenParams),
+        });
       });
-    });
+    } else {
+      // No service role → run inline while request still has auth (slower, but skor muncul).
+      await runScreeningInBackground(screenParams);
+    }
   }
 
   revalidatePath("/candidates");
   return {
     success: true,
     candidateId,
-    pendingScreening: pendingAi,
+    pendingScreening: useBackground,
   };
 }
 
@@ -346,17 +470,7 @@ export async function rescreenCandidate(id: string) {
 
   if (!job) return { error: "Job terkait tidak ditemukan" };
 
-  // Mark pending immediately so UI can close; AI runs in after()
-  await supabase
-    .from("candidates")
-    .update({
-      ai_summary: PENDING_SUMMARY,
-      ai_score: null,
-      ai_score_breakdown: null,
-      status: "submitted",
-    })
-    .eq("id", id);
-
+  const useBackground = hasServiceRole();
   const cvPath = candidate.cv_file_path as string;
   const agencyId = profile.agency_id;
   const userId = profile.id;
@@ -364,23 +478,31 @@ export async function rescreenCandidate(id: string) {
   const jobDescription = job.description || "";
   const requirements = Array.isArray(job.requirements) ? job.requirements : [];
 
-  after(async () => {
+  await supabase
+    .from("candidates")
+    .update({
+      ai_summary: useBackground
+        ? PENDING_SUMMARY
+        : "AI screening sedang diproses…",
+      ai_score: null,
+      ai_score_breakdown: null,
+      status: "submitted",
+    })
+    .eq("id", id);
+
+  const runInlineFromCv = async () => {
     const db = await dbForBackground(supabase);
     const { data: fileData, error: dlErr } = await db.storage
       .from("cvs")
       .download(cvPath);
 
     if (dlErr || !fileData) {
-      await db
-        .from("candidates")
-        .update({
-          ai_summary:
-            "AI screening gagal: tidak bisa download CV — " +
-            (dlErr?.message || "unknown"),
-        })
-        .eq("id", id);
-      revalidatePath("/candidates");
-      revalidatePath(`/candidates/${id}`);
+      await markScreeningFailure(
+        db,
+        id,
+        "AI screening gagal: tidak bisa download CV — " +
+          (dlErr?.message || "unknown")
+      );
       return;
     }
 
@@ -390,12 +512,11 @@ export async function rescreenCandidate(id: string) {
     try {
       cvText = await extractTextFromFile(buffer, "application/pdf", fileName);
     } catch (err) {
-      await db
-        .from("candidates")
-        .update({ ai_summary: "AI screening gagal: " + formatError(err) })
-        .eq("id", id);
-      revalidatePath("/candidates");
-      revalidatePath(`/candidates/${id}`);
+      await markScreeningFailure(
+        db,
+        id,
+        "AI screening gagal: " + formatError(err)
+      );
       return;
     }
 
@@ -409,11 +530,23 @@ export async function rescreenCandidate(id: string) {
       requirements,
       supabase: db,
     });
-  });
+  };
+
+  if (useBackground) {
+    after(async () => {
+      await triggerBackgroundScreen({
+        candidateId: id,
+        userId,
+        inline: runInlineFromCv,
+      });
+    });
+  } else {
+    await runInlineFromCv();
+  }
 
   revalidatePath("/candidates");
   revalidatePath(`/candidates/${id}`);
-  return { success: true, pendingScreening: true };
+  return { success: true, pendingScreening: useBackground };
 }
 
 export async function overrideCandidateScore(formData: FormData) {

@@ -10,7 +10,7 @@ export function createAdminClient() {
 
   if (!url || !key) {
     throw new Error(
-      "SUPABASE_SERVICE_ROLE_KEY (dan NEXT_PUBLIC_SUPABASE_URL) wajib di-set untuk purge video."
+      "SUPABASE_SERVICE_ROLE_KEY (dan NEXT_PUBLIC_SUPABASE_URL) wajib di-set untuk job background (screening CV / purge video)."
     );
   }
 

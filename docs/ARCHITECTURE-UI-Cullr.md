@@ -2,22 +2,26 @@
 
 Single light theme. Indonesian product UI. No dark/light toggle. No ID/EN toggle.
 
-## Brand color roles
+## Brand color roles (Clownfish)
 
 | Role | Token | Hex | Used for |
 |---|---|---|---|
-| **Primary** | `--accent` | `#E85D4C` | CTA, links, focus ring, mark cut, key actions |
-| Primary hover | `--accent-hover` | `#D14A3A` | Hover / pressed primary |
-| Primary soft | `--accent-soft` | `#FDE8E4` | Soft chips, file button, danger hover wash |
-| **Secondary** | `--secondary` / `--teal` | `#1F7A6C` | Secondary buttons, success support, teal chips |
-| Secondary soft | `--secondary-soft` | `#E3F3EF` | Secondary button fill, support surfaces |
-| Ink | `--ink` | `#0B1F33` | Body text, sidebar background |
-| Page | `--mist` | `#EEF3F7` | App canvas |
+| **Primary** | `--accent` | `#F06A33` | CTA, links, focus, mark cut |
+| Primary hover | `--accent-hover` | `#D95A28` | Hover / pressed |
+| Primary soft | `--accent-soft` | `#FDE6D9` | Soft chips, danger wash |
+| **Secondary** | `--secondary` | `#2A9B8C` | Secondary buttons, success text |
+| Teal bright | `--teal` | `#7BE2D1` | Highlights, soft support |
+| Secondary soft | `--secondary-soft` | `#D8F5F0` | Secondary button fill |
+| Ink | `--ink` | `#0C0E14` | Body text, sidebar |
+| Navy | `--ink-soft` / `--navy` | `#2E3858` | Soft text, structure |
+| Page | `--mist` | `#E4E9F0` | App canvas |
 | Surface | `--surface` | `#FFFFFF` | Panels / modals |
-| Line | `--line` | `#D5E0EA` | Borders |
-| Muted | `--muted` | `#5B6B7C` | Secondary copy |
+| Line | `--line` | `#C8D0DC` | Borders |
+| Bad | `--bad` | `#C4473A` | Destructive (coral family) |
 
-**Rule:** Coral is the brand signal. Teal never replaces coral for primary CTAs.
+**Rule:** Coral is the brand signal. Teal never replaces coral for primary CTAs. Avoid indigo / unrelated greens.
+
+Source constants: `src/lib/brand-palette.ts`.
 
 ## Layout
 
@@ -34,18 +38,24 @@ DashboardShell
 
 - Desktop: sidebar always visible; content scrolls in `main`
 - Mobile: sticky top bar; drawer locks body scroll while open; `100dvh` + `overscroll-contain`
-- Page content uses `.page-frame` padding — never full-bleed tables without horizontal overflow control
+- Wide tables: outer panel + **inner** `overflow-x-auto` (or mobile card carousel with `snap-x`)
+
+## Dense results (interview / ranking)
+
+Prefer:
+- Compact **key/value table** for status, score, dates
+- **Bullet points** from `summaryPoints()` — not a wall of prose
+- Identity block as its own table; strip `[Identitas]` from AI summary text
+- Chip actions (`.btn-chip`) instead of mixed button sizes
 
 ## Controls (size system)
 
 | Class | Height | Use |
 |---|---|---|
 | `.btn-primary` / `.btn-secondary` | `--control-h` (40px) | Page CTAs |
-| `.btn-chip` (+ ghost / accent / danger) | `--control-h-sm` (32px) | Row actions (Detail, Re-AI, Hapus) |
+| `.btn-chip` (+ ghost / accent / danger) | `--control-h-sm` (32px) | Row actions |
 | `.control-icon` | 40×40 | Menu, close, logout |
 | `.field-input` | ≥ 40px | Forms |
-
-Mobile: `.page-header-actions` wraps evenly; buttons share a consistent min width so they don’t look random tall/short.
 
 ## Page chrome
 
@@ -60,30 +70,20 @@ Mobile: `.page-header-actions` wraps evenly; buttons share a consistent min widt
 </div>
 ```
 
-One job per section: kicker + title + one short sub + one CTA group.
-
 ## Language
 
 - Product UI copy: **Bahasa Indonesia**
 - Nav labels hard-coded in `src/app/(dashboard)/layout.tsx`
-- Marketing homepage may keep short English brand voice; dashboard stays ID
 
 ## Files
 
 | Path | Role |
 |---|---|
-| `src/app/globals.css` | Tokens, buttons, page chrome, shell remaps |
+| `src/app/globals.css` | Tokens, buttons, page chrome |
+| `src/lib/brand-palette.ts` | Named Clownfish swatches |
 | `src/components/layout/dashboard-shell.tsx` | App chrome |
-| `src/app/(dashboard)/layout.tsx` | Nav items (ID) |
-| `docs/BRAND-Cullr.md` | Brand meaning + mark |
-
-## Out of scope (removed)
-
-- Dark theme / `data-theme`
-- `localStorage` theme or locale prefs
-- `src/components/prefs/*`
-- `src/lib/i18n/*`
+| `src/lib/cv/summary-points.ts` | Bullet summary helper |
 
 ## Loading UX
 
-Prefer `.loading-spinner` + short “Memproses…” / “Menyimpan…”. Avoid long “AI sedang diproses…” copy in summaries.
+Prefer `.loading-spinner` + short “Memproses…” / “Menyimpan…”.

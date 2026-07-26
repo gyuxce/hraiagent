@@ -9,7 +9,7 @@ import {
 } from "@/lib/actions/async-interview";
 import { InterviewIdentityPanel } from "@/components/candidates/interview-identity-panel";
 import { useToast } from "@/components/ui/toast";
-import { shortSummary } from "@/lib/cv/short-text";
+import { summaryPoints } from "@/lib/cv/summary-points";
 
 export type AsyncSessionRow = {
   id: string;
@@ -28,22 +28,26 @@ export type AsyncSessionRow = {
   identity_summary?: string | null;
   selfie_path?: string | null;
   media_purged_at?: string | null;
-  questions?: { id: string; question_text: string; focus_area: string | null; sort_order: number }[];
+  questions?: {
+    id: string;
+    question_text: string;
+    focus_area: string | null;
+    sort_order: number;
+  }[];
 };
 
 type Props = {
   candidateId: string;
   sessions: AsyncSessionRow[];
   canWrite?: boolean;
-  /** Surfaced when Supabase select fails (e.g. missing migration columns). */
   loadError?: string | null;
 };
 
 function scoreBadgeClass(score: number): string {
-  if (score <= 39) return "bg-red-50 text-red-700";
-  if (score <= 59) return "bg-amber-50 text-amber-800";
-  if (score <= 74) return "bg-slate-100 text-slate-700";
-  return "bg-green-50 text-green-700";
+  if (score <= 39) return "bg-accent-soft text-accent-hover";
+  if (score <= 59) return "bg-mist-deep text-ink-soft";
+  if (score <= 74) return "bg-secondary-soft text-secondary-hover";
+  return "bg-secondary-soft text-secondary-hover";
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -96,7 +100,6 @@ export function AsyncInterviewSection({
       Boolean(s.completed_at)
   );
 
-  // Auto-refresh while background AI analysis is still running
   useEffect(() => {
     if (!analyzingPending) return;
     const tick = window.setInterval(() => {
@@ -163,32 +166,33 @@ export function AsyncInterviewSection({
 
   return (
     <div id="async-interview" className="mt-8 scroll-mt-20">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
+      <div className="page-header mb-4">
+        <div className="min-w-0">
           <p className="page-kicker">Fase 2.5 · skor terpisah dari CV</p>
           <h2 className="font-display text-lg font-bold text-ink">
             AI Interview Async
           </h2>
-          <p className="mt-1 text-sm text-muted">
-            Skor AI = dari <strong>transkrip suara → teks</strong> (bukan analisis
-            video mahal). Video bukti bisa dihapus otomatis setelah X hari
-            (atur di Team → Retensi video); skor & transkrip tetap aman.
+          <p className="page-sub">
+            Skor dari transkrip suara. Video bisa dihapus otomatis (Tim → Retensi
+            video); skor & transkrip tetap aman.
           </p>
         </div>
         {canWrite && (
-          <button
-            type="button"
-            onClick={handleCreate}
-            disabled={loading}
-            className="btn-primary disabled:opacity-50"
-          >
-            {loading ? "Membuat link..." : "+ Buat Interview Async"}
-          </button>
+          <div className="page-header-actions">
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={loading}
+              className="btn-primary disabled:opacity-50"
+            >
+              {loading ? "Membuat link..." : "+ Buat Interview Async"}
+            </button>
+          </div>
         )}
       </div>
 
       {(loadError || error) && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 rounded-lg bg-accent-soft p-3 text-sm text-accent-hover">
           {loadError || error}
         </div>
       )}
@@ -201,8 +205,8 @@ export function AsyncInterviewSection({
       )}
 
       {inviteUrl && (
-        <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
-          <p className="text-sm font-medium text-indigo-900">
+        <div className="mb-4 rounded-lg border border-line bg-secondary-soft p-4">
+          <p className="text-sm font-medium text-ink">
             Link interview siap dikirim ke kandidat:
           </p>
           <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -210,38 +214,28 @@ export function AsyncInterviewSection({
               readOnly
               value={inviteUrl}
               onFocus={(e) => e.currentTarget.select()}
-              className="w-full flex-1 rounded border border-indigo-200 bg-white px-2 py-1.5 text-xs text-indigo-900"
+              className="field-input mt-0 w-full flex-1 !py-2 text-xs"
             />
             <button
               type="button"
               onClick={() => handleCopy(inviteUrl)}
-              className="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500"
+              className="btn-primary shrink-0 !min-h-9 px-3 text-sm"
             >
-              {copied === inviteUrl ? "✓ Tersalin" : "Salin Link"}
+              {copied === inviteUrl ? "✓ Tersalin" : "Salin link"}
             </button>
           </div>
-          <p className="mt-2 text-xs text-indigo-700">
-            Tip: klik kotak link (otomatis select) lalu Ctrl+C jika tombol gagal.
-          </p>
         </div>
       )}
 
       {sessions.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
+        <div className="rounded-xl border border-dashed border-line bg-surface p-8 text-center text-sm text-muted">
           {loadError ? (
             <>
-              Sesi gagal dimuat (bukan kosong). Perbaiki error di atas, lalu
-              refresh. Cek juga Supabase Table{" "}
-              <code className="text-xs">async_interview_sessions</code>.
+              Sesi gagal dimuat. Perbaiki error di atas, lalu refresh.
             </>
           ) : canWrite ? (
             <>
-              Belum ada sesi untuk kandidat ini. Klik{" "}
-              <strong>+ Buat Interview Async</strong>. Jika di Supabase Table
-              Editor ada skor tapi di sini kosong: pastikan{" "}
-              <code className="text-xs">candidate_id</code> row itu sama dengan
-              kandidat ini, dan <code className="text-xs">agency_id</code> cocok
-              dengan akun login Anda (RLS).
+              Belum ada sesi. Klik <strong>+ Buat Interview Async</strong>.
             </>
           ) : (
             "Belum ada sesi interview async untuk kandidat ini."
@@ -253,139 +247,146 @@ export function AsyncInterviewSection({
             const url = `${base}/interview/${s.invite_token}`;
             const questions = s.questions || [];
             const isOpen = expanded === s.id;
+            const points = summaryPoints(s.overall_summary, 4);
 
             return (
-              <div
-                key={s.id}
-                className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-              >
-                <div className="flex flex-col gap-3">
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0 w-full sm:flex-1">
-                      <p className="text-sm font-semibold capitalize text-gray-900">
-                        Status: {s.status}
-                        {s.overall_score != null && (
-                          <span
-                            className={`ml-2 rounded-full px-2 py-0.5 text-xs ${scoreBadgeClass(s.overall_score)}`}
-                          >
-                            Score {s.overall_score}/100
-                          </span>
-                        )}
-                        {s.status === "completed" && s.overall_score == null && (
-                          <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
-                            <span className="loading-spinner !h-3 !w-3" aria-hidden />
-                            …
-                          </span>
-                        )}
-                        {s.needs_manual_review && (
-                          <span className="ml-2 rounded-full bg-orange-50 px-2 py-0.5 text-xs text-orange-700">
-                            Review identitas
-                          </span>
-                        )}
-                        {s.media_purged_at && (
-                          <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
-                            Media dihapus (retensi)
-                          </span>
-                        )}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-400">
-                        Dibuat {new Date(s.created_at).toLocaleString("id-ID")}
-                        {s.expires_at &&
-                          ` · Expired ${new Date(s.expires_at).toLocaleDateString("id-ID")}`}
-                        {questions.length > 0 &&
-                          ` · ${questions.length} pertanyaan`}
-                        {s.media_purged_at &&
-                          ` · Media dibersihkan ${new Date(s.media_purged_at).toLocaleDateString("id-ID")}`}
-                      </p>
-                    </div>
-
-                    <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(url)}
-                        className="btn-secondary px-3 py-1.5 text-xs"
-                      >
-                        {copied === url ? "✓ Tersalin" : "Salin link"}
-                      </button>
-                      <Link
-                        href={url}
-                        target="_blank"
-                        className="btn-secondary px-3 py-1.5 text-xs"
-                      >
-                        Buka preview
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setExpanded(isOpen ? null : s.id)
-                        }
-                        className="btn-secondary px-3 py-1.5 text-xs"
-                      >
-                        {isOpen ? "Sembunyikan soal" : "Lihat soal AI"}
-                      </button>
-                      {canWrite &&
-                        (s.status === "completed" ||
-                          s.status === "in_progress") &&
-                        s.overall_score == null && (
-                          <button
-                            type="button"
-                            disabled={busyId === s.id}
-                            onClick={() => handleAnalyze(s.id)}
-                            className="btn-primary px-3 py-1.5 text-xs disabled:opacity-50"
-                          >
-                            {busyId === s.id ? (
-                              <span className="inline-flex items-center gap-1.5">
-                                <span className="loading-spinner !h-3 !w-3" />
-                                …
-                              </span>
-                            ) : (
-                              "Hitung skor"
-                            )}
-                          </button>
-                        )}
-                      {canWrite &&
-                        s.status === "completed" &&
-                        s.overall_score != null && (
-                          <button
-                            type="button"
-                            disabled={busyId === s.id}
-                            onClick={() => handleAnalyze(s.id)}
-                            className="btn-secondary px-3 py-1.5 text-xs disabled:opacity-50"
-                          >
-                            {busyId === s.id ? "…" : "Hitung ulang"}
-                          </button>
-                        )}
-                    </div>
-                  </div>
-
-                  <input
-                    readOnly
-                    value={url}
-                    onFocus={(e) => e.currentTarget.select()}
-                    className="w-full min-w-0 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-700"
-                  />
-
-                  {s.overall_summary && (
-                    <div className="w-full min-w-0">
-                      <p className="text-sm text-ink-soft">
-                        {shortSummary(s.overall_summary, 180)}
-                      </p>
-                      {s.overall_summary.length > 180 && (
-                        <details className="mt-1">
-                          <summary className="cursor-pointer text-xs font-semibold text-accent hover:text-accent-hover">
-                            Lihat ringkasan lengkap
-                          </summary>
-                          <p className="prose-read mt-2 whitespace-pre-wrap text-ink-soft">
-                            {s.overall_summary}
-                          </p>
-                        </details>
+              <div key={s.id} className="surface-panel p-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[18rem] text-left text-sm">
+                    <tbody className="divide-y divide-line">
+                      <tr>
+                        <th className="w-[32%] py-2 pr-3 text-xs font-medium text-muted">
+                          Status
+                        </th>
+                        <td className="py-2 capitalize text-ink">
+                          {s.status}
+                          {s.needs_manual_review && (
+                            <span className="ml-2 rounded-md bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent-hover">
+                              Review identitas
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                      <tr>
+                        <th className="py-2 pr-3 text-xs font-medium text-muted">
+                          Skor
+                        </th>
+                        <td className="py-2">
+                          {s.overall_score != null ? (
+                            <span
+                              className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${scoreBadgeClass(s.overall_score)}`}
+                            >
+                              {s.overall_score}/100
+                            </span>
+                          ) : s.status === "completed" ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs text-muted">
+                              <span className="loading-spinner !h-3 !w-3" />
+                              Memproses…
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted">—</span>
+                          )}
+                        </td>
+                      </tr>
+                      <tr>
+                        <th className="py-2 pr-3 text-xs font-medium text-muted">
+                          Dibuat
+                        </th>
+                        <td className="py-2 text-xs text-ink-soft">
+                          {new Date(s.created_at).toLocaleString("id-ID")}
+                        </td>
+                      </tr>
+                      {s.expires_at && (
+                        <tr>
+                          <th className="py-2 pr-3 text-xs font-medium text-muted">
+                            Kedaluwarsa
+                          </th>
+                          <td className="py-2 text-xs text-ink-soft">
+                            {new Date(s.expires_at).toLocaleDateString("id-ID")}
+                          </td>
+                        </tr>
                       )}
-                    </div>
-                  )}
+                      {questions.length > 0 && (
+                        <tr>
+                          <th className="py-2 pr-3 text-xs font-medium text-muted">
+                            Soal
+                          </th>
+                          <td className="py-2 text-xs text-ink-soft">
+                            {questions.length} pertanyaan
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
 
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(url)}
+                    className="btn-chip btn-chip-ghost"
+                  >
+                    {copied === url ? "✓ Tersalin" : "Salin link"}
+                  </button>
+                  <Link
+                    href={url}
+                    target="_blank"
+                    className="btn-chip btn-chip-ghost"
+                  >
+                    Buka preview
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setExpanded(isOpen ? null : s.id)}
+                    className="btn-chip btn-chip-ghost"
+                  >
+                    {isOpen ? "Sembunyikan detail" : "Lihat detail"}
+                  </button>
+                  {canWrite &&
+                    (s.status === "completed" || s.status === "in_progress") &&
+                    s.overall_score == null && (
+                      <button
+                        type="button"
+                        disabled={busyId === s.id}
+                        onClick={() => handleAnalyze(s.id)}
+                        className="btn-chip btn-chip-accent"
+                      >
+                        {busyId === s.id ? "…" : "Hitung skor"}
+                      </button>
+                    )}
+                  {canWrite &&
+                    s.status === "completed" &&
+                    s.overall_score != null && (
+                      <button
+                        type="button"
+                        disabled={busyId === s.id}
+                        onClick={() => handleAnalyze(s.id)}
+                        className="btn-chip btn-chip-ghost"
+                      >
+                        {busyId === s.id ? "…" : "Hitung ulang"}
+                      </button>
+                    )}
+                </div>
+
+                <input
+                  readOnly
+                  value={url}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="mt-3 w-full min-w-0 rounded-lg border border-line bg-mist/50 px-2.5 py-2 text-xs text-ink-soft"
+                />
+
+                {points.length > 0 && (
+                  <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-ink-soft">
+                    {points.map((p, idx) => (
+                      <li key={`${s.id}-p-${idx}`} className="leading-relaxed">
+                        {p}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
                 {isOpen && (
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-4 space-y-3 border-t border-line pt-4">
                     <InterviewIdentityPanel
                       sessionId={s.id}
                       challengeCode={s.challenge_code}
@@ -396,16 +397,16 @@ export function AsyncInterviewSection({
                       identitySummary={s.identity_summary}
                       mediaPurgedAt={s.media_purged_at}
                     />
-                    <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Pertanyaan yang di-generate AI
+                    <div className="rounded-lg border border-line bg-mist/30 p-4">
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                        Pertanyaan AI
                       </p>
                       {questions.length === 0 ? (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted">
                           Pertanyaan tidak termuat. Refresh halaman.
                         </p>
                       ) : (
-                        <ol className="list-decimal space-y-2 pl-5 text-sm text-gray-800">
+                        <ol className="list-decimal space-y-2 pl-5 text-sm text-ink">
                           {questions
                             .slice()
                             .sort((a, b) => a.sort_order - b.sort_order)
@@ -413,7 +414,7 @@ export function AsyncInterviewSection({
                               <li key={q.id}>
                                 <span>{q.question_text}</span>
                                 {q.focus_area && (
-                                  <span className="ml-2 rounded-full bg-white px-1.5 py-0.5 text-xs capitalize text-gray-500">
+                                  <span className="ml-2 rounded-md bg-surface px-1.5 py-0.5 text-xs capitalize text-muted">
                                     {q.focus_area}
                                   </span>
                                 )}

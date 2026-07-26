@@ -315,13 +315,23 @@ export function TeamClient({
                         <option value="recruiter">Recruiter</option>
                         <option value="client_viewer">Client Viewer</option>
                       </select>
+                      {/* Client scope: only editable for Client Viewer */}
                       <select
                         name="client_id"
                         defaultValue={m.client_id || ""}
                         disabled={m.role !== "client_viewer"}
-                        className="rounded border border-line px-2 py-1 text-xs disabled:bg-mist"
+                        title={
+                          m.role === "client_viewer"
+                            ? "Client yang boleh dilihat viewer ini"
+                            : "Hanya aktif jika role diganti ke Client Viewer"
+                        }
+                        className="max-w-[11rem] rounded border border-line px-2 py-1 text-xs disabled:cursor-not-allowed disabled:bg-mist disabled:text-muted"
                       >
-                        <option value="">—</option>
+                        <option value="">
+                          {m.role === "client_viewer"
+                            ? "Pilih client"
+                            : "Client (untuk viewer)"}
+                        </option>
                         {clients.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.name}

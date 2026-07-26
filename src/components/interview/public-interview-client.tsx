@@ -512,8 +512,9 @@ export function PublicInterviewClient({ token }: { token: string }) {
           videoRef.current.srcObject = null;
           videoRef.current.src = url;
           videoRef.current.muted = false;
-          // Playback = recorded frames (not live) — no flip
-          videoRef.current.style.transform = "none";
+          // Keep same orientation as live preview (front-cam UX).
+          // Raw playback without flip looks "mirrored" vs what the candidate saw.
+          videoRef.current.style.transform = LIVE_CAMERA_TRANSFORM;
           void videoRef.current.load();
         }
         // Brief pause so final speech chunks flush into transcriptRef
@@ -890,7 +891,11 @@ export function PublicInterviewClient({ token }: { token: string }) {
                 ref={videoRef}
                 className="aspect-video w-full bg-ink object-cover"
                 style={{
-                  transform: recording ? LIVE_CAMERA_TRANSFORM : "none",
+                  // Live + local playback: same flip so Stop doesn't "mirror" the take
+                  transform:
+                    recording || previewUrl
+                      ? LIVE_CAMERA_TRANSFORM
+                      : "none",
                 }}
                 playsInline
                 muted={recording}

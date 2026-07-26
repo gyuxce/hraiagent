@@ -29,28 +29,38 @@ export default async function ComparePage({ searchParams }: Props) {
 
   let candidates: unknown[] = [];
   let interviewNotes: unknown[] = [];
+  let asyncInterviews: unknown[] = [];
   let selectedJob = null;
 
   if (selectedJobId) {
-    const [{ data: job }, { data: cands }, { data: notes }] = await Promise.all([
-      supabase
-        .from("job_requisitions")
-        .select("id, title, description, requirements, client_companies(name)")
-        .eq("id", selectedJobId)
-        .single(),
-      supabase
-        .from("candidates")
-        .select("*")
-        .eq("job_id", selectedJobId)
-        .order("ai_score", { ascending: false, nullsFirst: false }),
-      supabase
-        .from("interview_notes")
-        .select("id, candidate_id, title, ai_summary, conducted_at")
-        .order("conducted_at", { ascending: false }),
-    ]);
+    const [{ data: job }, { data: cands }, { data: notes }, { data: asyncs }] =
+      await Promise.all([
+        supabase
+          .from("job_requisitions")
+          .select("id, title, description, requirements, client_companies(name)")
+          .eq("id", selectedJobId)
+          .single(),
+        supabase
+          .from("candidates")
+          .select("*")
+          .eq("job_id", selectedJobId)
+          .order("ai_score", { ascending: false, nullsFirst: false }),
+        supabase
+          .from("interview_notes")
+          .select("id, candidate_id, title, ai_summary, conducted_at")
+          .order("conducted_at", { ascending: false }),
+        supabase
+          .from("async_interview_sessions")
+          .select(
+            "id, candidate_id, overall_score, overall_summary, status, completed_at"
+          )
+          .eq("job_id", selectedJobId)
+          .order("completed_at", { ascending: false, nullsFirst: false }),
+      ]);
     selectedJob = job;
     candidates = cands || [];
     interviewNotes = notes || [];
+    asyncInterviews = asyncs || [];
   }
 
   return (
@@ -60,8 +70,7 @@ export default async function ComparePage({ searchParams }: Props) {
           Bandingkan Kandidat
         </h1>
         <p className="mt-1 text-sm text-gray-500">
-          Side-by-side AI score, summary CV, dan ringkasan interview untuk satu
-          lowongan
+          Side-by-side skor CV, ringkasan singkat, dan hasil AI Interview Async
         </p>
       </div>
 
@@ -98,6 +107,16 @@ export default async function ComparePage({ searchParams }: Props) {
             title: string;
             ai_summary: string | null;
             conducted_at: string;
+          }[]
+        }
+        asyncInterviews={
+          asyncInterviews as {
+            id: string;
+            candidate_id: string;
+            overall_score: number | null;
+            overall_summary: string | null;
+            status: string;
+            completed_at: string | null;
           }[]
         }
       />

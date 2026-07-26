@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { shortSummary } from "@/lib/cv/short-text";
 
 type Job = {
   id: string;
@@ -28,6 +29,15 @@ type Note = {
   conducted_at: string;
 };
 
+type AsyncInterview = {
+  id: string;
+  candidate_id: string;
+  overall_score: number | null;
+  overall_summary: string | null;
+  status: string;
+  completed_at: string | null;
+};
+
 type Props = {
   jobs: Job[];
   selectedJobId: string;
@@ -40,6 +50,7 @@ type Props = {
   } | null;
   candidates: Candidate[];
   interviewNotes: Note[];
+  asyncInterviews: AsyncInterview[];
 };
 
 function clientLabel(
@@ -64,6 +75,7 @@ export function CompareClient({
   selectedJob,
   candidates,
   interviewNotes,
+  asyncInterviews,
 }: Props) {
   const router = useRouter();
 
@@ -76,6 +88,14 @@ export function CompareClient({
     {}
   );
 
+  const asyncByCandidate = asyncInterviews.reduce<
+    Record<string, AsyncInterview>
+  >((acc, s) => {
+    // First row per candidate = most recent completed (query ordered)
+    if (!acc[s.candidate_id]) acc[s.candidate_id] = s;
+    return acc;
+  }, {});
+
   return (
     <div>
       <div className="mb-6">
@@ -85,7 +105,7 @@ export function CompareClient({
         <select
           value={selectedJobId}
           onChange={(e) => router.push(`/compare?job=${e.target.value}`)}
-          className="mt-1 block w-full max-w-md rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+          className="field-input mt-1 max-w-md"
         >
           {jobs.map((j) => (
             <option key={j.id} value={j.id}>
@@ -99,10 +119,10 @@ export function CompareClient({
       </div>
 
       {selectedJob && (
-        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <h2 className="font-semibold text-gray-900">{selectedJob.title}</h2>
+        <div className="mb-6 rounded-xl border border-line bg-surface p-4 shadow-sm">
+          <h2 className="font-semibold text-ink">{selectedJob.title}</h2>
           {clientLabel(selectedJob.client_companies) && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted">
               {clientLabel(selectedJob.client_companies)}
             </p>
           )}
@@ -112,7 +132,7 @@ export function CompareClient({
                 {selectedJob.requirements.map((r) => (
                   <span
                     key={r}
-                    className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700"
+                    className="rounded-md bg-secondary-soft px-2 py-1 text-xs text-secondary-hover"
                   >
                     {r}
                   </span>
@@ -123,7 +143,7 @@ export function CompareClient({
       )}
 
       {candidates.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-10 text-center text-sm text-gray-500">
+        <div className="rounded-xl border border-dashed border-line bg-surface p-10 text-center text-sm text-muted">
           Belum ada kandidat untuk job ini.
         </div>
       ) : (
@@ -132,45 +152,51 @@ export function CompareClient({
             {candidates.map((c) => {
               const notes = notesByCandidate[c.id] || [];
               const latestNote = notes[0];
+              const asyncSession = asyncByCandidate[c.id];
               const skills = Array.isArray(c.parsed_data?.skills)
                 ? (c.parsed_data.skills as string[]).slice(0, 6)
                 : [];
 
+              const interviewSummary =
+                shortSummary(asyncSession?.overall_summary, 160) ||
+                shortSummary(latestNote?.ai_summary, 160);
+              const interviewScore = asyncSession?.overall_score;
+
               return (
                 <div
                   key={c.id}
-                  className="w-80 shrink-0 rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+                  className="w-80 shrink-0 rounded-xl border border-line bg-surface p-5 shadow-sm"
                 >
                   <div className="mb-3 flex items-start justify-between gap-2">
-                    <div>
+                    <div className="min-w-0">
                       <Link
                         href={`/candidates/${c.id}`}
-                        className="font-semibold text-gray-900 hover:text-accent"
+                        className="font-semibold text-ink hover:text-accent"
                       >
                         {c.name}
                       </Link>
-                      <p className="text-xs text-gray-500">{c.email}</p>
+                      <p className="truncate text-xs text-muted">{c.email}</p>
                     </div>
                     <span
                       className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${scoreClass(
                         c.ai_score
                       )}`}
                     >
-                      {c.ai_score != null ? `${c.ai_score}` : "—"}
+                      CV {c.ai_score != null ? `${c.ai_score}` : "—"}
                     </span>
                   </div>
 
-                  <p className="mb-2 text-xs font-semibold uppercase text-gray-400">
+                  <p className="mb-2 text-xs font-semibold uppercase text-muted">
                     Status:{" "}
-                    <span className="capitalize text-gray-700">{c.status}</span>
+                    <span className="capitalize text-ink-soft">{c.status}</span>
                   </p>
 
                   <div className="mb-3">
-                    <p className="text-xs font-semibold uppercase text-gray-400">
+                    <p className="text-xs font-semibold uppercase text-muted">
                       AI CV Summary
                     </p>
-                    <p className="prose-read mt-1 line-clamp-5 text-gray-700">
-                      {c.ai_summary || "Belum di-screen"}
+                    <p className="mt-1 text-sm text-ink-soft">
+                      {shortSummary(c.ai_summary, 140) || "Belum di-screen"}
                     </p>
                   </div>
 
@@ -187,22 +213,38 @@ export function CompareClient({
                     </div>
                   )}
 
-                  <div className="rounded-lg bg-gray-50 p-3">
-                    <p className="text-xs font-semibold uppercase text-gray-400">
-                      Interview AI Summary
-                    </p>
-                    {latestNote?.ai_summary ? (
-                      <p className="prose-read mt-1 line-clamp-6 whitespace-pre-wrap text-gray-700">
-                        {latestNote.ai_summary}
+                  <div className="rounded-lg bg-mist/80 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase text-muted">
+                        Interview AI
+                      </p>
+                      {interviewScore != null && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-semibold ${scoreClass(
+                            interviewScore
+                          )}`}
+                        >
+                          {interviewScore}/100
+                        </span>
+                      )}
+                    </div>
+                    {interviewSummary ? (
+                      <p className="mt-1 text-sm text-ink-soft">
+                        {interviewSummary}
+                      </p>
+                    ) : asyncSession?.status === "completed" ? (
+                      <p className="mt-1 text-sm text-muted">
+                        Interview selesai — analisis AI masih diproses / belum
+                        dijalankan.
                       </p>
                     ) : (
-                      <p className="mt-1 text-sm text-gray-400">
-                        Belum ada catatan interview
+                      <p className="mt-1 text-sm text-muted">
+                        Belum ada hasil interview async
                       </p>
                     )}
-                    {notes.length > 1 && (
-                      <p className="mt-2 text-xs text-gray-400">
-                        +{notes.length - 1} catatan lain
+                    {!asyncSession && notes.length > 1 && (
+                      <p className="mt-2 text-xs text-muted">
+                        +{notes.length - 1} catatan manual lain
                       </p>
                     )}
                   </div>

@@ -1,30 +1,34 @@
 @import "tailwindcss";
 
 :root {
-  /* Cullr — single light theme (ink + coral primary + teal secondary) */
-  --ink: #0b1f33;
-  --ink-soft: #16324a;
-  --mist: #eef3f7;
-  --mist-deep: #d9e4ee;
-  --paper: #f7f4ef;
+  /*
+   * Cullr “Clownfish” palette — one light system
+   * ink #0C0E14 · navy #2E3858 · coral #F06A33 · mist #E4E9F0 · teal #7BE2D1
+   */
+  --ink: #0c0e14;
+  --ink-soft: #2e3858;
+  --mist: #e4e9f0;
+  --mist-deep: #d4dbe6;
+  --paper: #eef1f6;
   --surface: #ffffff;
-  --line: #d5e0ea;
-  --muted: #5b6b7c;
-  --accent: #e85d4c;
-  --accent-hover: #d14a3a;
-  --accent-soft: #fde8e4;
-  --secondary: #1f7a6c;
-  --secondary-hover: #186257;
-  --secondary-soft: #e3f3ef;
-  --teal: #1f7a6c;
-  --teal-soft: #e3f3ef;
-  --good: #1f7a6c;
-  --warn: #b7791f;
-  --bad: #c53030;
-  --sidebar: #0b1f33;
-  --focus-ring: rgba(232, 93, 76, 0.22);
-  --file-btn-hover: #f8d4ce;
-  --scrollbar-thumb: #c5ced8;
+  --line: #c8d0dc;
+  --muted: #5a6478;
+  --accent: #f06a33;
+  --accent-hover: #d95a28;
+  --accent-soft: #fde6d9;
+  --secondary: #2a9b8c;
+  --secondary-hover: #1f7a6f;
+  --secondary-soft: #d8f5f0;
+  --teal: #7be2d1;
+  --teal-soft: #d8f5f0;
+  --good: #2a9b8c;
+  --warn: #c4892a;
+  --bad: #c4473a;
+  --sidebar: #0c0e14;
+  --navy: #2e3858;
+  --focus-ring: rgba(240, 106, 51, 0.24);
+  --file-btn-hover: #f8d4c4;
+  --scrollbar-thumb: #b8c2d0;
 
   --control-h: 2.5rem;
   --control-h-sm: 2rem;
@@ -34,7 +38,7 @@
   --background: var(--mist);
   --foreground: var(--ink);
   --radius: 0.75rem;
-  --shadow-soft: 0 1px 0 rgba(11, 31, 51, 0.04), 0 12px 32px rgba(11, 31, 51, 0.06);
+  --shadow-soft: 0 1px 0 rgba(12, 14, 20, 0.04), 0 12px 32px rgba(12, 14, 20, 0.07);
 }
 
 @theme inline {
@@ -58,6 +62,7 @@
   --color-teal-soft: var(--teal-soft);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
+  --color-navy: var(--navy);
   --font-sans: var(--font-jakarta);
   --font-display: var(--font-space);
 }
@@ -344,9 +349,9 @@ textarea:focus {
 
 .bg-atmosphere {
   background:
-    radial-gradient(1000px 500px at 8% -8%, rgba(232, 93, 76, 0.16), transparent 55%),
-    radial-gradient(900px 480px at 92% 0%, rgba(31, 122, 108, 0.12), transparent 50%),
-    linear-gradient(165deg, #f7f4ef 0%, #eef3f7 45%, #e4edf5 100%);
+    radial-gradient(1000px 500px at 8% -8%, rgba(240, 106, 51, 0.18), transparent 55%),
+    radial-gradient(900px 480px at 92% 0%, rgba(123, 226, 209, 0.22), transparent 50%),
+    linear-gradient(165deg, #eef1f6 0%, #e4e9f0 45%, #dce3ee 100%);
 }
 
 .bg-grid-fade {
@@ -447,7 +452,7 @@ textarea:focus {
 }
 
 .dashboard-shell .dashboard-sidebar .text-accent {
-  color: #f07a6a !important;
+  color: #f06a33 !important;
 }
 
 /* Legacy gray / blue utility remaps → brand tokens */

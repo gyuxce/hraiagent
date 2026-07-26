@@ -8,16 +8,20 @@
 - Product UI: **Bahasa Indonesia**
 - Marketing may use tight English brand lines; dashboard copy stays Indonesian
 
-## Visual
-| Token | Role |
-|---|---|
-| Ink `#0B1F33` | Text + sidebar |
-| Coral `#E85D4C` | **Primary** accent / CTA |
-| Teal `#1F7A6C` | **Secondary** support |
-| Mist `#EEF3F7` | Page canvas |
-| White `#FFFFFF` | Panels |
+## Visual — Clownfish palette
+One light theme. All UI accents derive from this set (no random indigo / generic green / unrelated red).
 
-Single light theme only — see [ARCHITECTURE-UI-Cullr.md](./ARCHITECTURE-UI-Cullr.md).
+| Swatch | Hex | Role |
+|---|---|---|
+| Ink | `#0C0E14` | Text, sidebar |
+| Navy | `#2E3858` | Soft ink, structure |
+| Coral | `#F06A33` | **Primary** CTA / links / mark cut |
+| Mist | `#E4E9F0` | Page canvas |
+| Teal | `#7BE2D1` | **Secondary** support / success wash |
+
+Derived tokens (see `globals.css`): `--accent-hover`, `--accent-soft`, `--secondary`, `--secondary-soft`, `--bad` (warm coral-red `#C4473A`), `--warn`.
+
+See [ARCHITECTURE-UI-Cullr.md](./ARCHITECTURE-UI-Cullr.md).
 
 ## Mark
 Open ring + vertical **coral cut** — a cull gap, not a funnel.
@@ -27,5 +31,5 @@ Open ring + vertical **coral cut** — a cull gap, not a funnel.
 - **UI body:** Plus Jakarta Sans
 
 ## Do / don’t
-- Do: coral primary, teal secondary, consistent control heights, quiet loading spinners
-- Don’t: dark mode toggle, bilingual chrome toggles, purple gradients, neon teal-only UI
+- Do: coral primary, teal secondary, navy/ink structure, bullet/table density on mobile
+- Don’t: indigo chips, neon-only green, purple gradients, mixed unrelated accent families

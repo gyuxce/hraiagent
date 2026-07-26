@@ -85,7 +85,9 @@ export default async function CandidateDetailPage({ params }: Props) {
     const fallback = await supabase
       .from("async_interview_sessions")
       .select(
-        "id, invite_token, status, overall_score, overall_summary, created_at, completed_at, expires_at, agency_id, candidate_id"
+        `id, invite_token, status, overall_score, overall_summary, created_at, completed_at, expires_at,
+         agency_id, candidate_id, challenge_code, challenge_passed, face_match_status, face_match_note,
+         needs_manual_review, identity_summary, selfie_path, media_purged_at`
       )
       .eq("candidate_id", id)
       .order("created_at", { ascending: false });

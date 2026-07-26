@@ -73,6 +73,18 @@ Kandidat merekam jawaban video terhadap pertanyaan yang di-generate AI, dilakuka
 
 *Ini setara dengan pendekatan yang dipakai HireVue/Glair.ai — matang secara teknis, risiko lebih terkendali dibanding Level 2.*
 
+### Fase 2.6 — Cullr Voice Interview (Async, Two-Way Audio)
+Interview bersuara dua arah: AI berbicara (TTS) ↔ kandidat menjawab (mic + STT), dengan follow-up terbatas. **Bukan pengganti video** — mode paralel yang bisa dipilih per invite.
+
+Detail lengkap: [`PRD-Cullr-Voice-Interview.md`](./PRD-Cullr-Voice-Interview.md)
+
+| Fitur | Deskripsi |
+|---|---|
+| Voice session link | Kandidat bicara lewat browser (push-to-talk MVP) |
+| Follow-up otomatis | AI gali jawaban dangkal (cap ketat untuk biaya/latency) |
+| Skor + summary | Reuse band skor + masuk Compare/Ranking |
+| Hybrid opsional | Selfie / kode lisan ringan untuk integritas |
+
 ### Fase 3 — Scale & Retensi
 | Fitur | Deskripsi |
 |---|---|

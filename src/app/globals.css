@@ -2,32 +2,32 @@
 
 :root {
   /*
-   * Cullr “Clownfish” palette — one light system
-   * ink #0C0E14 · navy #2E3858 · coral #F06A33 · mist #E4E9F0 · teal #7BE2D1
+   * Cullr “Clownfish” — only these five family tones (+ soft/hover derivatives)
+   * ink #121019 · navy #303856 · coral #E16A40 · mist #E9EFF5 · teal #70E2DC
    */
-  --ink: #0c0e14;
-  --ink-soft: #2e3858;
-  --mist: #e4e9f0;
-  --mist-deep: #d4dbe6;
-  --paper: #eef1f6;
+  --ink: #121019;
+  --ink-soft: #303856;
+  --mist: #e9eff5;
+  --mist-deep: #d5dde8;
+  --paper: #f2f5f9;
   --surface: #ffffff;
-  --line: #c8d0dc;
-  --muted: #5a6478;
-  --accent: #f06a33;
-  --accent-hover: #d95a28;
-  --accent-soft: #fde6d9;
-  --secondary: #2a9b8c;
-  --secondary-hover: #1f7a6f;
-  --secondary-soft: #d8f5f0;
-  --teal: #7be2d1;
-  --teal-soft: #d8f5f0;
-  --good: #2a9b8c;
-  --warn: #c4892a;
-  --bad: #c4473a;
-  --sidebar: #0c0e14;
-  --navy: #2e3858;
-  --focus-ring: rgba(240, 106, 51, 0.24);
-  --file-btn-hover: #f8d4c4;
+  --line: #c9d2de;
+  --muted: #5c6578;
+  --accent: #e16a40;
+  --accent-hover: #c85a34;
+  --accent-soft: #fce4d9;
+  --secondary: #2a9b94;
+  --secondary-hover: #1f7a74;
+  --secondary-soft: #d4f6f3;
+  --teal: #70e2dc;
+  --teal-soft: #d4f6f3;
+  --good: #2a9b94;
+  --warn: #c47a3a;
+  --bad: #b84332;
+  --sidebar: #121019;
+  --navy: #303856;
+  --focus-ring: rgba(225, 106, 64, 0.24);
+  --file-btn-hover: #f6d5c8;
   --scrollbar-thumb: #b8c2d0;
 
   --control-h: 2.5rem;
@@ -200,6 +200,30 @@ textarea:focus {
   color: var(--ink);
 }
 
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: var(--control-h);
+  border-radius: var(--control-radius);
+  border: 1px solid var(--line);
+  background: var(--accent-soft);
+  padding: 0.55rem var(--control-px);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--bad);
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.btn-danger:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-hover);
+}
+
 .btn-chip {
   display: inline-flex;
   align-items: center;
@@ -349,9 +373,9 @@ textarea:focus {
 
 .bg-atmosphere {
   background:
-    radial-gradient(1000px 500px at 8% -8%, rgba(240, 106, 51, 0.18), transparent 55%),
-    radial-gradient(900px 480px at 92% 0%, rgba(123, 226, 209, 0.22), transparent 50%),
-    linear-gradient(165deg, #eef1f6 0%, #e4e9f0 45%, #dce3ee 100%);
+    radial-gradient(1000px 500px at 8% -8%, rgba(225, 106, 64, 0.18), transparent 55%),
+    radial-gradient(900px 480px at 92% 0%, rgba(112, 226, 220, 0.22), transparent 50%),
+    linear-gradient(165deg, #f2f5f9 0%, #e9eff5 45%, #dde5ef 100%);
 }
 
 .bg-grid-fade {
@@ -452,10 +476,10 @@ textarea:focus {
 }
 
 .dashboard-shell .dashboard-sidebar .text-accent {
-  color: #f06a33 !important;
+  color: #e16a40 !important;
 }
 
-/* Legacy gray / blue utility remaps → brand tokens */
+/* Legacy utility remaps → Clownfish only (no random green/red/indigo) */
 .dashboard-shell .bg-white {
   background-color: var(--surface) !important;
 }
@@ -489,11 +513,57 @@ textarea:focus {
 .dashboard-shell .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
   border-color: var(--line);
 }
-.dashboard-shell .bg-blue-50 {
+
+.dashboard-shell .bg-green-50,
+.dashboard-shell .bg-emerald-50 {
+  background-color: var(--secondary-soft) !important;
+}
+.dashboard-shell .text-green-700,
+.dashboard-shell .text-green-800,
+.dashboard-shell .text-emerald-700 {
+  color: var(--secondary-hover) !important;
+}
+.dashboard-shell .bg-red-50,
+.dashboard-shell .bg-rose-50 {
   background-color: var(--accent-soft) !important;
 }
+.dashboard-shell .text-red-600,
+.dashboard-shell .text-red-700,
+.dashboard-shell .text-red-800,
+.dashboard-shell .text-rose-700,
+.dashboard-shell .hover\:text-red-500:hover {
+  color: var(--bad) !important;
+}
+.dashboard-shell .bg-red-100 {
+  background-color: var(--accent-soft) !important;
+}
+.dashboard-shell .bg-amber-50,
+.dashboard-shell .bg-yellow-50,
+.dashboard-shell .bg-orange-50 {
+  background-color: var(--accent-soft) !important;
+}
+.dashboard-shell .text-amber-700,
+.dashboard-shell .text-amber-800,
+.dashboard-shell .text-amber-900,
+.dashboard-shell .text-yellow-700,
+.dashboard-shell .text-orange-700 {
+  color: var(--accent-hover) !important;
+}
+.dashboard-shell .border-amber-200,
+.dashboard-shell .border-red-200,
+.dashboard-shell .border-indigo-200 {
+  border-color: var(--line) !important;
+}
+.dashboard-shell .bg-blue-50,
+.dashboard-shell .bg-indigo-50 {
+  background-color: var(--mist) !important;
+}
 .dashboard-shell .text-blue-700,
-.dashboard-shell .text-blue-600 {
+.dashboard-shell .text-blue-600,
+.dashboard-shell .text-indigo-600,
+.dashboard-shell .text-indigo-700,
+.dashboard-shell .text-indigo-900,
+.dashboard-shell .hover\:text-indigo-500:hover {
   color: var(--accent-hover) !important;
 }
 .dashboard-shell .bg-indigo-600 {

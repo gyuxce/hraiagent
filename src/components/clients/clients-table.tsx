@@ -80,7 +80,7 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 rounded-lg bg-accent-soft p-3 text-sm text-bad">
           {error}
         </div>
       )}
@@ -158,7 +158,7 @@ export function ClientsTable({ clients, isAdmin, canWrite = true }: Props) {
                               })
                             }
                             disabled={deletingId === client.id}
-                            className="text-red-600 hover:text-red-500 font-medium disabled:opacity-50"
+                            className="font-medium text-bad hover:text-accent-hover disabled:opacity-50"
                           >
                             {deletingId === client.id ? "..." : "Hapus"}
                           </button>

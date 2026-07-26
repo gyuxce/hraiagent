@@ -41,7 +41,7 @@ export default async function CandidateDetailPage({ params }: Props) {
 
   if (!profile?.agency_id) {
     return (
-      <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">
+      <div className="rounded-lg bg-accent-soft p-4 text-sm text-bad">
         Akun belum terhubung ke agency
       </div>
     );

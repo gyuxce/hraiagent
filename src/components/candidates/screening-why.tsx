@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { overrideCandidateScore } from "@/lib/actions/candidates";
 import type { ScoreBreakdown } from "@/lib/ai/openrouter";
 import { useToast } from "@/components/ui/toast";
+import { summaryPoints } from "@/lib/cv/summary-points";
 
 type Props = {
   candidateId: string;
@@ -16,26 +17,9 @@ type Props = {
   canWrite: boolean;
 };
 
-function Bar({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-xs">
-        <span className="font-medium text-ink-soft">{label}</span>
-        <span className="text-muted">{value}/100</span>
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-mist-deep">
-        <div
-          className="h-full rounded-full bg-accent"
-          style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function pickOne(items: string[] | undefined, fallback: string): string {
-  const first = (items || []).find((s) => s && s.trim());
-  return first?.trim() || fallback;
+function pickList(items: string[] | undefined, fallback: string): string[] {
+  const list = (items || []).map((s) => s.trim()).filter(Boolean);
+  return list.length ? list.slice(0, 3) : [fallback];
 }
 
 export function ScreeningWhy({
@@ -86,12 +70,39 @@ export function ScreeningWhy({
     router.refresh();
   }
 
-  const strength = pickOne(breakdown?.strengths, "—");
-  const gap = pickOne(breakdown?.gaps, "—");
-  const flag = pickOne(
-    breakdown?.red_flags,
-    breakdown ? "Tidak ada red flag menonjol" : "—"
-  );
+  const rubricRows = breakdown
+    ? [
+        { label: "Must-have", value: breakdown.must_have },
+        { label: "Skills", value: breakdown.skills },
+        { label: "Experience", value: breakdown.experience },
+        { label: "Education", value: breakdown.education },
+      ]
+    : [];
+
+  const signalRows = breakdown
+    ? [
+        {
+          label: "Strength",
+          tone: "text-secondary-hover",
+          points: pickList(breakdown.strengths, "—"),
+        },
+        {
+          label: "Gap",
+          tone: "text-accent-hover",
+          points: pickList(breakdown.gaps, "—"),
+        },
+        {
+          label: "Red flag",
+          tone: "text-bad",
+          points: pickList(
+            breakdown.red_flags,
+            "Tidak ada red flag menonjol"
+          ),
+        },
+      ]
+    : [];
+
+  const summaryBullets = summaryPoints(summary, 3);
 
   return (
     <section className="border-b border-line py-8">
@@ -100,38 +111,87 @@ export function ScreeningWhy({
         Signal screening
       </h2>
       <p className="mt-1 max-w-2xl text-sm text-muted">
-        Rubrik CV vs requirement job — bukan skor interview. Tiga poin utama di
-        bawah; detail lengkap bisa dibuka.
+        Rubrik CV vs requirement job — bukan skor interview.
       </p>
 
       {breakdown ? (
-        <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-          <div className="space-y-3">
-            <Bar label="Must-have" value={breakdown.must_have} />
-            <Bar label="Skills" value={breakdown.skills} />
-            <Bar label="Experience" value={breakdown.experience} />
-            <Bar label="Education" value={breakdown.education} />
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <div className="surface-panel overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[16rem] text-left text-sm">
+                <thead className="bg-mist/70">
+                  <tr>
+                    <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                      Rubrik
+                    </th>
+                    <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                      Skor
+                    </th>
+                    <th className="hidden px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted sm:table-cell">
+                      Signal
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {rubricRows.map((row) => (
+                    <tr key={row.label}>
+                      <td className="px-4 py-2.5 font-medium text-ink">
+                        {row.label}
+                      </td>
+                      <td className="px-4 py-2.5 tabular-nums text-ink-soft">
+                        {row.value}/100
+                      </td>
+                      <td className="hidden px-4 py-2.5 sm:table-cell">
+                        <div className="h-1.5 max-w-[8rem] overflow-hidden rounded-full bg-mist-deep">
+                          <div
+                            className="h-full rounded-full bg-accent"
+                            style={{
+                              width: `${Math.max(0, Math.min(100, row.value))}%`,
+                            }}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <ul className="space-y-3 text-sm">
-            <li className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-teal">
-                Strength
-              </p>
-              <p className="prose-read mt-1 text-ink-soft">{strength}</p>
-            </li>
-            <li className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-warn">
-                Gap
-              </p>
-              <p className="prose-read mt-1 text-ink-soft">{gap}</p>
-            </li>
-            <li className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-bad">
-                Red flag
-              </p>
-              <p className="prose-read mt-1 text-ink-soft">{flag}</p>
-            </li>
-          </ul>
+
+          <div className="surface-panel overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[16rem] text-left text-sm">
+                <thead className="bg-mist/70">
+                  <tr>
+                    <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                      Sinyal
+                    </th>
+                    <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                      Poin
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {signalRows.map((row) => (
+                    <tr key={row.label}>
+                      <th
+                        className={`w-[30%] px-4 py-2.5 align-top text-xs font-semibold uppercase tracking-wide ${row.tone}`}
+                      >
+                        {row.label}
+                      </th>
+                      <td className="px-4 py-2.5 text-ink-soft">
+                        <ul className="list-disc space-y-1 pl-4">
+                          {row.points.map((p, i) => (
+                            <li key={`${row.label}-${i}`}>{p}</li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       ) : (
         <p className="mt-4 text-sm text-muted">
@@ -140,7 +200,7 @@ export function ScreeningWhy({
       )}
 
       {manualReason && (
-        <p className="mt-4 text-sm text-teal">
+        <p className="mt-4 text-sm text-secondary-hover">
           Override: {manualReason}
         </p>
       )}
@@ -168,43 +228,71 @@ export function ScreeningWhy({
         <div className="mt-4 space-y-4 border-t border-line pt-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Ringkasan lengkap
+              Ringkasan AI
             </p>
-            <p className="prose-read mt-2 whitespace-pre-wrap text-ink-soft">
-              {summary || "Tidak ada ringkasan."}
-            </p>
+            {summaryBullets.length ? (
+              <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-ink-soft">
+                {summaryBullets.map((p, i) => (
+                  <li key={`sum-${i}`}>{p}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm text-muted">Tidak ada ringkasan.</p>
+            )}
           </div>
           {breakdown && (
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div>
-                <p className="text-xs font-semibold text-teal">Semua strengths</p>
-                <ul className="prose-read mt-1 list-disc space-y-1 pl-4 text-ink-soft">
-                  {(breakdown.strengths || []).length ? (
-                    breakdown.strengths.map((s) => <li key={s}>{s}</li>)
-                  ) : (
-                    <li>—</li>
-                  )}
-                </ul>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-warn">Semua gaps</p>
-                <ul className="prose-read mt-1 list-disc space-y-1 pl-4 text-ink-soft">
-                  {(breakdown.gaps || []).length ? (
-                    breakdown.gaps.map((s) => <li key={s}>{s}</li>)
-                  ) : (
-                    <li>—</li>
-                  )}
-                </ul>
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-bad">Semua red flags</p>
-                <ul className="prose-read mt-1 list-disc space-y-1 pl-4 text-ink-soft">
-                  {(breakdown.red_flags || []).length ? (
-                    breakdown.red_flags.map((s) => <li key={s}>{s}</li>)
-                  ) : (
-                    <li>Tidak ada</li>
-                  )}
-                </ul>
+            <div className="surface-panel overflow-hidden p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[18rem] text-left text-sm">
+                  <thead className="bg-mist/70">
+                    <tr>
+                      <th className="px-4 py-2.5 text-xs font-semibold uppercase text-secondary-hover">
+                        Strengths
+                      </th>
+                      <th className="px-4 py-2.5 text-xs font-semibold uppercase text-accent-hover">
+                        Gaps
+                      </th>
+                      <th className="px-4 py-2.5 text-xs font-semibold uppercase text-bad">
+                        Red flags
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="align-top">
+                      <td className="px-4 py-3 text-ink-soft">
+                        <ul className="list-disc space-y-1 pl-4">
+                          {(breakdown.strengths || []).length ? (
+                            breakdown.strengths.map((s) => (
+                              <li key={s}>{s}</li>
+                            ))
+                          ) : (
+                            <li>—</li>
+                          )}
+                        </ul>
+                      </td>
+                      <td className="px-4 py-3 text-ink-soft">
+                        <ul className="list-disc space-y-1 pl-4">
+                          {(breakdown.gaps || []).length ? (
+                            breakdown.gaps.map((s) => <li key={s}>{s}</li>)
+                          ) : (
+                            <li>—</li>
+                          )}
+                        </ul>
+                      </td>
+                      <td className="px-4 py-3 text-ink-soft">
+                        <ul className="list-disc space-y-1 pl-4">
+                          {(breakdown.red_flags || []).length ? (
+                            breakdown.red_flags.map((s) => (
+                              <li key={s}>{s}</li>
+                            ))
+                          ) : (
+                            <li>Tidak ada</li>
+                          )}
+                        </ul>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

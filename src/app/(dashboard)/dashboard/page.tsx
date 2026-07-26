@@ -199,11 +199,11 @@ export default async function DashboardPage() {
   };
   const statusColor: Record<string, string> = {
     submitted: "bg-mist text-muted",
-    screened: "bg-teal-soft text-teal",
-    interview: "bg-accent-soft text-accent-hover",
-    offer: "bg-amber-50 text-amber-800",
-    hired: "bg-teal-soft text-teal",
-    rejected: "bg-red-50 text-red-700",
+    screened: "bg-secondary-soft text-secondary-hover",
+    interview: "bg-mist-deep text-ink-soft",
+    offer: "bg-accent-soft text-accent-hover",
+    hired: "bg-secondary-soft text-secondary-hover",
+    rejected: "bg-accent-soft text-bad",
   };
 
   return (

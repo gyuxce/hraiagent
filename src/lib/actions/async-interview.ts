@@ -24,6 +24,8 @@ import {
   transcriptMentionsChallengeCode,
   type FaceMatchStatus,
 } from "@/lib/interview/identity";
+import { buildFallbackInterviewQuestions } from "@/lib/interview/fallback-questions";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -80,27 +82,12 @@ export async function createAsyncInterview(candidateId: string) {
     return { error: quotaExceededMessage(quota) };
   }
 
-  let questions: { question_text: string; focus_area: string }[] = [];
-  try {
-    questions = await generateInterviewQuestions({
-      jobTitle: job.title || "Posisi",
-      jobDescription: job.description || "",
-      requirements: Array.isArray(job.requirements) ? job.requirements : [],
-      candidateName: candidate.name,
-      count: 5,
-    });
-  } catch (err) {
-    return { error: "Gagal generate pertanyaan AI: " + formatError(err) };
-  }
-
-  if (questions.length === 0) {
-    return { error: "AI tidak menghasilkan pertanyaan. Coba lagi." };
-  }
-
+  // Fast path: session + fallback questions now → invite link instantly.
+  // AI questions replace fallback in after() if kandidat belum mulai.
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + 7);
-
   const challengeCode = generateChallengeCode();
+  const jobTitle = job.title || "Posisi";
 
   const { data: session, error: sErr } = await supabase
     .from("async_interview_sessions")
@@ -125,9 +112,12 @@ export async function createAsyncInterview(candidateId: string) {
     };
   }
 
-  const rows = questions.map((q, i) => ({
-    session_id: session.id,
-    agency_id: profile.agency_id,
+  const sessionId = session.id as string;
+  const agencyId = profile.agency_id;
+  const starterQuestions = buildFallbackInterviewQuestions(jobTitle, 5);
+  const starterRows = starterQuestions.map((q, i) => ({
+    session_id: sessionId,
+    agency_id: agencyId,
     question_text: q.question_text,
     focus_area: q.focus_area,
     sort_order: i + 1,
@@ -135,11 +125,11 @@ export async function createAsyncInterview(candidateId: string) {
 
   const { data: insertedQuestions, error: qErr } = await supabase
     .from("async_interview_questions")
-    .insert(rows)
+    .insert(starterRows)
     .select("id, sort_order");
 
   if (qErr || !insertedQuestions?.length) {
-    await supabase.from("async_interview_sessions").delete().eq("id", session.id);
+    await supabase.from("async_interview_sessions").delete().eq("id", sessionId);
     return { error: formatError(qErr) || "Gagal simpan pertanyaan" };
   }
 
@@ -152,7 +142,7 @@ export async function createAsyncInterview(candidateId: string) {
     await supabase
       .from("async_interview_sessions")
       .update({ challenge_question_id: challengeQuestionId })
-      .eq("id", session.id);
+      .eq("id", sessionId);
   }
 
   await supabase
@@ -161,8 +151,86 @@ export async function createAsyncInterview(candidateId: string) {
     .eq("id", candidateId)
     .in("status", ["submitted", "screened"]);
 
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const jobDescription = job.description || "";
+  const requirements = Array.isArray(job.requirements) ? job.requirements : [];
+  const candidateName = candidate.name as string;
+
+  after(async () => {
+    let aiQuestions: { question_text: string; focus_area: string }[] = [];
+    try {
+      aiQuestions = await generateInterviewQuestions({
+        jobTitle,
+        jobDescription,
+        requirements,
+        candidateName,
+        count: 5,
+      });
+    } catch {
+      return;
+    }
+    if (aiQuestions.length === 0) return;
+
+    // Prefer service role in background; fall back to cookie client.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let db: any;
+    try {
+      db = createAdminClient();
+    } catch {
+      db = await createClient();
+    }
+
+    const { data: live } = await db
+      .from("async_interview_sessions")
+      .select("status, started_at")
+      .eq("id", sessionId)
+      .maybeSingle();
+    if (!live || live.status === "in_progress" || live.status === "completed") {
+      return;
+    }
+    if (live.started_at) return;
+
+    const { count: answerCount } = await db
+      .from("async_interview_answers")
+      .select("id", { count: "exact", head: true })
+      .eq("session_id", sessionId);
+    if ((answerCount || 0) > 0) return;
+
+    await db
+      .from("async_interview_sessions")
+      .update({ challenge_question_id: null })
+      .eq("id", sessionId);
+    await db
+      .from("async_interview_questions")
+      .delete()
+      .eq("session_id", sessionId);
+
+    const rows = aiQuestions.map((q, i) => ({
+      session_id: sessionId,
+      agency_id: agencyId,
+      question_text: q.question_text,
+      focus_area: q.focus_area,
+      sort_order: i + 1,
+    }));
+    const { data: aiInserted } = await db
+      .from("async_interview_questions")
+      .insert(rows)
+      .select("id, sort_order");
+    if (!aiInserted?.length) return;
+
+    const aiSorted = [...aiInserted].sort(
+      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+    );
+    const aiChallengeId =
+      aiSorted[pickChallengeQuestionIndex(aiSorted.length)]?.id || null;
+    await db
+      .from("async_interview_sessions")
+      .update({ challenge_question_id: aiChallengeId })
+      .eq("id", sessionId);
+
+    revalidatePath(`/candidates/${candidateId}`);
+  });
+
+  const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const inviteUrl = `${base.replace(/\/$/, "")}/interview/${session.invite_token}`;
 
   revalidatePath(`/candidates/${candidateId}`);
@@ -171,7 +239,7 @@ export async function createAsyncInterview(candidateId: string) {
 
   return {
     success: true,
-    sessionId: session.id,
+    sessionId,
     inviteToken: session.invite_token as string,
     inviteUrl,
   };

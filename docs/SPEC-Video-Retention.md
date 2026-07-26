@@ -46,7 +46,13 @@ Purge jika `anchor + retention_days <= now` dan `media_purged_at IS NULL`.
 
 ## Setup ops
 
-1. Jalankan `supabase/migrations/00012_video_retention.sql`
+1. Jalankan **seluruh** `supabase/migrations/00012_video_retention.sql` di SQL Editor  
+   (bukan partial select). Cek prasyarat bila error:
+   ```sql
+   SELECT to_regclass('public.agencies'),
+          to_regclass('public.async_interview_sessions');
+   ```
+   Keduanya harus bukan `null`. Jika `agencies` null → jalankan `00000` dulu / pastikan project benar.
 2. Set di Vercel:
    - `SUPABASE_SERVICE_ROLE_KEY` (Settings → API → service_role)
    - `CRON_SECRET` (string acak kuat)

@@ -311,7 +311,11 @@ Jawab HANYA JSON valid:
   };
 }
 
-async function chatJson(prompt: string, system: string): Promise<Record<string, unknown>> {
+async function chatJson(
+  prompt: string,
+  system: string,
+  opts?: { maxTokens?: number; temperature?: number }
+): Promise<Record<string, unknown>> {
   const { baseUrl, model, apiKey } = detectProvider();
   if (!apiKey) {
     throw new Error(missingAiKeyMessage());
@@ -332,7 +336,8 @@ async function chatJson(prompt: string, system: string): Promise<Record<string, 
     },
     body: JSON.stringify({
       model,
-      temperature: 0.3,
+      temperature: opts?.temperature ?? 0.3,
+      ...(opts?.maxTokens ? { max_tokens: opts.maxTokens } : {}),
       messages: [
         { role: "system", content: system },
         { role: "user", content: prompt },
@@ -378,12 +383,13 @@ DESKRIPSI: ${jobDesc || "(tidak ada)"}
 REQUIREMENTS:
 ${requirementsText}
 
-Campur behavioral/teknis/situational. Bahasa Indonesia, netral.
+Campur behavioral/teknis/situational. Bahasa Indonesia.
 JSON saja: {"questions":[{"question_text":"...","focus_area":"behavioral|teknis|situational|komunikasi"}]}`;
 
   const parsed = await chatJson(
     prompt,
-    "Generate short async video interview questions. Valid JSON only. Bahasa Indonesia. Be concise."
+    "Generate short async video interview questions. Valid JSON only. Bahasa Indonesia. Be concise. Prefer speed.",
+    { maxTokens: 900, temperature: 0.4 }
   );
 
   const list = Array.isArray(parsed.questions) ? parsed.questions : [];

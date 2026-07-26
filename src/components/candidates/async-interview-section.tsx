@@ -99,7 +99,9 @@ export function AsyncInterviewSection({
       toast.error(result.error);
       return;
     }
-    toast.success("Interview async dibuat — salin link ke kandidat");
+    toast.success(
+      "Link siap — pertanyaan langsung tersedia (AI menyempurnakan di background)"
+    );
     if (result?.inviteUrl) {
       setInviteUrl(result.inviteUrl);
       const ok = await copyToClipboard(result.inviteUrl);
@@ -157,9 +159,7 @@ export function AsyncInterviewSection({
             disabled={loading}
             className="btn-primary disabled:opacity-50"
           >
-            {loading
-              ? "Generate 5 pertanyaan AI..."
-              : "+ Buat Interview Async"}
+            {loading ? "Membuat link..." : "+ Buat Interview Async"}
           </button>
         )}
       </div>

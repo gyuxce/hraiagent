@@ -111,8 +111,15 @@ export function CandidatesTable({
       toast.error(result.error);
       return;
     }
-    toast.success("AI screening selesai");
+    toast.success(
+      result?.pendingScreening
+        ? "AI screening dimulai di background — refresh sebentar lagi"
+        : "AI screening selesai"
+    );
     router.refresh();
+    if (result?.pendingScreening) {
+      setTimeout(() => router.refresh(), 8000);
+    }
   }
 
   async function confirmDelete() {

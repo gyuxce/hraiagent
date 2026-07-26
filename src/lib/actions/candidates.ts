@@ -1,13 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { extractTextFromFile } from "@/lib/cv/extract-text";
+import { extractContactHints } from "@/lib/cv/contact-hints";
 import { screenCandidateWithAI } from "@/lib/ai/openrouter";
 import {
   consumeAiQuota,
   quotaExceededMessage,
 } from "@/lib/ai/usage";
 import { requireAgencyContext } from "@/lib/auth/agency-context";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = [
@@ -16,6 +20,9 @@ const ALLOWED_TYPES = [
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
+
+const PENDING_SUMMARY =
+  "AI screening sedang diproses di background — refresh halaman sebentar lagi.";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -32,6 +39,98 @@ async function getCurrentProfile() {
   return requireAgencyContext();
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function dbForBackground(fallback: any) {
+  try {
+    return createAdminClient();
+  } catch {
+    return fallback ?? (await createClient());
+  }
+}
+
+async function runScreeningInBackground(params: {
+  candidateId: string;
+  agencyId: string;
+  userId: string;
+  cvText: string;
+  jobTitle: string;
+  jobDescription: string;
+  requirements: string[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any;
+}) {
+  const db = await dbForBackground(params.supabase);
+  const quota = await consumeAiQuota(db, {
+    agencyId: params.agencyId,
+    eventType: "cv_screen",
+    userId: params.userId,
+    resourceType: "candidate",
+    resourceId: params.candidateId,
+  });
+
+  if (!quota.ok && !quota.soft) {
+    await db
+      .from("candidates")
+      .update({ ai_summary: quotaExceededMessage(quota) })
+      .eq("id", params.candidateId);
+    revalidatePath("/candidates");
+    revalidatePath(`/candidates/${params.candidateId}`);
+    return;
+  }
+
+  try {
+    const result = await screenCandidateWithAI({
+      cvText: params.cvText,
+      jobTitle: params.jobTitle,
+      jobDescription: params.jobDescription,
+      requirements: params.requirements,
+    });
+
+    await db
+      .from("candidates")
+      .update({
+        ai_score: result.score,
+        ai_summary: result.summary,
+        ai_score_breakdown: result.breakdown,
+        parsed_data: result.parsed,
+        status: "screened",
+        manual_score: null,
+        manual_score_reason: null,
+        manual_score_updated_at: null,
+      })
+      .eq("id", params.candidateId);
+
+    // Enrich empty contact fields from AI parse if still blank
+    const { data: row } = await db
+      .from("candidates")
+      .select("name, email, phone")
+      .eq("id", params.candidateId)
+      .maybeSingle();
+
+    if (row) {
+      const patch: Record<string, string> = {};
+      if ((!row.name || row.name === "Kandidat") && result.parsed.name) {
+        patch.name = result.parsed.name;
+      }
+      if (!row.email && result.parsed.email) patch.email = result.parsed.email;
+      if (!row.phone && result.parsed.phone) patch.phone = result.parsed.phone;
+      if (Object.keys(patch).length) {
+        await db.from("candidates").update(patch).eq("id", params.candidateId);
+      }
+    }
+  } catch (err) {
+    await db
+      .from("candidates")
+      .update({
+        ai_summary: "AI screening gagal: " + formatError(err),
+      })
+      .eq("id", params.candidateId);
+  }
+
+  revalidatePath("/candidates");
+  revalidatePath(`/candidates/${params.candidateId}`);
+}
+
 export async function createCandidate(formData: FormData) {
   const { supabase, error: authError, profile } = await getCurrentProfile();
   if (authError || !profile) return { error: authError || "Unauthorized" };
@@ -45,7 +144,6 @@ export async function createCandidate(formData: FormData) {
 
   if (!jobId) return { error: "Job wajib dipilih" };
 
-  // Load job for AI scoring
   const { data: job, error: jobError } = await supabase
     .from("job_requisitions")
     .select("id, title, description, requirements, agency_id")
@@ -58,13 +156,7 @@ export async function createCandidate(formData: FormData) {
 
   let cvFilePath: string | null = null;
   let cvText = "";
-  let aiScore: number | null = null;
-  let aiSummary: string | null = null;
-  let aiBreakdown: Record<string, unknown> | null = null;
-  let parsedData: Record<string, unknown> | null = null;
-  let status: string = "submitted";
 
-  // Upload + extract CV if provided
   if (file && file.size > 0) {
     if (file.size > MAX_FILE_SIZE) {
       return { error: "Ukuran file maksimal 10MB" };
@@ -110,71 +202,74 @@ export async function createCandidate(formData: FormData) {
           ". Coba file PDF berbasis teks.",
       };
     }
+
+    // Fast local fill — don't wait for AI to extract contacts
+    const hints = extractContactHints(cvText);
+    if (!name && hints.name) name = hints.name;
+    if (!email && hints.email) email = hints.email;
+    if (!phone && hints.phone) phone = hints.phone;
   }
 
-  // AI screening
-  if (runAi && cvText) {
-    const quota = await consumeAiQuota(supabase, {
-      agencyId: profile.agency_id,
-      eventType: "cv_screen",
-      userId: profile.id,
-      resourceType: "job",
-      resourceId: jobId,
+  if (!name) {
+    return {
+      error:
+        "Nama kandidat wajib diisi (isi manual, atau upload CV teks yang jelas).",
+    };
+  }
+  if (!email) {
+    return {
+      error:
+        "Email kandidat wajib diisi (isi manual, atau pastikan email ada di CV).",
+    };
+  }
+
+  const pendingAi = Boolean(runAi && cvText);
+  const { data: inserted, error } = await supabase
+    .from("candidates")
+    .insert({
+      job_id: jobId,
+      agency_id: profile.agency_id,
+      name,
+      email,
+      phone,
+      cv_file_path: cvFilePath,
+      parsed_data: null,
+      ai_score: null,
+      ai_summary: pendingAi ? PENDING_SUMMARY : null,
+      ai_score_breakdown: null,
+      status: "submitted",
+    })
+    .select("id")
+    .single();
+
+  if (error || !inserted) return { error: formatError(error) };
+
+  const candidateId = inserted.id as string;
+  const requirements = Array.isArray(job.requirements)
+    ? (job.requirements as string[])
+    : [];
+
+  if (pendingAi) {
+    after(async () => {
+      await runScreeningInBackground({
+        candidateId,
+        agencyId: profile.agency_id,
+        userId: profile.id,
+        cvText,
+        jobTitle: job.title,
+        jobDescription: job.description || "",
+        requirements,
+        supabase,
+      });
     });
-
-    if (!quota.ok && !quota.soft) {
-      aiSummary = quotaExceededMessage(quota);
-    } else {
-      try {
-        const requirements = Array.isArray(job.requirements)
-          ? (job.requirements as string[])
-          : [];
-
-        const result = await screenCandidateWithAI({
-          cvText,
-          jobTitle: job.title,
-          jobDescription: job.description,
-          requirements,
-        });
-
-        aiScore = result.score;
-        aiSummary = result.summary;
-        aiBreakdown = result.breakdown as unknown as Record<string, unknown>;
-        parsedData = result.parsed as unknown as Record<string, unknown>;
-        status = "screened";
-
-        // Fill missing fields from AI parse
-        if (!name && result.parsed.name) name = result.parsed.name;
-        if (!email && result.parsed.email) email = result.parsed.email;
-        if (!phone && result.parsed.phone) phone = result.parsed.phone;
-      } catch (err) {
-        // Don't fail whole create — save without AI
-        aiSummary = "AI screening gagal: " + formatError(err);
-      }
-    }
   }
-
-  if (!name) return { error: "Nama kandidat wajib diisi (atau upload CV agar AI ekstrak nama)" };
-  if (!email) return { error: "Email kandidat wajib diisi (atau upload CV agar AI ekstrak email)" };
-
-  const { error } = await supabase.from("candidates").insert({
-    job_id: jobId,
-    agency_id: profile.agency_id,
-    name,
-    email,
-    phone,
-    cv_file_path: cvFilePath,
-    parsed_data: parsedData,
-    ai_score: aiScore,
-    ai_summary: aiSummary,
-    ai_score_breakdown: aiBreakdown,
-    status,
-  });
-
-  if (error) return { error: formatError(error) };
 
   revalidatePath("/candidates");
-  return { success: true };
+  return {
+    success: true,
+    candidateId,
+    pendingScreening: pendingAi,
+  };
 }
 
 export async function updateCandidateStatus(id: string, status: string) {
@@ -211,7 +306,6 @@ export async function deleteCandidate(id: string) {
     return { error: "Hanya admin yang bisa menghapus kandidat" };
   }
 
-  // Get CV path for cleanup
   const { data: candidate } = await supabase
     .from("candidates")
     .select("cv_file_path")
@@ -244,24 +338,6 @@ export async function rescreenCandidate(id: string) {
   if (cErr || !candidate) return { error: "Kandidat tidak ditemukan" };
   if (!candidate.cv_file_path) return { error: "Kandidat tidak punya file CV" };
 
-  const { data: fileData, error: dlErr } = await supabase.storage
-    .from("cvs")
-    .download(candidate.cv_file_path);
-
-  if (dlErr || !fileData) {
-    return { error: "Gagal download CV: " + (dlErr?.message || "unknown") };
-  }
-
-  const buffer = Buffer.from(await fileData.arrayBuffer());
-  const fileName = candidate.cv_file_path.split("/").pop() || "cv.pdf";
-
-  let cvText: string;
-  try {
-    cvText = await extractTextFromFile(buffer, "application/pdf", fileName);
-  } catch (err) {
-    return { error: formatError(err) };
-  }
-
   const job = candidate.job_requisitions as {
     title: string;
     description: string;
@@ -270,48 +346,74 @@ export async function rescreenCandidate(id: string) {
 
   if (!job) return { error: "Job terkait tidak ditemukan" };
 
-  const quota = await consumeAiQuota(supabase, {
-    agencyId: profile.agency_id,
-    eventType: "cv_screen",
-    userId: profile.id,
-    resourceType: "candidate",
-    resourceId: id,
-  });
-  if (!quota.ok && !quota.soft) {
-    return { error: quotaExceededMessage(quota) };
-  }
+  // Mark pending immediately so UI can close; AI runs in after()
+  await supabase
+    .from("candidates")
+    .update({
+      ai_summary: PENDING_SUMMARY,
+      ai_score: null,
+      ai_score_breakdown: null,
+      status: "submitted",
+    })
+    .eq("id", id);
 
-  try {
-    const result = await screenCandidateWithAI({
+  const cvPath = candidate.cv_file_path as string;
+  const agencyId = profile.agency_id;
+  const userId = profile.id;
+  const jobTitle = job.title;
+  const jobDescription = job.description || "";
+  const requirements = Array.isArray(job.requirements) ? job.requirements : [];
+
+  after(async () => {
+    const db = await dbForBackground(supabase);
+    const { data: fileData, error: dlErr } = await db.storage
+      .from("cvs")
+      .download(cvPath);
+
+    if (dlErr || !fileData) {
+      await db
+        .from("candidates")
+        .update({
+          ai_summary:
+            "AI screening gagal: tidak bisa download CV — " +
+            (dlErr?.message || "unknown"),
+        })
+        .eq("id", id);
+      revalidatePath("/candidates");
+      revalidatePath(`/candidates/${id}`);
+      return;
+    }
+
+    const buffer = Buffer.from(await fileData.arrayBuffer());
+    const fileName = cvPath.split("/").pop() || "cv.pdf";
+    let cvText: string;
+    try {
+      cvText = await extractTextFromFile(buffer, "application/pdf", fileName);
+    } catch (err) {
+      await db
+        .from("candidates")
+        .update({ ai_summary: "AI screening gagal: " + formatError(err) })
+        .eq("id", id);
+      revalidatePath("/candidates");
+      revalidatePath(`/candidates/${id}`);
+      return;
+    }
+
+    await runScreeningInBackground({
+      candidateId: id,
+      agencyId,
+      userId,
       cvText,
-      jobTitle: job.title,
-      jobDescription: job.description,
-      requirements: Array.isArray(job.requirements) ? job.requirements : [],
+      jobTitle,
+      jobDescription,
+      requirements,
+      supabase: db,
     });
-
-    const { error } = await supabase
-      .from("candidates")
-      .update({
-        ai_score: result.score,
-        ai_summary: result.summary,
-        ai_score_breakdown: result.breakdown,
-        parsed_data: result.parsed,
-        status: "screened",
-        // fresh AI run clears previous manual override
-        manual_score: null,
-        manual_score_reason: null,
-        manual_score_updated_at: null,
-      })
-      .eq("id", id);
-
-    if (error) return { error: formatError(error) };
-  } catch (err) {
-    return { error: formatError(err) };
-  }
+  });
 
   revalidatePath("/candidates");
   revalidatePath(`/candidates/${id}`);
-  return { success: true };
+  return { success: true, pendingScreening: true };
 }
 
 export async function overrideCandidateScore(formData: FormData) {

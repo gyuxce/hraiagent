@@ -53,19 +53,20 @@ export async function screenCandidateWithAI(params: {
       ? params.requirements.map((r, i) => `${i + 1}. ${r}`).join("\n")
       : "(tidak ada requirement spesifik)";
 
+  const jobDesc = (params.jobDescription || "").trim().slice(0, 1200);
   const prompt = `Kamu adalah asisten screening rekrutmen untuk agency di Indonesia.
 Nilai kecocokan kandidat vs job dengan RUBRIK KETAT (jangan murah angka).
 
 JOB TITLE: ${params.jobTitle}
 
 JOB DESCRIPTION:
-${params.jobDescription}
+${jobDesc || "(tidak ada)"}
 
 REQUIREMENTS (anggap poin awal = must-have kecuali jelas optional):
 ${requirementsText}
 
 DOCUMENT TEXT:
-${params.cvText.slice(0, 12000)}
+${params.cvText.slice(0, 8000)}
 
 Rubrik (tiap dimensi 0-100 integer):
 - must_have: kecocokan requirement wajib / inti peran
@@ -128,11 +129,12 @@ JSON saja (tanpa markdown):
     body: JSON.stringify({
       model,
       temperature: 0.2,
+      max_tokens: 1400,
       messages: [
         {
           role: "system",
           content:
-            "You are a strict Indonesian recruitment screener. Prefer evidence over generosity. Valid JSON only.",
+            "You are a strict Indonesian recruitment screener. Prefer evidence over generosity. Valid JSON only. Be concise.",
         },
         { role: "user", content: prompt },
       ],

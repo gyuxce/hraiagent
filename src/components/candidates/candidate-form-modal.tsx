@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createCandidate } from "@/lib/actions/candidates";
+import { useToast } from "@/components/ui/toast";
 
 export type JobOption = {
   id: string;
@@ -19,6 +20,7 @@ type Props = {
 
 export function CandidateFormModal({ open, onClose, jobs }: Props) {
   const router = useRouter();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -42,11 +44,21 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
 
     if (result?.error) {
       setError(result.error);
+      toast.error(result.error);
       return;
     }
 
+    toast.success(
+      result?.pendingScreening
+        ? "Kandidat tersimpan — AI screening jalan di background"
+        : "Kandidat ditambahkan"
+    );
     router.refresh();
     onClose();
+    // Refresh again shortly so AI score can appear without manual reload
+    if (result?.pendingScreening) {
+      setTimeout(() => router.refresh(), 8000);
+    }
   }
 
   return (
@@ -178,7 +190,7 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
                 disabled={loading}
                 className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
               >
-                {loading ? "Memproses (AI)..." : "Tambah Kandidat"}
+                {loading ? "Menyimpan..." : "Tambah Kandidat"}
               </button>
             </div>
           </form>

@@ -38,7 +38,7 @@ const STEPS = [
   {
     key: "candidate" as const,
     title: "Upload / import kandidat pertama",
-    description: "Upload CV (PDF/DOCX) atau import CSV, lalu jalankan AI screening.",
+    description: "Upload CV (PDF/DOCX) atau import CSV, lalu jalankan screening.",
     href: "/candidates",
     cta: "Ke Candidates",
     done: (p: OnboardingProgress) => p.hasCandidate,

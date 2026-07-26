@@ -26,9 +26,6 @@ const ALLOWED_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
-const PENDING_SUMMARY =
-  "AI screening sedang diproses di background — refresh halaman sebentar lagi.";
-
 function sanitizeParsedName(name: string | null | undefined): string | null {
   if (!name || !looksLikePersonName(name) || looksLikeSkillOrTitle(name)) {
     return null;
@@ -393,7 +390,7 @@ export async function createCandidate(formData: FormData) {
       cv_file_path: cvFilePath,
       parsed_data: null,
       ai_score: null,
-      ai_summary: pendingAi ? "AI screening sedang diproses…" : null,
+      ai_summary: null,
       ai_score_breakdown: null,
       status: "submitted",
     })
@@ -547,9 +544,7 @@ export async function rescreenCandidate(id: string) {
   await supabase
     .from("candidates")
     .update({
-      ai_summary: useBackground
-        ? PENDING_SUMMARY
-        : "AI screening sedang diproses…",
+      ai_summary: null,
       ai_score: null,
       ai_score_breakdown: null,
       status: "submitted",

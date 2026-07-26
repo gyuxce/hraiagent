@@ -906,7 +906,7 @@ async function analyzePublicInterviewSession(token: string) {
       p_answer_scores: [],
       p_overall_score: null,
       p_overall_summary:
-        "Interview selesai. Analisis AI tertunda (kuota). Recruiter: klik Jalankan Analisis AI.",
+        null,
       p_allow_null_overall: true,
     });
     return { analyzed: false, analyzeError: quotaExceededMessage(quota) };
@@ -1032,8 +1032,7 @@ export async function completePublicInterview(token: string) {
     p_token: token,
     p_answer_scores: [],
     p_overall_score: null,
-    p_overall_summary:
-      "Interview selesai. Analisis AI sedang diproses di background — refresh halaman atau klik Jalankan Analisis AI jika belum muncul skor.",
+      p_overall_summary: null,
     p_allow_null_overall: true,
   });
 
@@ -1047,10 +1046,7 @@ export async function completePublicInterview(token: string) {
         p_token: token,
         p_answer_scores: [],
         p_overall_score: null,
-        p_overall_summary:
-          "Interview selesai, tapi analisis AI gagal otomatis: " +
-          formatError(err) +
-          ". Recruiter: klik Jalankan Analisis AI.",
+        p_overall_summary: null,
         p_allow_null_overall: true,
       });
     }

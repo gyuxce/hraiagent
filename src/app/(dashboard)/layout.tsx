@@ -23,37 +23,37 @@ export default async function DashboardLayout({
 
   const navigation: NavItem[] = viewer
     ? [
-        { name: "Overview", href: "/dashboard", icon: "home" },
-        { name: "Jobs", href: "/jobs", icon: "briefcase" },
-        { name: "Candidates", href: "/candidates", icon: "userCheck" },
-        { name: "Reports", href: "/reports", icon: "fileSpreadsheet" },
+        { key: "overview", href: "/dashboard", icon: "home" },
+        { key: "jobs", href: "/jobs", icon: "briefcase" },
+        { key: "candidates", href: "/candidates", icon: "userCheck" },
+        { key: "reports", href: "/reports", icon: "fileSpreadsheet" },
       ]
     : (
         [
-          { name: "Dashboard", href: "/dashboard", icon: "home", show: true },
-          { name: "Clients", href: "/clients", icon: "users", show: true },
-          { name: "Jobs", href: "/jobs", icon: "briefcase", show: true },
+          { key: "dashboard", href: "/dashboard", icon: "home", show: true },
+          { key: "clients", href: "/clients", icon: "users", show: true },
+          { key: "jobs", href: "/jobs", icon: "briefcase", show: true },
           {
-            name: "Candidates",
+            key: "candidates",
             href: "/candidates",
             icon: "userCheck",
             show: true,
           },
-          { name: "Compare", href: "/compare", icon: "columns2", show: true },
-          { name: "Ranking", href: "/ranking", icon: "trophy", show: true },
+          { key: "compare", href: "/compare", icon: "columns2", show: true },
+          { key: "ranking", href: "/ranking", icon: "trophy", show: true },
           {
-            name: "Schedule",
+            key: "schedule",
             href: "/schedule",
             icon: "calendarDays",
             show: true,
           },
           {
-            name: "Reports",
+            key: "reports",
             href: "/reports",
             icon: "fileSpreadsheet",
             show: true,
           },
-          { name: "Team", href: "/team", icon: "userCog", show: admin },
+          { key: "team", href: "/team", icon: "userCog", show: admin },
         ] as Array<NavItem & { show?: boolean }>
       ).filter((item) => item.show !== false);
 

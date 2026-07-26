@@ -55,7 +55,7 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
       return;
     }
 
-    toast.success("Kandidat tersimpan — screening selesai");
+    toast.success("Kandidat tersimpan");
     router.refresh();
     setLoading(false);
     onClose();
@@ -94,9 +94,9 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
             )}
 
             {loading && (
-              <div className="rounded-lg border border-accent/25 bg-accent-soft/70 px-3 py-2.5 text-sm text-ink-soft">
-                Menyimpan CV & menjalankan AI screening… popup tetap terbuka sampai
-                selesai.
+              <div className="flex items-center gap-2 rounded-lg border border-line bg-mist/60 px-3 py-2.5 text-sm text-muted">
+                <span className="loading-spinner" aria-hidden />
+                <span>Menyimpan…</span>
               </div>
             )}
 
@@ -137,7 +137,7 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
                 className="mt-1 block w-full text-sm text-muted disabled:opacity-60"
               />
               <p className="mt-1 text-xs text-muted">
-                Simpan + AI screening selesai dalam satu alur (popup tidak ditutup lebih dulu)
+                Popup tetap terbuka sampai proses selesai
               </p>
             </div>
 
@@ -192,7 +192,7 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
                 disabled={loading}
                 className="rounded border-line text-accent focus:ring-accent"
               />
-              Jalankan AI screening setelah upload
+              Jalankan screening setelah upload
             </label>
 
             <div className="flex justify-end gap-3 pt-2">
@@ -205,7 +205,14 @@ export function CandidateFormModal({ open, onClose, jobs }: Props) {
                 Batal
               </button>
               <button type="submit" disabled={loading} className="btn-primary disabled:opacity-50">
-                {loading ? "Menyimpan & screening…" : "Tambah Kandidat"}
+                {loading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="loading-spinner !border-white/40 !border-t-white" />
+                    Menyimpan…
+                  </span>
+                ) : (
+                  "Tambah Kandidat"
+                )}
               </button>
             </div>
           </form>

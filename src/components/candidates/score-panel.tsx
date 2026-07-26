@@ -109,7 +109,7 @@ export function ScorePanel({
       </div>
 
       <p className="prose-read mb-4 whitespace-pre-wrap text-ink-soft">
-        {summary || "Belum ada AI screening."}
+        {summary || "Belum ada skor screening."}
       </p>
 
       {breakdown && (

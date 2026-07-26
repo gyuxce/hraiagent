@@ -233,13 +233,13 @@ export function CompareClient({
                         {interviewSummary}
                       </p>
                     ) : asyncSession?.status === "completed" ? (
-                      <p className="mt-1 text-sm text-muted">
-                        Interview selesai — analisis AI masih diproses / belum
-                        dijalankan.
+                      <p className="mt-1 inline-flex items-center gap-2 text-sm text-muted">
+                        <span className="loading-spinner" aria-hidden />
+                        Memproses…
                       </p>
                     ) : (
                       <p className="mt-1 text-sm text-muted">
-                        Belum ada hasil interview async
+                        Belum ada hasil interview
                       </p>
                     )}
                     {!asyncSession && notes.length > 1 && (

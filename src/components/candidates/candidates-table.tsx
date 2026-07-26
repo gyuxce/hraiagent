@@ -111,11 +111,7 @@ export function CandidatesTable({
       toast.error(result.error);
       return;
     }
-    toast.success(
-      result?.pendingScreening
-        ? "AI screening dimulai di background — refresh sebentar lagi"
-        : "AI screening selesai"
-    );
+    toast.success(result?.pendingScreening ? "Memproses…" : "Skor diperbarui");
     router.refresh();
     if (result?.pendingScreening) {
       setTimeout(() => router.refresh(), 6000);
@@ -197,7 +193,7 @@ export function CandidatesTable({
             description={
               jobs.length === 0
                 ? "Buat job dulu, lalu upload CV (PDF/DOCX) atau import CSV agar AI bisa men-score kecocokan."
-                : "Upload CV atau import spreadsheet. Centang AI screening agar skor + breakdown muncul otomatis."
+                : "Upload CV atau import spreadsheet. Centang screening agar skor muncul otomatis."
             }
             action={
               canWrite ? (
@@ -407,7 +403,7 @@ export function CandidatesTable({
                                 disabled={busyId === c.id}
                                 onClick={() => handleRescreen(c.id)}
                                 className="inline-flex items-center rounded-md bg-accent px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-accent-hover disabled:opacity-50"
-                                title="Jalankan ulang AI screening"
+                                title="Hitung ulang skor"
                               >
                                 {busyId === c.id ? "Memproses..." : "Re-AI"}
                               </button>

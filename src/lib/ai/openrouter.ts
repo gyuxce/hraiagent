@@ -1,9 +1,12 @@
 import {
   detectProvider,
-  getVisionModel,
+  getVisionModelFallbacks,
   missingAiKeyMessage,
 } from "@/lib/ai/config";
-import type { FaceMatchStatus } from "@/lib/interview/identity";
+import {
+  humanizeVisionError,
+  type FaceMatchStatus,
+} from "@/lib/interview/identity";
 
 export type ParsedCvData = {
   name: string | null;
@@ -523,7 +526,7 @@ export async function compareInterviewFaces(params: {
   selfieDataUrl: string;
   faceFrameDataUrl: string;
 }): Promise<{ status: FaceMatchStatus; note: string }> {
-  const { baseUrl, apiKey, provider } = detectProvider();
+  const { baseUrl, apiKey } = detectProvider();
   if (!apiKey) {
     return {
       status: "manual",
@@ -531,95 +534,99 @@ export async function compareInterviewFaces(params: {
     };
   }
 
-  // Vision via OpenRouter-compatible multimodal; skip if clearly unsupported provider path
-  const model = provider === "openrouter" ? getVisionModel() : getVisionModel();
+  const models = getVisionModelFallbacks();
+  let lastHumanNote =
+    "Face-match otomatis gagal — bandingkan selfie vs frame secara manual.";
 
-  try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        ...(baseUrl.includes("openrouter.ai")
-          ? {
-              "HTTP-Referer":
-                process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-              "X-Title": "Saring",
-            }
-          : {}),
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You compare two face photos for recruitment identity checks. Valid JSON only.",
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Bandingkan apakah foto 1 (selfie awal) dan foto 2 (frame dari video interview) kemungkinan orang yang sama.
+  for (const model of models) {
+    try {
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          ...(baseUrl.includes("openrouter.ai")
+            ? {
+                "HTTP-Referer":
+                  process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+                "X-Title": "Saring",
+              }
+            : {}),
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You compare two face photos for recruitment identity checks. Valid JSON only.",
+            },
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `Bandingkan apakah foto 1 (selfie awal) dan foto 2 (frame dari video interview) kemungkinan orang yang sama.
 Abaikan pencahayaan, sudut, dan kualitas rendah.
 JSON saja:
 { "status": "match" | "mismatch" | "unclear", "note": "1 kalimat Bahasa Indonesia" }`,
-              },
-              {
-                type: "image_url",
-                image_url: { url: params.selfieDataUrl },
-              },
-              {
-                type: "image_url",
-                image_url: { url: params.faceFrameDataUrl },
-              },
-            ],
-          },
-        ],
-      }),
-    });
+                },
+                {
+                  type: "image_url",
+                  image_url: { url: params.selfieDataUrl },
+                },
+                {
+                  type: "image_url",
+                  image_url: { url: params.faceFrameDataUrl },
+                },
+              ],
+            },
+          ],
+        }),
+      });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      return {
-        status: "manual",
-        note: `Vision AI gagal (${response.status}) — cek manual. ${errText.slice(0, 120)}`,
-      };
+      if (!response.ok) {
+        const errText = await response.text();
+        lastHumanNote = humanizeVisionError(response.status, errText);
+        // Try next model on 404 / missing endpoint
+        if (
+          response.status === 404 ||
+          /no endpoints found/i.test(errText)
+        ) {
+          continue;
+        }
+        return { status: "manual", note: lastHumanNote };
+      }
+
+      const data = await response.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (!content || typeof content !== "string") {
+        lastHumanNote =
+          "Vision AI kosong — bandingkan selfie vs frame secara manual.";
+        continue;
+      }
+
+      const parsed = extractJson(content);
+      const raw =
+        typeof parsed.status === "string" ? parsed.status.toLowerCase() : "";
+      const status: FaceMatchStatus =
+        raw === "match" || raw === "mismatch" || raw === "unclear"
+          ? raw
+          : "unclear";
+      const note =
+        typeof parsed.note === "string" && parsed.note.trim()
+          ? parsed.note.trim()
+          : "Tidak ada catatan face match.";
+
+      return { status, note };
+    } catch {
+      lastHumanNote =
+        "Face-match otomatis gagal — bandingkan selfie vs frame secara manual.";
     }
-
-    const data = await response.json();
-    const content = data?.choices?.[0]?.message?.content;
-    if (!content || typeof content !== "string") {
-      return {
-        status: "manual",
-        note: "Vision AI kosong — bandingkan selfie vs frame manual.",
-      };
-    }
-
-    const parsed = extractJson(content);
-    const raw =
-      typeof parsed.status === "string" ? parsed.status.toLowerCase() : "";
-    const status: FaceMatchStatus =
-      raw === "match" || raw === "mismatch" || raw === "unclear"
-        ? raw
-        : "unclear";
-    const note =
-      typeof parsed.note === "string" && parsed.note.trim()
-        ? parsed.note.trim()
-        : "Tidak ada catatan face match.";
-
-    return { status, note };
-  } catch (err) {
-    return {
-      status: "manual",
-      note:
-        "Face match dilewati: " +
-        (err instanceof Error ? err.message : "error") +
-        " — cek manual.",
-    };
   }
+
+  return { status: "manual", note: lastHumanNote };
 }
 
 function parseScore(value: unknown): number {

@@ -77,16 +77,26 @@ export function PublicInterviewClient({ token }: { token: string }) {
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const selfieStreamRef = useRef<MediaStream | null>(null);
-  const recognitionRef = useRef<{ stop: () => void } | null>(null);
+  const recognitionRef = useRef<{ stop: () => void; abort?: () => void } | null>(
+    null
+  );
   const previewUrlRef = useRef<string | null>(null);
   const idxRef = useRef(0);
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoStopRef = useRef(false);
   const uploadGenRef = useRef(0);
+  /** Live transcript buffer — avoid stale React state when auto-saving after Stop. */
+  const transcriptRef = useRef("");
+  const recordingRef = useRef(false);
+  const finalTranscriptRef = useRef("");
 
   useEffect(() => {
     idxRef.current = idx;
   }, [idx]);
+
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
 
   function clearPreview() {
     if (previewUrlRef.current) {
@@ -99,6 +109,9 @@ export function PublicInterviewClient({ token }: { token: string }) {
     setUploadNote(null);
     setRecordSeconds(0);
     setAnswerSaved(false);
+    setTranscript("");
+    transcriptRef.current = "";
+    finalTranscriptRef.current = "";
   }
 
   function stopMediaTracks() {
@@ -306,16 +319,25 @@ export function PublicInterviewClient({ token }: { token: string }) {
     }
   }
 
+  function liveTranscript(): string {
+    return (
+      transcriptRef.current.trim() ||
+      finalTranscriptRef.current.trim() ||
+      transcript.trim()
+    );
+  }
+
   async function persistAnswer(
     questionId: string,
     videoPath: string,
     currentIdx: number
   ) {
+    const text = liveTranscript();
     const form = new FormData();
     form.set("token", token);
     form.set("question_id", questionId);
     form.set("text_answer", "");
-    form.set("transcript", transcript.trim() || "(jawaban video)");
+    form.set("transcript", text || "(jawaban video)");
     form.set("video_path", videoPath);
     const result = await submitPublicAnswer(form);
     if (result.error) {
@@ -333,7 +355,7 @@ export function PublicInterviewClient({ token }: { token: string }) {
                 id: item.answer?.id || "local",
                 text_answer: null,
                 video_path: videoPath,
-                transcript: transcript.trim() || null,
+                transcript: text || null,
               },
             }
           : item
@@ -493,11 +515,15 @@ export function PublicInterviewClient({ token }: { token: string }) {
           videoRef.current.style.transform = "none";
           void videoRef.current.load();
         }
-        // Upload + save answer immediately after stop
-        void uploadBlobDirect(blob, q.id);
+        // Brief pause so final speech chunks flush into transcriptRef
+        void (async () => {
+          await new Promise((r) => setTimeout(r, 700));
+          void uploadBlobDirect(blob, q.id);
+        })();
       };
       recorder.start(1000);
       setRecording(true);
+      recordingRef.current = true;
       setRecordSeconds(0);
       clearRecordTimer();
       recordTimerRef.current = setInterval(() => {
@@ -520,18 +546,46 @@ export function PublicInterviewClient({ token }: { token: string }) {
         recognition.lang = "id-ID";
         recognition.continuous = true;
         recognition.interimResults = true;
-        let finalText = "";
+        finalTranscriptRef.current = "";
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognition.onresult = (event: any) => {
           let interim = "";
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const t = event.results[i][0].transcript as string;
-            if (event.results[i].isFinal) finalText += t + " ";
-            else interim += t;
+            if (event.results[i].isFinal) {
+              finalTranscriptRef.current += t + " ";
+            } else {
+              interim += t;
+            }
           }
-          setTranscript((finalText + " " + interim).trim());
+          const full = (
+            finalTranscriptRef.current +
+            " " +
+            interim
+          ).trim();
+          transcriptRef.current = full;
+          setTranscript(full);
         };
-        recognition.onerror = () => undefined;
+        recognition.onerror = () => {
+          // Chrome often ends sessions; restart while still recording
+          if (recordingRef.current) {
+            try {
+              recognition.start();
+            } catch {
+              /* already started */
+            }
+          }
+        };
+        recognition.onend = () => {
+          // Keep listening for long answers (Chrome stops continuous SR early)
+          if (recordingRef.current) {
+            try {
+              recognition.start();
+            } catch {
+              /* ignore */
+            }
+          }
+        };
         recognition.start();
         recognitionRef.current = recognition;
       }
@@ -540,12 +594,14 @@ export function PublicInterviewClient({ token }: { token: string }) {
         "Tidak bisa akses kamera/mikrofon. Izinkan permission browser lalu coba lagi."
       );
       setRecording(false);
+      recordingRef.current = false;
       clearRecordTimer();
     }
   }
 
   function stopRecording() {
     clearRecordTimer();
+    recordingRef.current = false;
     try {
       if (
         mediaRecorderRef.current &&
@@ -585,7 +641,20 @@ export function PublicInterviewClient({ token }: { token: string }) {
       return false;
     }
 
-    if (answerSaved || q.answer?.video_path) {
+    // If video already saved with placeholder transcript, rewrite with live text
+    if (q.answer?.video_path) {
+      const live = liveTranscript();
+      const prior = (q.answer.transcript || "").trim();
+      const priorWeak =
+        !prior ||
+        prior === "(jawaban video)" ||
+        prior.length < 24;
+      if (live && priorWeak && live !== prior) {
+        await persistAnswer(q.id, q.answer.video_path, currentIdx);
+      }
+      return true;
+    }
+    if (answerSaved) {
       return true;
     }
 
@@ -877,10 +946,14 @@ export function PublicInterviewClient({ token }: { token: string }) {
                 </button>
               )}
               {transcript && (
-                <p className="w-full text-xs text-muted">
-                  Transkrip otomatis: {transcript.slice(0, 200)}
-                  {transcript.length > 200 ? "…" : ""}
-                </p>
+                <div className="w-full rounded-lg border border-line bg-mist/40 px-3 py-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                    Transkrip otomatis
+                  </p>
+                  <p className="prose-read mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap text-xs text-ink-soft">
+                    {transcript}
+                  </p>
+                </div>
               )}
             </div>
           </div>

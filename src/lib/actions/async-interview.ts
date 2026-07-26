@@ -17,11 +17,11 @@ import {
 } from "@/lib/ai/usage";
 import { requireAgencyContext } from "@/lib/auth/agency-context";
 import {
+  anyTranscriptMentionsChallengeCode,
   buildIdentitySummary,
   generateChallengeCode,
   isUsableTranscript,
   pickChallengeQuestionIndex,
-  transcriptMentionsChallengeCode,
   type FaceMatchStatus,
 } from "@/lib/interview/identity";
 import { buildFallbackInterviewQuestions } from "@/lib/interview/fallback-questions";
@@ -379,15 +379,30 @@ async function runIdentityChecks(params: {
   identitySummary: string;
 }> {
   let challengePassed: boolean | null = null;
-  if (params.challengeCode && params.challengeQuestionId) {
-    const challengeQ = params.questions.find(
-      (q) => q.id === params.challengeQuestionId
+  if (params.challengeCode) {
+    // Prefer challenge question, but also accept code spoken in any answer
+    // (speech-to-text often splits digits / uses Indonesian number words).
+    const transcripts = params.questions.map(
+      (q) => q.answer?.transcript || q.answer?.text_answer || ""
     );
-    const t =
-      challengeQ?.answer?.transcript ||
-      challengeQ?.answer?.text_answer ||
-      "";
-    challengePassed = transcriptMentionsChallengeCode(t, params.challengeCode);
+    if (params.challengeQuestionId) {
+      const challengeQ = params.questions.find(
+        (q) => q.id === params.challengeQuestionId
+      );
+      const preferred =
+        challengeQ?.answer?.transcript ||
+        challengeQ?.answer?.text_answer ||
+        "";
+      challengePassed = anyTranscriptMentionsChallengeCode(
+        [preferred, ...transcripts],
+        params.challengeCode
+      );
+    } else {
+      challengePassed = anyTranscriptMentionsChallengeCode(
+        transcripts,
+        params.challengeCode
+      );
+    }
   }
 
   let faceMatchStatus: FaceMatchStatus = "manual";

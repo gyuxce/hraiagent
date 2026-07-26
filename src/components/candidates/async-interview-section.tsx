@@ -268,27 +268,27 @@ export function AsyncInterviewSection({
                       </p>
                     </div>
 
-                    <div className="flex w-full flex-wrap gap-x-3 gap-y-2 sm:w-auto sm:justify-end">
+                    <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
                       <button
                         type="button"
                         onClick={() => handleCopy(url)}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                        className="btn-secondary px-3 py-1.5 text-xs"
                       >
-                        {copied === url ? "✓ Tersalin" : "Salin Link"}
+                        {copied === url ? "✓ Tersalin" : "Salin link"}
                       </button>
                       <Link
                         href={url}
                         target="_blank"
-                        className="text-sm font-medium text-indigo-600 hover:text-indigo-500"
+                        className="btn-secondary px-3 py-1.5 text-xs"
                       >
-                        Buka (preview)
+                        Buka preview
                       </Link>
                       <button
                         type="button"
                         onClick={() =>
                           setExpanded(isOpen ? null : s.id)
                         }
-                        className="text-sm font-medium text-gray-600 hover:text-gray-800"
+                        className="btn-secondary px-3 py-1.5 text-xs"
                       >
                         {isOpen ? "Sembunyikan soal" : "Lihat soal AI"}
                       </button>
@@ -300,7 +300,7 @@ export function AsyncInterviewSection({
                             type="button"
                             disabled={busyId === s.id}
                             onClick={() => handleAnalyze(s.id)}
-                            className="text-sm font-medium text-green-700 hover:text-green-600 disabled:opacity-50"
+                            className="btn-primary px-3 py-1.5 text-xs disabled:opacity-50"
                           >
                             {busyId === s.id
                               ? "Analisis..."
@@ -314,7 +314,7 @@ export function AsyncInterviewSection({
                             type="button"
                             disabled={busyId === s.id}
                             onClick={() => handleAnalyze(s.id)}
-                            className="text-sm font-medium text-gray-600 hover:text-gray-800 disabled:opacity-50"
+                            className="btn-secondary px-3 py-1.5 text-xs disabled:opacity-50"
                           >
                             {busyId === s.id ? "..." : "Re-analisis"}
                           </button>

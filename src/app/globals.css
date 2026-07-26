@@ -79,13 +79,16 @@ h3,
   font-family: var(--font-manrope), sans-serif;
 }
 
-/* Form controls */
+/* Form controls — inherit Manrope globally; keep button colors from utility classes */
 input,
 textarea,
-select,
-button {
+select {
   color: var(--ink);
   background-color: var(--surface);
+  font-family: var(--font-manrope), "Segoe UI", sans-serif;
+}
+
+button {
   font-family: var(--font-manrope), "Segoe UI", sans-serif;
 }
 

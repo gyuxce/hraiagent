@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserHasAgency } from "@/lib/actions/agency";
 import { RankingFilters } from "@/components/interview/ranking-filters";
+import { shortSummary } from "@/lib/cv/short-text";
 
 type Props = {
   searchParams: Promise<{ job?: string }>;
@@ -137,8 +138,8 @@ export default async function RankingPage({ searchParams }: Props) {
                       {r.candidates?.email}
                     </div>
                     {r.overall_summary && (
-                      <p className="mt-1 line-clamp-2 text-xs text-gray-500">
-                        {r.overall_summary}
+                      <p className="mt-1 text-xs text-gray-500">
+                        {shortSummary(r.overall_summary, 120)}
                       </p>
                     )}
                   </td>

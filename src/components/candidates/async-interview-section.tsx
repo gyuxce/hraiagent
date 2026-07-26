@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -9,6 +9,7 @@ import {
 } from "@/lib/actions/async-interview";
 import { InterviewIdentityPanel } from "@/components/candidates/interview-identity-panel";
 import { useToast } from "@/components/ui/toast";
+import { shortSummary } from "@/lib/cv/short-text";
 
 export type AsyncSessionRow = {
   id: string;
@@ -87,6 +88,26 @@ export function AsyncInterviewSection({
   const [expanded, setExpanded] = useState<string | null>(
     sessions[0]?.id || null
   );
+
+  const analyzingPending = sessions.some(
+    (s) =>
+      (s.status === "completed" || s.status === "expired") &&
+      s.overall_score == null &&
+      Boolean(s.completed_at)
+  );
+
+  // Auto-refresh while background AI analysis is still running
+  useEffect(() => {
+    if (!analyzingPending) return;
+    const tick = window.setInterval(() => {
+      router.refresh();
+    }, 4000);
+    const stop = window.setTimeout(() => window.clearInterval(tick), 120_000);
+    return () => {
+      window.clearInterval(tick);
+      window.clearTimeout(stop);
+    };
+  }, [analyzingPending, router]);
 
   async function handleCreate() {
     setLoading(true);
@@ -169,6 +190,14 @@ export function AsyncInterviewSection({
       {(loadError || error) && (
         <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
           {loadError || error}
+        </div>
+      )}
+
+      {analyzingPending && (
+        <div className="mb-4 rounded-lg border border-accent/25 bg-accent-soft/70 px-4 py-3 text-sm text-ink-soft">
+          Analisis AI interview sedang diproses di background — halaman ini
+          refresh otomatis tiap beberapa detik (hingga ~2 menit). Tidak perlu
+          refresh manual terus-menerus.
         </div>
       )}
 
@@ -332,9 +361,21 @@ export function AsyncInterviewSection({
                   />
 
                   {s.overall_summary && (
-                    <p className="prose-read w-full min-w-0 max-w-full break-words whitespace-pre-wrap text-gray-700">
-                      {s.overall_summary}
-                    </p>
+                    <div className="w-full min-w-0">
+                      <p className="text-sm text-ink-soft">
+                        {shortSummary(s.overall_summary, 180)}
+                      </p>
+                      {s.overall_summary.length > 180 && (
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-xs font-semibold text-accent hover:text-accent-hover">
+                            Lihat ringkasan lengkap
+                          </summary>
+                          <p className="prose-read mt-2 whitespace-pre-wrap text-ink-soft">
+                            {s.overall_summary}
+                          </p>
+                        </details>
+                      )}
+                    </div>
                   )}
                 </div>
 

@@ -184,7 +184,7 @@ parsed.name = nama orang saja (BUKAN HP, BUKAN "Keahlian Teratas"/section header
           return null;
         }
         if (
-          /\b(keahlian|skills?|teratas|pengalaman|experience|pendidikan|education|ringkasan|summary|top\s*skills?)\b/i.test(
+          /\b(keahlian|skills?|teratas|pengalaman|experience|pendidikan|education|ringkasan|summary|top\s*skills?|strategy|business|growth|marketing|operations|development|copywriting|certifications?)\b/i.test(
             n
           )
         ) {

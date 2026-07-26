@@ -7,6 +7,7 @@ import {
   extractContactHints,
   looksLikePersonName,
   looksLikePhone,
+  looksLikeSkillOrTitle,
 } from "@/lib/cv/contact-hints";
 import { screenCandidateWithAI } from "@/lib/ai/openrouter";
 import {
@@ -29,7 +30,9 @@ const PENDING_SUMMARY =
   "AI screening sedang diproses di background — refresh halaman sebentar lagi.";
 
 function sanitizeParsedName(name: string | null | undefined): string | null {
-  if (!name || !looksLikePersonName(name)) return null;
+  if (!name || !looksLikePersonName(name) || looksLikeSkillOrTitle(name)) {
+    return null;
+  }
   return name.trim().replace(/\s+/g, " ");
 }
 
@@ -254,7 +257,12 @@ async function runScreeningInBackground(params: {
       return;
     }
 
-    await enrichContactsFromParsed(db, params.candidateId, result.parsed);
+    // Prefer AI name, then strong local hints from the same CV text
+    const hintName = extractContactHints(params.cvText).name;
+    await enrichContactsFromParsed(db, params.candidateId, {
+      ...result.parsed,
+      name: sanitizeParsedName(result.parsed.name) || hintName,
+    });
   } catch (err) {
     await markScreeningFailure(
       db,

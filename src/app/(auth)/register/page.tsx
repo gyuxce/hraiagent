@@ -7,6 +7,7 @@ import { register } from "@/lib/actions/auth";
 import { getInvitePreview } from "@/lib/actions/team";
 import { roleLabel } from "@/lib/auth/roles";
 import { BRAND } from "@/lib/brand";
+import { BrandLogo } from "@/components/brand/brand-logo";
 
 type InviteInfo = {
   email?: string;
@@ -69,13 +70,10 @@ function RegisterForm() {
       <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-70" />
       <div className="relative w-full max-w-md animate-rise">
         <div className="mb-8 text-center">
-          <Link
-            href="/"
-            className="font-display text-3xl font-extrabold tracking-tight text-ink"
-          >
-            {BRAND.name}
+          <Link href="/" className="inline-flex justify-center">
+            <BrandLogo variant="dark" size="lg" />
           </Link>
-          <p className="mt-2 text-sm font-medium text-ink-soft">{BRAND.slogan}</p>
+          <p className="mt-3 text-sm font-medium text-ink-soft">{BRAND.slogan}</p>
           <p className="mt-1 text-sm text-muted">
             {inviteToken
               ? "Terima undangan bergabung ke agency"

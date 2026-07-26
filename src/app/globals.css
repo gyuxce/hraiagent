@@ -1,28 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  /* Saring — ink + coral (agency B2B, not purple/cream AI defaults) */
-  --ink: #0b1f33;
-  --ink-soft: #16324a;
-  --mist: #eef3f7;
-  --mist-deep: #d9e4ee;
-  --paper: #f7f4ef;
+  /* Cullr — charcoal + signal teal (decisive B2B, not purple/cream defaults) */
+  --ink: #0e1116;
+  --ink-soft: #1c2430;
+  --mist: #f1f3f6;
+  --mist-deep: #dde2e8;
+  --paper: #f7f8fa;
   --surface: #ffffff;
-  --line: #d5e0ea;
-  --muted: #5b6b7c;
-  --accent: #e85d4c;
-  --accent-hover: #d14a3a;
-  --accent-soft: #fde8e4;
-  --teal: #1f7a6c;
-  --teal-soft: #e3f3ef;
-  --good: #1f7a6c;
+  --line: #d7dde5;
+  --muted: #5c6675;
+  --accent: #12b5a0;
+  --accent-hover: #0e9a88;
+  --accent-soft: #d8f5f0;
+  --teal: #12b5a0;
+  --teal-soft: #d8f5f0;
+  --good: #0e9a88;
   --warn: #b7791f;
   --bad: #c53030;
 
   --background: var(--mist);
   --foreground: var(--ink);
   --radius: 0.75rem;
-  --shadow-soft: 0 1px 0 rgba(11, 31, 51, 0.04), 0 12px 32px rgba(11, 31, 51, 0.06);
+  --shadow-soft: 0 1px 0 rgba(14, 17, 22, 0.04), 0 12px 32px rgba(14, 17, 22, 0.06);
 }
 
 @theme inline {
@@ -43,58 +43,39 @@
   --color-teal-soft: var(--teal-soft);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
-  --font-sans: var(--font-manrope);
-  --font-display: var(--font-manrope);
+  --font-sans: var(--font-jakarta);
+  --font-display: var(--font-space);
 }
 
 html,
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-manrope), "Segoe UI", sans-serif;
-}
-
-h1,
-h2,
-h3,
-.font-display,
-button,
-input,
-textarea,
-select,
-label,
-p,
-a,
-span,
-li,
-td,
-th {
-  font-family: inherit;
+  font-family: var(--font-jakarta), "Segoe UI", sans-serif;
 }
 
 h1,
 h2,
 h3,
 .font-display {
-  font-family: var(--font-manrope), sans-serif;
+  font-family: var(--font-space), var(--font-jakarta), sans-serif;
 }
 
-/* Form controls — inherit Manrope globally; keep button colors from utility classes */
 input,
 textarea,
 select {
   color: var(--ink);
   background-color: var(--surface);
-  font-family: var(--font-manrope), "Segoe UI", sans-serif;
+  font-family: var(--font-jakarta), "Segoe UI", sans-serif;
 }
 
 button {
-  font-family: var(--font-manrope), "Segoe UI", sans-serif;
+  font-family: var(--font-jakarta), "Segoe UI", sans-serif;
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: #8a9aab;
+  color: #8a95a5;
   opacity: 1;
 }
 
@@ -118,8 +99,8 @@ option {
 
 .field-input:focus {
   outline: none;
-  border-color: var(--ink-soft);
-  box-shadow: 0 0 0 3px rgba(22, 50, 74, 0.12);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(18, 181, 160, 0.18);
 }
 
 .btn-primary {
@@ -184,7 +165,7 @@ option {
 
 .page-title {
   margin-top: 0.35rem;
-  font-family: var(--font-manrope), sans-serif;
+  font-family: var(--font-space), sans-serif;
   font-size: 1.75rem;
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -199,10 +180,9 @@ option {
 
 /**
  * Long-form reading blocks (AI summary, CV prose, feedback lists).
- * Manrope globally; only loosens metrics where paragraphs get dense.
  */
 .prose-read {
-  font-size: 0.9375rem; /* 15px */
+  font-size: 0.9375rem;
   line-height: 1.7;
   letter-spacing: 0.01em;
   word-spacing: 0.02em;
@@ -216,18 +196,18 @@ option {
   line-height: 1.65;
 }
 
-/* Atmosphere helpers */
+/* Atmosphere helpers — cool charcoal + signal teal */
 .bg-atmosphere {
   background:
-    radial-gradient(1000px 500px at 10% -10%, rgba(232, 93, 76, 0.18), transparent 55%),
-    radial-gradient(900px 480px at 90% 0%, rgba(31, 122, 108, 0.16), transparent 50%),
-    linear-gradient(165deg, #f7f4ef 0%, #eef3f7 45%, #e4edf5 100%);
+    radial-gradient(1000px 500px at 8% -8%, rgba(18, 181, 160, 0.16), transparent 55%),
+    radial-gradient(900px 480px at 92% 0%, rgba(28, 36, 48, 0.08), transparent 50%),
+    linear-gradient(165deg, #f7f8fa 0%, #f1f3f6 45%, #e8eef2 100%);
 }
 
 .bg-grid-fade {
   background-image:
-    linear-gradient(rgba(11, 31, 51, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(11, 31, 51, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(14, 17, 22, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 17, 22, 0.04) 1px, transparent 1px);
   background-size: 36px 36px;
   mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
 }
@@ -261,6 +241,16 @@ option {
   }
 }
 
+@keyframes mark-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 .animate-rise {
   animation: rise-in 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -281,12 +271,17 @@ option {
   animation: drift 12s ease-in-out infinite alternate;
 }
 
+.animate-mark-pulse {
+  animation: mark-pulse 2.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
   .animate-rise-delay,
   .animate-rise-delay-2,
   .animate-fade,
-  .animate-drift {
+  .animate-drift,
+  .animate-mark-pulse {
     animation: none;
   }
 }

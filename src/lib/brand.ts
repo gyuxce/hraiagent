@@ -1,8 +1,9 @@
 export const BRAND = {
-  name: "Saring",
-  slogan: "Saring kandidat terbaik — lebih cepat.",
+  name: "Cullr",
+  /** From “cull” — select the strongest from the stack. */
+  slogan: "Cull the best. Hire faster.",
   tagline:
-    "Platform AI untuk agency multi-klien: screening CV, pipeline, dan interview async.",
+    "AI screening, async interviews, and multi-client pipeline for modern recruiting teams.",
   contact: {
     email: "partnership@ilusa.id",
     whatsappDisplay: "0889-8041-4923",
@@ -24,10 +25,10 @@ export function brandMark() {
 export function whatsappUrl(prefill?: string) {
   const text =
     prefill ||
-    "Halo tim Saring, saya ingin tanya partnership untuk agency rekrutmen.";
+    "Hi Cullr team — I'd like to talk about a recruiting partnership.";
   return `https://wa.me/${BRAND.contact.whatsappE164}?text=${encodeURIComponent(text)}`;
 }
 
-export function mailtoPartnership(subject = "Partnership Saring") {
+export function mailtoPartnership(subject = "Cullr partnership") {
   return `mailto:${BRAND.contact.email}?subject=${encodeURIComponent(subject)}`;
 }

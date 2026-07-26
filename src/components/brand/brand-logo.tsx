@@ -4,13 +4,14 @@ type Props = {
   variant?: "dark" | "light";
   size?: "sm" | "md" | "lg";
   showWordmark?: boolean;
+  showMark?: boolean;
   className?: string;
 };
 
 const MARK = {
-  sm: 28,
-  md: 36,
-  lg: 44,
+  sm: 26,
+  md: 34,
+  lg: 42,
 } as const;
 
 const WORD = {
@@ -19,7 +20,10 @@ const WORD = {
   lg: "text-2xl",
 } as const;
 
-/** Inline mark — no external file load (avoids broken <img> on CDN/cache edge cases). */
+/**
+ * Cullr mark — open ring with a signal cut (cull), not a funnel icon.
+ * Inline SVG so favicon/CDN edge cases never blank the chrome.
+ */
 function LogoMark({
   size,
   variant,
@@ -27,9 +31,9 @@ function LogoMark({
   size: number;
   variant: "dark" | "light";
 }) {
-  const tile = variant === "light" ? "#F7F4EF" : "#0B1F33";
-  const funnel = variant === "light" ? "#0B1F33" : "#F7F4EF";
-  const dots = "#E85D4C";
+  const tile = variant === "light" ? "#F1F3F6" : "#0E1116";
+  const ring = variant === "light" ? "#0E1116" : "#F1F3F6";
+  const cut = "#12B5A0";
 
   return (
     <svg
@@ -40,16 +44,20 @@ function LogoMark({
       className="shrink-0"
       aria-hidden
     >
-      <rect width="64" height="64" rx="14" fill={tile} />
+      <rect width="64" height="64" rx="16" fill={tile} />
       <path
-        d="M18 20h28c0 6.5-5.2 11-12 12.2V36h8v6H22v-6h8v-3.8C23.2 31 18 26.5 18 20Z"
-        fill={funnel}
+        d="M44.5 22.2C41.8 18.6 37.2 16.2 32 16.2c-8.7 0-15.8 7.1-15.8 15.8S23.3 47.8 32 47.8c5.2 0 9.8-2.4 12.5-6.1"
+        stroke={ring}
+        strokeWidth="5.2"
+        strokeLinecap="round"
+        fill="none"
       />
-      <circle cx="26" cy="24" r="1.7" fill={dots} />
-      <circle cx="32" cy="24" r="1.7" fill={dots} />
-      <circle cx="38" cy="24" r="1.7" fill={dots} />
-      <circle cx="29" cy="28" r="1.7" fill={dots} />
-      <circle cx="35" cy="28" r="1.7" fill={dots} />
+      <path
+        d="M41.2 28.5v7"
+        stroke={cut}
+        strokeWidth="5.2"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -58,6 +66,7 @@ export function BrandLogo({
   variant = "dark",
   size = "md",
   showWordmark = true,
+  showMark = true,
   className = "",
 }: Props) {
   const px = MARK[size];
@@ -65,10 +74,10 @@ export function BrandLogo({
 
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
-      <LogoMark size={px} variant={variant} />
+      {showMark && <LogoMark size={px} variant={variant} />}
       {showWordmark && (
         <span
-          className={`font-display font-extrabold tracking-tight ${WORD[size]} ${textColor}`}
+          className={`font-display font-bold tracking-[-0.04em] ${WORD[size]} ${textColor}`}
         >
           {BRAND.name}
         </span>

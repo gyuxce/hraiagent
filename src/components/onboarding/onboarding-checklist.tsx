@@ -15,7 +15,8 @@ type Props = {
   progress: OnboardingProgress;
 };
 
-const STORAGE_KEY = "saring_onboarding_dismissed";
+const STORAGE_KEY = "cullr_onboarding_dismissed";
+const LEGACY_STORAGE_KEY = "saring_onboarding_dismissed";
 
 const STEPS = [
   {
@@ -50,7 +51,9 @@ export function OnboardingChecklist({ progress }: Props) {
 
   useEffect(() => {
     try {
-      setDismissed(localStorage.getItem(STORAGE_KEY) === "1");
+      const current = localStorage.getItem(STORAGE_KEY) === "1";
+      const legacy = localStorage.getItem(LEGACY_STORAGE_KEY) === "1";
+      setDismissed(current || legacy);
     } catch {
       setDismissed(false);
     }

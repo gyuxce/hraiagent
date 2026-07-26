@@ -95,7 +95,7 @@ export function DashboardShell({
   }
 
   const sidebar = (
-    <div className="flex h-full w-72 max-w-[85vw] flex-col bg-ink text-white md:w-64">
+    <div className="dashboard-sidebar flex h-full w-72 max-w-[85vw] flex-col text-ink md:w-64">
       <div className="flex h-14 items-center justify-between px-5 md:h-16 md:px-6">
         <Link
           href="/dashboard"
@@ -106,7 +106,7 @@ export function DashboardShell({
         </Link>
         <button
           type="button"
-          className="rounded-md p-2 text-white/70 hover:bg-white/10 md:hidden"
+          className="rounded-md p-2 text-muted hover:bg-white/8 hover:text-ink md:hidden"
           onClick={() => setOpen(false)}
           aria-label="Tutup menu"
         >
@@ -115,11 +115,11 @@ export function DashboardShell({
       </div>
 
       {isClientViewer && (
-        <div className="mx-4 mb-2 rounded-lg border border-white/10 bg-white/8 px-3 py-2">
+        <div className="mx-4 mb-2 rounded-lg border border-line bg-white/5 px-3 py-2">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-accent">
             Client portal
           </p>
-          <p className="mt-0.5 text-xs text-white/65">Read-only progress view</p>
+          <p className="mt-0.5 text-xs text-muted">Read-only progress view</p>
         </div>
       )}
 
@@ -135,13 +135,15 @@ export function DashboardShell({
               onClick={() => setOpen(false)}
               className={`group flex items-center gap-x-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 active
-                  ? "bg-white/12 text-white"
-                  : "text-white/75 hover:bg-white/8 hover:text-white"
+                  ? "bg-white/10 text-ink"
+                  : "text-muted hover:bg-white/6 hover:text-ink"
               }`}
             >
               <Icon
                 className={`h-4 w-4 transition-colors ${
-                  active ? "text-accent" : "text-white/45 group-hover:text-accent"
+                  active
+                    ? "text-accent"
+                    : "text-muted group-hover:text-accent"
                 }`}
               />
               {item.name}
@@ -150,19 +152,19 @@ export function DashboardShell({
         })}
       </nav>
 
-      <div className="border-t border-white/10 p-4">
+      <div className="border-t border-line p-4">
         <div className="flex items-center gap-x-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
             {initials}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-white">{fullName}</p>
-            <p className="truncate text-xs text-white/50">{roleLabel}</p>
+            <p className="truncate text-sm font-medium text-ink">{fullName}</p>
+            <p className="truncate text-xs text-muted">{roleLabel}</p>
           </div>
           <form action={logoutAction}>
             <button
               type="submit"
-              className="rounded-md p-1.5 text-white/45 transition hover:bg-white/10 hover:text-white"
+              className="rounded-md p-1.5 text-muted transition hover:bg-white/8 hover:text-ink"
               title="Keluar"
             >
               <LogOut className="h-4 w-4" />
@@ -174,14 +176,14 @@ export function DashboardShell({
   );
 
   return (
-    <div className="flex h-screen bg-mist">
+    <div className="dashboard-theme flex h-screen bg-mist text-ink">
       <aside className="hidden border-r border-line md:flex">{sidebar}</aside>
 
       {open && (
         <div className="fixed inset-0 z-50 md:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-ink/50"
+            className="absolute inset-0 bg-black/50"
             aria-label="Tutup overlay"
             onClick={() => setOpen(false)}
           />
@@ -202,7 +204,7 @@ export function DashboardShell({
             <Menu className="h-5 w-5" />
           </button>
           <div className="min-w-0">
-            <BrandLogo variant="dark" size="sm" />
+            <BrandLogo variant="light" size="sm" />
             <p className="mt-0.5 truncate text-[11px] text-muted">
               {BRAND.slogan}
             </p>

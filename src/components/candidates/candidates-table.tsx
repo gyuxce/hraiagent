@@ -118,7 +118,9 @@ export function CandidatesTable({
     );
     router.refresh();
     if (result?.pendingScreening) {
-      setTimeout(() => router.refresh(), 8000);
+      setTimeout(() => router.refresh(), 6000);
+      setTimeout(() => router.refresh(), 15000);
+      setTimeout(() => router.refresh(), 30000);
     }
   }
 

@@ -30,7 +30,7 @@ function readKey(...names: string[]): string {
 const PROVIDERS: Record<string, { baseUrl: string; defaultModel: string }> = {
   openrouter: {
     baseUrl: "https://openrouter.ai/api/v1",
-    defaultModel: "deepseek/deepseek-v4-flash",
+    defaultModel: "x-ai/grok-4.5",
   },
   opencode: {
     baseUrl: "https://opencode.ai/zen/go/v1",

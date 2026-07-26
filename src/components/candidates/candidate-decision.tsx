@@ -7,6 +7,8 @@ import { updateCandidateStatus } from "@/lib/actions/candidates";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EditContactForm } from "@/components/candidates/edit-contact-form";
+import { CHIP, scoreChipClass } from "@/lib/brand-palette";
+import { summaryPoints } from "@/lib/cv/summary-points";
 
 type Props = {
   candidateId: string;
@@ -17,35 +19,28 @@ type Props = {
   status: string;
   score: number | null;
   isManualScore: boolean;
-  /** One-line decision hint from AI summary */
   decisionLine: string;
   jobId: string | null;
   canWrite: boolean;
 };
 
-function scoreTone(score: number | null): {
+function decisionTone(score: number | null): {
   wrap: string;
   label: string;
 } {
   if (score == null) {
-    return { wrap: "bg-mist text-muted", label: "Belum di-screen" };
+    return { wrap: CHIP.neutral, label: "Belum di-screen" };
   }
   if (score >= 70) {
-    return { wrap: "bg-teal-soft text-teal", label: "Layak lanjut interview" };
+    return { wrap: CHIP.good, label: "Lanjut (tahap interview)" };
   }
   if (score >= 60) {
-    return {
-      wrap: "bg-mist-deep text-ink-soft",
-      label: "Bisa interview dengan catatan",
-    };
+    return { wrap: CHIP.navy, label: "Bisa interview dengan catatan" };
   }
   if (score >= 40) {
-    return {
-      wrap: "bg-amber-50 text-amber-800",
-      label: "Lemah / cadangan",
-    };
+    return { wrap: CHIP.warn, label: "Lemah / cadangan" };
   }
-  return { wrap: "bg-accent-soft text-accent-hover", label: "Kurang cocok" };
+  return { wrap: CHIP.bad, label: "Kurang cocok" };
 }
 
 export function CandidateDecision({
@@ -65,7 +60,8 @@ export function CandidateDecision({
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [confirmReject, setConfirmReject] = useState(false);
-  const tone = scoreTone(score);
+  const tone = decisionTone(score);
+  const points = summaryPoints(decisionLine, 3);
 
   function setStatus(next: string, okMsg: string) {
     startTransition(async () => {
@@ -89,8 +85,6 @@ export function CandidateDecision({
             {email}
             {phone ? ` · ${phone}` : ""}
           </p>
-          <p className="mt-1 text-sm text-ink-soft">{jobLabel}</p>
-          <p className="mt-1 text-xs capitalize text-muted">Status: {status}</p>
           {canWrite && (
             <div className="mt-2">
               <EditContactForm
@@ -119,9 +113,52 @@ export function CandidateDecision({
         </div>
       </div>
 
-      <p className="prose-read mt-5 max-w-3xl text-ink-soft">
-        {decisionLine || "Belum ada ringkasan AI — jalankan screening dulu."}
-      </p>
+      <div className="surface-panel mt-5 overflow-hidden p-0">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[16rem] text-left text-sm">
+            <tbody className="divide-y divide-line">
+              <tr>
+                <th className="w-[30%] px-4 py-2.5 text-xs font-medium text-muted">
+                  Lowongan
+                </th>
+                <td className="px-4 py-2.5 text-ink">{jobLabel || "—"}</td>
+              </tr>
+              <tr>
+                <th className="px-4 py-2.5 text-xs font-medium text-muted">
+                  Status
+                </th>
+                <td className="px-4 py-2.5 capitalize text-ink">{status}</td>
+              </tr>
+              <tr>
+                <th className="px-4 py-2.5 text-xs font-medium text-muted">
+                  Skor CV
+                </th>
+                <td className="px-4 py-2.5">
+                  <span
+                    className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${scoreChipClass(score)}`}
+                  >
+                    {score != null ? `${score}/100` : "—"}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {points.length > 0 ? (
+        <ul className="mt-4 list-disc space-y-1.5 pl-5 text-sm text-ink-soft">
+          {points.map((p, i) => (
+            <li key={`d-${i}`} className="leading-relaxed">
+              {p}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-4 text-sm text-muted">
+          Belum ada ringkasan AI — jalankan screening dulu.
+        </p>
+      )}
 
       {canWrite && (
         <div className="mt-6 flex flex-wrap gap-2">
@@ -138,7 +175,7 @@ export function CandidateDecision({
               type="button"
               disabled={pending}
               onClick={() => setConfirmReject(true)}
-              className="btn-secondary text-bad disabled:opacity-50"
+              className="btn-danger disabled:opacity-50"
             >
               Tolak
             </button>

@@ -27,8 +27,8 @@ type ToastApi = {
 const ToastContext = createContext<ToastApi | null>(null);
 
 const TONE_CLASS: Record<ToastTone, string> = {
-  success: "border-teal/30 bg-teal-soft text-teal",
-  error: "border-bad/25 bg-accent-soft text-accent-hover",
+  success: "border-secondary/30 bg-secondary-soft text-secondary-hover",
+  error: "border-bad/25 bg-accent-soft text-bad",
   info: "border-line bg-surface text-ink",
 };
 

@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/onboarding/empty-state";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import { effectiveScore } from "@/lib/candidates/score";
+import { scoreChipClass, statusChipClass } from "@/lib/brand-palette";
 
 export type CandidateRow = {
   id: string;
@@ -54,20 +55,16 @@ const statusOptions = [
 ] as const;
 
 const statusStyle: Record<string, string> = {
-  submitted: "bg-gray-100 text-gray-700",
-  screened: "bg-accent-soft text-accent-hover",
-  interview: "bg-mist-deep text-ink-soft",
-  offer: "bg-amber-50 text-amber-700",
-  hired: "bg-green-50 text-green-700",
-  rejected: "bg-red-50 text-red-700",
+  submitted: statusChipClass("submitted"),
+  screened: statusChipClass("screened"),
+  interview: statusChipClass("interview"),
+  offer: statusChipClass("offer"),
+  hired: statusChipClass("hired"),
+  rejected: statusChipClass("rejected"),
 };
 
 function scoreColor(score: number | null) {
-  if (score == null) return "bg-gray-100 text-gray-500";
-  if (score >= 80) return "bg-green-50 text-green-700";
-  if (score >= 60) return "bg-accent-soft text-accent-hover";
-  if (score >= 40) return "bg-yellow-50 text-yellow-700";
-  return "bg-red-50 text-red-700";
+  return scoreChipClass(score);
 }
 
 export function CandidatesTable({
@@ -182,7 +179,7 @@ export function CandidatesTable({
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 rounded-lg bg-accent-soft p-3 text-sm text-bad">
           {error}
         </div>
       )}

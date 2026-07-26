@@ -18,9 +18,9 @@ type Props = {
 };
 
 const statusStyle: Record<string, string> = {
-  open: "bg-green-50 text-green-700",
-  closed: "bg-gray-100 text-gray-600",
-  on_hold: "bg-yellow-50 text-yellow-700",
+  open: "bg-secondary-soft text-secondary-hover",
+  closed: "bg-mist text-muted",
+  on_hold: "bg-accent-soft text-accent-hover",
 };
 
 const statusLabel: Record<string, string> = {
@@ -96,7 +96,7 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 rounded-lg bg-accent-soft p-3 text-sm text-bad">
           {error}
         </div>
       )}
@@ -189,7 +189,7 @@ export function JobsTable({ jobs, clients, isAdmin, canWrite = true }: Props) {
                               setPendingDelete({ id: job.id, title: job.title })
                             }
                             disabled={deletingId === job.id}
-                            className="text-red-600 hover:text-red-500 font-medium disabled:opacity-50"
+                            className="font-medium text-bad hover:text-accent-hover disabled:opacity-50"
                           >
                             {deletingId === job.id ? "..." : "Hapus"}
                           </button>

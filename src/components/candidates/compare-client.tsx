@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { shortSummary } from "@/lib/cv/short-text";
+import { scoreChipClass } from "@/lib/brand-palette";
 
 type Job = {
   id: string;
@@ -62,11 +63,7 @@ function clientLabel(
 }
 
 function scoreClass(score: number | null) {
-  if (score == null) return "bg-gray-100 text-gray-600";
-  if (score >= 80) return "bg-green-50 text-green-700";
-  if (score >= 60) return "bg-accent-soft text-accent-hover";
-  if (score >= 40) return "bg-yellow-50 text-yellow-700";
-  return "bg-red-50 text-red-700";
+  return scoreChipClass(score);
 }
 
 export function CompareClient({

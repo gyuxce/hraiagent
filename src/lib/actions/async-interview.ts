@@ -5,6 +5,7 @@ import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
   analyzeInterviewAnswer,
+  averageInterviewScore,
   compareInterviewFaces,
   generateInterviewQuestions,
   rankInterviewSession,
@@ -496,21 +497,18 @@ export async function analyzeCompletedInterview(sessionId: string) {
       "Skor AI ditunda: tidak ada transkrip yang cukup jelas. Putar video + cek identitas. " +
       identity.identitySummary;
   } else {
+    // Overall = rata-rata skor per jawaban (bukan angka dari LLM — hindari contoh prompt seperti 78)
+    overallScore = averageInterviewScore(scored.map((g) => g.score));
     try {
       const overall = await rankInterviewSession({
         jobTitle: jobTitle || "Posisi",
         answers: graded,
+        overallScore: overallScore!,
       });
-      overallScore = overall.overall_score;
       overallSummary =
         overall.overall_summary +
-        (identity.needsManualReview
-          ? `\n\n[Identitas] ${identity.identitySummary}`
-          : `\n\n[Identitas] ${identity.identitySummary}`);
+        `\n\n[Identitas] ${identity.identitySummary}`;
     } catch (err) {
-      overallScore = Math.round(
-        scored.reduce((s, g) => s + (g.score || 0), 0) / scored.length
-      );
       overallSummary =
         "Ringkasan AI gagal: " +
         formatError(err) +
@@ -884,17 +882,15 @@ async function analyzePublicInterviewSession(token: string) {
       "Skor AI ditunda: tidak ada transkrip yang cukup jelas. Putar video + cek identitas. " +
       identity.identitySummary;
   } else {
+    overallScore = averageInterviewScore(scored.map((g) => g.score));
     try {
       const overall = await rankInterviewSession({
         jobTitle,
         answers: graded,
+        overallScore: overallScore!,
       });
-      overallScore = overall.overall_score;
       overallSummary = `${overall.overall_summary}\n\n[Identitas] ${identity.identitySummary}`;
     } catch (err) {
-      overallScore = Math.round(
-        scored.reduce((s, g) => s + (g.score || 0), 0) / scored.length
-      );
       overallSummary =
         "Ringkasan AI gagal: " +
         formatError(err) +

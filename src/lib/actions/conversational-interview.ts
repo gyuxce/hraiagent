@@ -8,6 +8,7 @@ import { consumeAiQuotaForAsyncToken } from "@/lib/ai/usage";
 import { rateLimitError } from "@/lib/security/rate-limit";
 import { synthesizeSpeech, ttsCacheKey } from "@/lib/voice/tts";
 import { decideInterviewTurn } from "@/lib/voice/dialogue";
+import { requireAgencyContext } from "@/lib/auth/agency-context";
 
 /**
  * Conversational interview engine (Slice 2).
@@ -251,6 +252,42 @@ export async function prepareConversationalVideoUpload(
 
   const path = `${session.agency_id}/${session.id}/${qid}-${Date.now()}.webm`;
   return { success: true, path, maxBytes: 15 * 1024 * 1024 };
+}
+
+export async function getConversationalTurns(sessionId: string) {
+  const ctx = await requireAgencyContext();
+  if (ctx.error !== null) return { error: ctx.error, turns: null };
+  let db: AdminDb;
+  try {
+    db = createAdminClient();
+  } catch {
+    return { error: "Konfigurasi server belum lengkap", turns: null };
+  }
+  const { data: session } = await db
+    .from("async_interview_sessions")
+    .select("id, agency_id, conversational")
+    .eq("id", sessionId)
+    .eq("agency_id", ctx.profile.agency_id)
+    .maybeSingle();
+  if (!session) return { error: "Sesi tidak ditemukan", turns: null };
+  if (!session.conversational) return { error: null, turns: [] };
+
+  const { data, error } = await db
+    .from("async_interview_turns")
+    .select("id, turn_index, role, kind, text, video_path, tts_path, created_at")
+    .eq("session_id", sessionId)
+    .order("turn_index", { ascending: true });
+  if (error) return { error: "Gagal memuat percakapan", turns: null };
+
+  const turns = (data || []) as (TurnRow & { created_at: string })[];
+  const withUrls = await Promise.all(
+    turns.map(async (t) => {
+      const videoUrl = await signTts(db, t.video_path);
+      const ttsUrl = await signTts(db, t.tts_path);
+      return { ...t, videoUrl, ttsUrl };
+    })
+  );
+  return { error: null, turns: withUrls };
 }
 
 export async function startConversationalInterview(token: string) {

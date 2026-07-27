@@ -8,6 +8,7 @@ import {
   createAsyncInterview,
 } from "@/lib/actions/async-interview";
 import { InterviewIdentityPanel } from "@/components/candidates/interview-identity-panel";
+import { ConversationalTranscript } from "@/components/candidates/conversational-transcript";
 import { useToast } from "@/components/ui/toast";
 import { summaryPoints } from "@/lib/cv/summary-points";
 
@@ -28,6 +29,7 @@ export type AsyncSessionRow = {
   identity_summary?: string | null;
   selfie_path?: string | null;
   media_purged_at?: string | null;
+  conversational?: boolean | null;
   questions?: {
     id: string;
     question_text: string;
@@ -88,6 +90,7 @@ export function AsyncInterviewSection({
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [convMode, setConvMode] = useState<"static" | "conversational">("static");
   const [copied, setCopied] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(
     sessions[0]?.id || null
@@ -116,7 +119,9 @@ export function AsyncInterviewSection({
     setLoading(true);
     setError(null);
     setInviteUrl(null);
-    const result = await createAsyncInterview(candidateId);
+    const result = await createAsyncInterview(candidateId, {
+      conversational: convMode === "conversational",
+    });
     setLoading(false);
     if (result?.error) {
       setError(result.error);
@@ -188,14 +193,40 @@ export function AsyncInterviewSection({
         </div>
         {canWrite && (
           <div className="page-header-actions">
-            <button
-              type="button"
-              onClick={handleCreate}
-              disabled={loading}
-              className="btn-primary disabled:opacity-50"
-            >
-              {loading ? "Membuat link..." : "+ Buat Interview Async"}
-            </button>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-lg border border-line bg-surface p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setConvMode("static")}
+                  className={
+                    convMode === "static"
+                      ? "rounded-md bg-ink px-3 py-1.5 font-semibold text-white"
+                      : "px-3 py-1.5 text-muted hover:text-ink"
+                  }
+                >
+                  🎥 Video
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConvMode("conversational")}
+                  className={
+                    convMode === "conversational"
+                      ? "rounded-md bg-ink px-3 py-1.5 font-semibold text-white"
+                      : "px-3 py-1.5 text-muted hover:text-ink"
+                  }
+                >
+                  🎙️ Conversational
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={loading}
+                className="btn-primary disabled:opacity-50"
+              >
+                {loading ? "Membuat link..." : "+ Buat Interview"}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -269,6 +300,11 @@ export function AsyncInterviewSection({
                         </th>
                         <td className="py-2 capitalize text-ink">
                           {s.status}
+                          {s.conversational && (
+                            <span className="ml-2 rounded-md bg-mist-deep px-1.5 py-0.5 text-[11px] font-semibold text-ink-soft">
+                              🎙️ Conversational
+                            </span>
+                          )}
                           {s.needs_manual_review && (
                             <span className="ml-2 rounded-md bg-accent-soft px-1.5 py-0.5 text-[11px] font-semibold text-accent-hover">
                               Review identitas
@@ -432,6 +468,8 @@ export function AsyncInterviewSection({
                         </ol>
                       )}
                     </div>
+
+                    {s.conversational && <ConversationalTranscript sessionId={s.id} />}
                   </div>
                 )}
               </div>

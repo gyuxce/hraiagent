@@ -63,7 +63,7 @@ export default async function CandidateDetailPage({ params }: Props) {
       supabase
         .from("async_interview_sessions")
         .select(
-          `id, invite_token, status, overall_score, overall_summary, created_at, completed_at, expires_at,
+          `id, invite_token, status, conversational, overall_score, overall_summary, created_at, completed_at, expires_at,
            agency_id, candidate_id, challenge_code, challenge_passed, face_match_status, face_match_note,
            needs_manual_review, identity_summary, selfie_path, media_purged_at,
            async_interview_questions(id, question_text, focus_area, sort_order)`
@@ -85,7 +85,7 @@ export default async function CandidateDetailPage({ params }: Props) {
     const fallback = await supabase
       .from("async_interview_sessions")
       .select(
-        `id, invite_token, status, overall_score, overall_summary, created_at, completed_at, expires_at,
+        `id, invite_token, status, conversational, overall_score, overall_summary, created_at, completed_at, expires_at,
          agency_id, candidate_id, challenge_code, challenge_passed, face_match_status, face_match_note,
          needs_manual_review, identity_summary, selfie_path, media_purged_at`
       )
@@ -113,6 +113,7 @@ export default async function CandidateDetailPage({ params }: Props) {
       id: String(row.id),
       invite_token: String(row.invite_token || ""),
       status: String(row.status || ""),
+      conversational: (row.conversational as boolean) ?? false,
       overall_score: (row.overall_score as number | null) ?? null,
       overall_summary: (row.overall_summary as string | null) ?? null,
       created_at: String(row.created_at || ""),

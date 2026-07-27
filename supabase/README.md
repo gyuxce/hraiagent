@@ -17,6 +17,7 @@ Run migrations **in order** in the Supabase SQL Editor:
 11. `00010_ai_usage_metering.sql` — kuota AI per agency
 12. `00011_interview_identity_guards.sql` — selfie / challenge / face match
 13. `00012_video_retention.sql` — retensi auto-hapus video interview
+14. `00013_interview_consent.sql` — persetujuan eksplisit kandidat (UU PDP)
 
 ### Steps:
 

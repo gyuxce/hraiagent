@@ -1,19 +1,19 @@
 /**
- * Cullr “Clownfish” palette — single light theme.
+ * Cullr “Executive Trust” palette — formal B2B, single light theme.
  * Keep CSS `:root` in sync with these values.
  */
 export const CULLR_PALETTE = {
-  ink: "#121019",
-  navy: "#303856",
-  coral: "#E16A40",
-  mist: "#E9EFF5",
-  teal: "#70E2DC",
+  ink: "#0F1722",
+  navy: "#33415C",
+  blue: "#1F5FBF",
+  mist: "#F1F4F8",
+  steel: "#5B8DB8",
 } as const;
 
 /** Status / score chips — only brand tokens (no Tailwind green/red/amber). */
 export const CHIP = {
   good: "bg-secondary-soft text-secondary-hover",
-  warn: "bg-accent-soft text-accent-hover",
+  warn: "bg-warn-soft text-warn",
   bad: "bg-accent-soft text-bad",
   neutral: "bg-mist text-muted",
   navy: "bg-mist-deep text-ink-soft",

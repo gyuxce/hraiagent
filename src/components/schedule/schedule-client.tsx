@@ -9,6 +9,12 @@ import {
 } from "@/lib/actions/schedules";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+import {
+  buildIcs,
+  googleCalendarUrl,
+  outlookCalendarUrl,
+  type CalendarEventInput,
+} from "@/lib/calendar/event";
 
 export type ScheduleRow = {
   id: string;
@@ -44,49 +50,27 @@ const statusLabel: Record<string, string> = {
   no_show: "No-show",
 };
 
-function toIcs(schedule: ScheduleRow) {
-  const start = new Date(schedule.scheduled_at);
-  const end = new Date(
-    start.getTime() + (schedule.duration_minutes || 60) * 60000
-  );
-  const fmt = (d: Date) =>
-    d
-      .toISOString()
-      .replace(/[-:]/g, "")
-      .replace(/\.\d{3}Z$/, "Z");
-  const desc = [
-    schedule.candidates?.name ? `Kandidat: ${schedule.candidates.name}` : "",
-    schedule.job_requisitions?.title
-      ? `Job: ${schedule.job_requisitions.title}`
-      : "",
-    schedule.meeting_url ? `Meeting: ${schedule.meeting_url}` : "",
-    schedule.notes || "",
-  ]
-    .filter(Boolean)
-    .join("\\n");
-
-  return [
-    "BEGIN:VCALENDAR",
-    "VERSION:2.0",
-    "PRODID:-//Cullr//Schedule//ID",
-    "BEGIN:VEVENT",
-    `UID:${schedule.id}@cullr.app`,
-    `DTSTAMP:${fmt(new Date())}`,
-    `DTSTART:${fmt(start)}`,
-    `DTEND:${fmt(end)}`,
-    `SUMMARY:${schedule.title.replace(/\n/g, " ")}`,
-    `DESCRIPTION:${desc}`,
-    schedule.location ? `LOCATION:${schedule.location}` : "",
-    schedule.meeting_url ? `URL:${schedule.meeting_url}` : "",
-    "END:VEVENT",
-    "END:VCALENDAR",
-  ]
-    .filter(Boolean)
-    .join("\r\n");
+function toEvent(schedule: ScheduleRow): CalendarEventInput {
+  return {
+    id: schedule.id,
+    title: schedule.title,
+    startAt: new Date(schedule.scheduled_at),
+    durationMinutes: schedule.duration_minutes || 60,
+    location: schedule.location,
+    meetingUrl: schedule.meeting_url,
+    descriptionLines: [
+      schedule.candidates?.name ? `Kandidat: ${schedule.candidates.name}` : "",
+      schedule.job_requisitions?.title
+        ? `Job: ${schedule.job_requisitions.title}`
+        : "",
+      schedule.meeting_url ? `Meeting: ${schedule.meeting_url}` : "",
+      schedule.notes || "",
+    ],
+  };
 }
 
 function downloadIcs(schedule: ScheduleRow) {
-  const blob = new Blob([toIcs(schedule)], {
+  const blob = new Blob([buildIcs(toEvent(schedule))], {
     type: "text/calendar;charset=utf-8",
   });
   const url = URL.createObjectURL(blob);
@@ -114,14 +98,25 @@ export function ScheduleClient({
     const form = e.currentTarget;
     setBusy(true);
     setError(null);
-    const result = await createInterviewSchedule(new FormData(form));
+    const fd = new FormData(form);
+    // datetime-local tidak bawa timezone — konversi di browser (TZ user) ke ISO
+    const raw = String(fd.get("scheduled_at") || "");
+    if (raw) fd.set("scheduled_at", new Date(raw).toISOString());
+    const result = await createInterviewSchedule(fd);
     setBusy(false);
     if (result.error) {
       setError(result.error);
       toast.error(result.error);
       return;
     }
-    toast.success("Jadwal interview dibuat");
+    toast.success(
+      result.emailSent
+        ? "Jadwal dibuat — undangan terkirim ke email kandidat"
+        : "Jadwal interview dibuat"
+    );
+    if (result.emailError) {
+      toast.error(`Email gagal terkirim: ${result.emailError}`);
+    }
     form.reset();
     router.refresh();
   }
@@ -338,6 +333,22 @@ export function ScheduleClient({
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <div className="flex gap-3">
+                        <a
+                          href={googleCalendarUrl(toEvent(s))}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-accent"
+                        >
+                          Google
+                        </a>
+                        <a
+                          href={outlookCalendarUrl(toEvent(s))}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-accent"
+                        >
+                          Outlook
+                        </a>
                         <button
                           type="button"
                           onClick={() => downloadIcs(s)}

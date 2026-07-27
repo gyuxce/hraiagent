@@ -92,12 +92,19 @@ export function TeamClient({
     }
     if (result.inviteUrl) {
       setInviteUrl(result.inviteUrl);
-      const ok = await copyText(result.inviteUrl);
-      toast.success(
-        ok
-          ? "Undangan dibuat — link sudah disalin"
-          : "Undangan dibuat — salin link di bawah"
-      );
+      if (result.emailSent) {
+        toast.success(`Undangan terkirim ke ${result.email}`);
+      } else {
+        const ok = await copyText(result.inviteUrl);
+        toast.success(
+          ok
+            ? "Undangan dibuat — link sudah disalin"
+            : "Undangan dibuat — salin link di bawah"
+        );
+        if (result.emailError) {
+          toast.error(`Email gagal terkirim: ${result.emailError}`);
+        }
+      }
     }
     form.reset();
     setRole("recruiter");

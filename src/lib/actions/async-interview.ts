@@ -26,6 +26,10 @@ import {
 } from "@/lib/interview/identity";
 import { buildFallbackInterviewQuestions } from "@/lib/interview/fallback-questions";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { transcribeAudio } from "@/lib/ai/transcribe";
+import { rateLimitError } from "@/lib/security/rate-limit";
+import { sendEmail } from "@/lib/email/send";
+import { interviewInviteEmail } from "@/lib/email/templates";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -49,7 +53,7 @@ export async function createAsyncInterview(candidateId: string) {
   const { data: candidate, error: cErr } = await supabase
     .from("candidates")
     .select(
-      "id, name, job_id, agency_id, job_requisitions(title, description, requirements)"
+      "id, name, email, job_id, agency_id, job_requisitions(title, description, requirements)"
     )
     .eq("id", candidateId)
     .single();
@@ -246,6 +250,28 @@ export async function createAsyncInterview(candidateId: string) {
   const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const inviteUrl = `${base.replace(/\/$/, "")}/interview/${session.invite_token}`;
 
+  // Best-effort email invite — failure never blocks link creation.
+  let emailSent = false;
+  let emailError: string | null = null;
+  const candidateEmail = (candidate.email as string) || "";
+  if (candidateEmail) {
+    const { data: agency } = await supabase
+      .from("agencies")
+      .select("name")
+      .eq("id", agencyId)
+      .maybeSingle();
+    const template = interviewInviteEmail({
+      candidateName,
+      jobTitle,
+      agencyName: (agency?.name as string) || "Tim rekrutmen",
+      inviteUrl,
+      expiresAt,
+    });
+    const result = await sendEmail({ to: candidateEmail, ...template });
+    emailSent = result.sent;
+    emailError = result.sent ? null : result.error || null;
+  }
+
   revalidatePath(`/candidates/${candidateId}`);
   revalidatePath("/candidates");
   revalidatePath("/ranking");
@@ -256,6 +282,8 @@ export async function createAsyncInterview(candidateId: string) {
     inviteToken: session.invite_token as string,
     inviteUrl,
     questionsFromAi: usedAi,
+    emailSent,
+    emailError,
   };
 }
 
@@ -643,6 +671,27 @@ export async function getPublicInterview(token: string) {
   return { error: null, data };
 }
 
+export async function savePublicConsent(token: string) {
+  const t = String(token || "").trim();
+  if (!t) return { error: "Token tidak valid" };
+
+  const blocked = await rateLimitError({
+    scope: "interview:consent",
+    identity: t,
+    limit: 10,
+    windowMs: 10 * 60_000,
+  });
+  if (blocked) return { error: blocked };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("save_async_interview_consent", {
+    p_token: t,
+    p_version: "v1",
+  });
+  if (error) return { error: formatError(error) };
+  return { success: true };
+}
+
 export async function submitPublicAnswer(formData: FormData) {
   const supabase = await createClient();
   const token = String(formData.get("token") || "").trim();
@@ -655,6 +704,14 @@ export async function submitPublicAnswer(formData: FormData) {
   if (!videoPath) {
     return { error: "Rekaman video wajib. Jawaban teks tidak diterima." };
   }
+
+  const blocked = await rateLimitError({
+    scope: "interview:submit-answer",
+    identity: token,
+    limit: 40,
+    windowMs: 10 * 60_000,
+  });
+  if (blocked) return { error: blocked };
 
   const { error } = await supabase.rpc("submit_async_interview_answer", {
     p_token: token,
@@ -708,6 +765,14 @@ export async function prepareInterviewVideoUpload(
   const qid = String(questionId || "").trim();
   if (!t || !qid) return { error: "Data tidak lengkap" };
 
+  const blocked = await rateLimitError({
+    scope: "interview:prepare-upload",
+    identity: t,
+    limit: 40,
+    windowMs: 10 * 60_000,
+  });
+  if (blocked) return { error: blocked };
+
   const loaded = await loadSessionForUpload(t);
   if (loaded.error || !loaded.session) return { error: loaded.error || "Invalid" };
   if (!loaded.session.selfie_path) {
@@ -740,6 +805,14 @@ export async function uploadInterviewVideo(formData: FormData) {
     };
   }
 
+  const blockedUp = await rateLimitError({
+    scope: "interview:upload-video",
+    identity: token,
+    limit: 25,
+    windowMs: 10 * 60_000,
+  });
+  if (blockedUp) return { error: blockedUp };
+
   const loaded = await loadSessionForUpload(token);
   if (loaded.error || !loaded.session) return { error: loaded.error || "Invalid" };
   if (!loaded.session.selfie_path) {
@@ -770,6 +843,81 @@ export async function uploadInterviewVideo(formData: FormData) {
   return { success: true, videoPath: path };
 }
 
+/**
+ * Server-side STT fallback for browsers without Web Speech API.
+ * Downloads the uploaded answer video and transcribes it (Groq/OpenAI Whisper).
+ */
+export async function transcribePublicAnswer(token: string, questionId: string) {
+  const t = String(token || "").trim();
+  const qid = String(questionId || "").trim();
+  if (!t || !qid) return { error: "Data tidak lengkap" };
+
+  const blocked = await rateLimitError({
+    scope: "interview:transcribe",
+    identity: t,
+    limit: 15,
+    windowMs: 10 * 60_000,
+  });
+  if (blocked) return { error: blocked };
+
+  const loaded = await loadSessionForUpload(t);
+  if (loaded.error || !loaded.session) return { error: loaded.error || "Invalid" };
+
+  let db;
+  try {
+    db = createAdminClient();
+  } catch {
+    return { error: "STT server belum aktif (service role belum di-set)" };
+  }
+
+  const { data: answer, error: aErr } = await db
+    .from("async_interview_answers")
+    .select("id, transcript, video_path")
+    .eq("session_id", loaded.session.id)
+    .eq("question_id", qid)
+    .maybeSingle();
+
+  if (aErr) return { error: formatError(aErr) };
+  if (!answer?.video_path) return { error: "Video jawaban belum tersimpan" };
+
+  if (isUsableTranscript(answer.transcript)) {
+    return { success: true, transcript: answer.transcript as string, cached: true };
+  }
+
+  const { data: file, error: dlErr } = await db.storage
+    .from("interview-videos")
+    .download(answer.video_path);
+
+  if (dlErr || !file) {
+    return { error: "Gagal mengambil video untuk transkripsi" };
+  }
+
+  const result = await transcribeAudio(file, `answer-${qid}.webm`);
+  if (!result.text) {
+    if (result.reason === "not_configured") {
+      return { error: "STT belum dikonfigurasi", notConfigured: true };
+    }
+    return { error: "Transkripsi gagal: " + (result.error || "unknown") };
+  }
+
+  // Re-check: a concurrent live-SR save may have written a good transcript meanwhile.
+  const { data: fresh } = await db
+    .from("async_interview_answers")
+    .select("transcript")
+    .eq("id", answer.id)
+    .maybeSingle();
+  if (isUsableTranscript(fresh?.transcript)) {
+    return { success: true, transcript: fresh!.transcript as string, cached: true };
+  }
+
+  await db
+    .from("async_interview_answers")
+    .update({ transcript: result.text })
+    .eq("id", answer.id);
+
+  return { success: true, transcript: result.text, provider: result.provider };
+}
+
 export async function uploadInterviewSelfie(formData: FormData) {
   const token = String(formData.get("token") || "").trim();
   const file = formData.get("selfie") as File | null;
@@ -780,6 +928,14 @@ export async function uploadInterviewSelfie(formData: FormData) {
   if (file.size > 8 * 1024 * 1024) {
     return { error: "Ukuran selfie maksimal 8MB" };
   }
+
+  const blocked = await rateLimitError({
+    scope: "interview:upload-selfie",
+    identity: token,
+    limit: 12,
+    windowMs: 10 * 60_000,
+  });
+  if (blocked) return { error: blocked };
 
   const loaded = await loadSessionForUpload(token);
   if (loaded.error || !loaded.session) return { error: loaded.error || "Invalid" };
@@ -1019,6 +1175,14 @@ async function analyzePublicInterviewSession(token: string) {
 }
 
 export async function completePublicInterview(token: string) {
+  const blockedComplete = await rateLimitError({
+    scope: "interview:complete",
+    identity: String(token || "").trim(),
+    limit: 10,
+    windowMs: 10 * 60_000,
+  });
+  if (blockedComplete) return { error: blockedComplete };
+
   const supabase = await createClient();
   const { data: sessionId, error } = await supabase.rpc(
     "complete_async_interview",

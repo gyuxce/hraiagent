@@ -2,43 +2,45 @@
 
 :root {
   /*
-   * Cullr “Clownfish” — only these five family tones (+ soft/hover derivatives)
-   * ink #121019 · navy #303856 · coral #E16A40 · mist #E9EFF5 · teal #70E2DC
+   * Cullr “Executive Trust” — formal B2B.
+   * Satu warna aksi (biru korporat), sisanya netral cool-gray.
+   * ink #0F1722 · navy #33415C · blue #1F5FBF · mist #F1F4F8 · steel #5B8DB8
    */
-  --ink: #121019;
-  --ink-soft: #303856;
-  --mist: #e9eff5;
-  --mist-deep: #d5dde8;
-  --paper: #f2f5f9;
+  --ink: #0f1722;
+  --ink-soft: #33415c;
+  --mist: #f1f4f8;
+  --mist-deep: #e2e8f0;
+  --paper: #f7f9fb;
   --surface: #ffffff;
-  --line: #c9d2de;
+  --line: #d3dae3;
   --muted: #5c6578;
-  --accent: #e16a40;
-  --accent-hover: #c85a34;
-  --accent-soft: #fce4d9;
-  --secondary: #2a9b94;
-  --secondary-hover: #1f7a74;
-  --secondary-soft: #d4f6f3;
-  --teal: #70e2dc;
-  --teal-soft: #d4f6f3;
-  --good: #2a9b94;
-  --warn: #c47a3a;
-  --bad: #b84332;
-  --sidebar: #121019;
-  --navy: #303856;
-  --focus-ring: rgba(225, 106, 64, 0.24);
-  --file-btn-hover: #f6d5c8;
+  --accent: #1f5fbf;
+  --accent-hover: #184fa3;
+  --accent-soft: #e2ecfa;
+  --secondary: #0e7c6b;
+  --secondary-hover: #0a6154;
+  --secondary-soft: #dff0ed;
+  --teal: #5b8db8;
+  --teal-soft: #e3edf6;
+  --good: #0e7c6b;
+  --warn: #b45309;
+  --warn-soft: #faeedd;
+  --bad: #b42318;
+  --sidebar: #0f1722;
+  --navy: #33415c;
+  --focus-ring: rgba(31, 95, 191, 0.22);
+  --file-btn-hover: #d8e4f5;
   --scrollbar-thumb: #b8c2d0;
 
   --control-h: 2.5rem;
   --control-h-sm: 2rem;
   --control-px: 1.1rem;
-  --control-radius: 0.65rem;
+  --control-radius: 0.5rem;
 
   --background: var(--mist);
   --foreground: var(--ink);
-  --radius: 0.75rem;
-  --shadow-soft: 0 1px 0 rgba(12, 14, 20, 0.04), 0 12px 32px rgba(12, 14, 20, 0.07);
+  --radius: 0.5rem;
+  --shadow-soft: 0 1px 0 rgba(12, 14, 20, 0.03), 0 10px 28px rgba(12, 14, 20, 0.06);
 }
 
 @theme inline {
@@ -61,10 +63,11 @@
   --color-teal: var(--teal);
   --color-teal-soft: var(--teal-soft);
   --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
   --color-bad: var(--bad);
   --color-navy: var(--navy);
   --font-sans: var(--font-jakarta);
-  --font-display: var(--font-space);
+  --font-display: var(--font-jakarta);
 }
 
 html,
@@ -78,7 +81,8 @@ h1,
 h2,
 h3,
 .font-display {
-  font-family: var(--font-space), var(--font-jakarta), sans-serif;
+  font-family: var(--font-jakarta), "Segoe UI", sans-serif;
+  letter-spacing: -0.02em;
 }
 
 input,
@@ -341,7 +345,7 @@ textarea:focus {
 
 .page-title {
   margin-top: 0.35rem;
-  font-family: var(--font-space), sans-serif;
+  font-family: var(--font-jakarta), "Segoe UI", sans-serif;
   font-size: clamp(1.4rem, 2.5vw, 1.75rem);
   font-weight: 700;
   letter-spacing: -0.03em;
@@ -373,9 +377,9 @@ textarea:focus {
 
 .bg-atmosphere {
   background:
-    radial-gradient(1000px 500px at 8% -8%, rgba(225, 106, 64, 0.18), transparent 55%),
-    radial-gradient(900px 480px at 92% 0%, rgba(112, 226, 220, 0.22), transparent 50%),
-    linear-gradient(165deg, #f2f5f9 0%, #e9eff5 45%, #dde5ef 100%);
+    radial-gradient(1000px 500px at 8% -8%, rgba(31, 95, 191, 0.10), transparent 55%),
+    radial-gradient(900px 480px at 92% 0%, rgba(91, 141, 184, 0.14), transparent 50%),
+    linear-gradient(165deg, #f7f9fb 0%, #f1f4f8 45%, #e2e8f0 100%);
 }
 
 .bg-grid-fade {
@@ -476,7 +480,7 @@ textarea:focus {
 }
 
 .dashboard-shell .dashboard-sidebar .text-accent {
-  color: #e16a40 !important;
+  color: #8fb4e8 !important;
 }
 
 /* Legacy utility remaps → Clownfish only (no random green/red/indigo) */
@@ -540,14 +544,14 @@ textarea:focus {
 .dashboard-shell .bg-amber-50,
 .dashboard-shell .bg-yellow-50,
 .dashboard-shell .bg-orange-50 {
-  background-color: var(--accent-soft) !important;
+  background-color: var(--warn-soft) !important;
 }
 .dashboard-shell .text-amber-700,
 .dashboard-shell .text-amber-800,
 .dashboard-shell .text-amber-900,
 .dashboard-shell .text-yellow-700,
 .dashboard-shell .text-orange-700 {
-  color: var(--accent-hover) !important;
+  color: var(--warn) !important;
 }
 .dashboard-shell .border-amber-200,
 .dashboard-shell .border-red-200,

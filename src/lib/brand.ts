@@ -1,9 +1,9 @@
 export const BRAND = {
   name: "Cullr",
   /** From “cull” — select the strongest from the stack. */
-  slogan: "Cull the best. Hire faster.",
+  slogan: "Saring yang terbaik. Rekrut lebih cepat.",
   tagline:
-    "AI screening, async interviews, and multi-client pipeline for modern recruiting teams.",
+    "Screening CV berbasis AI, interview video async, dan pipeline multi-klien untuk agency rekrutmen modern.",
   contact: {
     email: "partnership@ilusa.id",
     whatsappDisplay: "0889-8041-4923",

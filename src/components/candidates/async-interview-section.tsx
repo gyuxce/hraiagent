@@ -123,15 +123,24 @@ export function AsyncInterviewSection({
       toast.error(result.error);
       return;
     }
-    toast.success(
-      result?.questionsFromAi
-        ? "Link siap — pertanyaan AI unik untuk sesi ini"
-        : "Link siap — pertanyaan sementara dipakai; AI menyempurnakan sebentar lagi"
-    );
+    if (result?.emailSent) {
+      toast.success("Link interview terkirim ke email kandidat");
+    } else {
+      toast.success(
+        result?.questionsFromAi
+          ? "Link siap — pertanyaan AI unik untuk sesi ini"
+          : "Link siap — pertanyaan sementara dipakai; AI menyempurnakan sebentar lagi"
+      );
+      if (result?.emailError) {
+        toast.error(`Email gagal terkirim: ${result.emailError}`);
+      }
+    }
     if (result?.inviteUrl) {
       setInviteUrl(result.inviteUrl);
-      const ok = await copyToClipboard(result.inviteUrl);
-      if (ok) setCopied(result.inviteUrl);
+      if (!result?.emailSent) {
+        const ok = await copyToClipboard(result.inviteUrl);
+        if (ok) setCopied(result.inviteUrl);
+      }
     }
     router.refresh();
   }
@@ -169,7 +178,7 @@ export function AsyncInterviewSection({
       <div className="page-header mb-4">
         <div className="min-w-0">
           <p className="page-kicker">Fase 2.5 · skor terpisah dari CV</p>
-          <h2 className="font-display text-lg font-bold text-ink">
+          <h2 className="font-display text-xl font-bold tracking-tight text-ink">
             AI Interview Async
           </h2>
           <p className="page-sub">

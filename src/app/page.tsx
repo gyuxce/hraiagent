@@ -1,42 +1,43 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Mail, MessageCircle } from "lucide-react";
 import { BRAND, mailtoPartnership, whatsappUrl } from "@/lib/brand";
 import { BrandLogo } from "@/components/brand/brand-logo";
 
 const STEPS = [
   {
     n: "01",
-    title: "Upload CVs",
-    body: "Import candidates per client job. AI reads each CV and pulls the essentials.",
+    title: "Upload CV kandidat",
+    body: "Import kandidat untuk setiap lowongan klien, lalu biarkan AI membaca CV dan merangkum hal pentingnya untuk Anda.",
   },
   {
     n: "02",
-    title: "Score against the role",
-    body: "Get a screening score plus rubric breakdown. Recruiters can override anytime.",
+    title: "Skor sesuai kebutuhan posisi",
+    body: "Setiap kandidat mendapat skor kecocokan lengkap dengan rincian rubrik — dan recruiter tetap bisa menyesuaikannya kapan pun.",
   },
   {
     n: "03",
-    title: "Async video interview",
-    body: "Candidates record answers. AI scores from transcript; video stays as proof.",
+    title: "Interview video async",
+    body: "Kandidat merekam jawaban lewat browser, AI menilai dari transkripnya, sementara rekaman tersimpan rapi sebagai bukti.",
   },
 ] as const;
 
 const FEATURES = [
   {
-    title: "Multi-client workspace",
-    body: "Run many client companies in one place — no spreadsheet sprawl.",
+    title: "Workspace multi-klien",
+    body: "Kelola banyak perusahaan klien dalam satu tempat, tanpa lagi spreadsheet yang berserakan di mana-mana.",
   },
   {
-    title: "AI CV screening",
-    body: "Match scores against job requirements — fast, explainable, overridable.",
+    title: "Screening CV berbasis AI",
+    body: "Skor kecocokan terhadap requirement yang cepat dan transparan, dengan keputusan akhir selalu di tangan recruiter.",
   },
   {
-    title: "Guarded async interviews",
-    body: "Selfie, video, light challenge codes — stronger signals than text alone.",
+    title: "Interview async terverifikasi",
+    body: "Kombinasi selfie, video, dan kode tantangan ringan memberi sinyal identitas yang jauh lebih kuat dari sekadar jawaban teks.",
   },
   {
-    title: "Ranking for decisions",
-    body: "Sort by interview score; CV score stays visible beside every name.",
+    title: "Ranking untuk keputusan",
+    body: "Urutkan kandidat berdasarkan skor interview, dengan skor CV yang tetap terlihat di samping setiap nama.",
   },
 ] as const;
 
@@ -47,7 +48,7 @@ export default function Home() {
       <section className="relative min-h-[100svh] overflow-hidden bg-ink text-white">
         <Image
           src={BRAND.assets.hero}
-          alt="Recruiting team workspace"
+          alt="Ruang kerja tim rekrutmen"
           fill
           priority
           className="object-cover object-center animate-drift"
@@ -65,16 +66,16 @@ export default function Home() {
             <BrandLogo variant="light" size="md" />
             <nav className="flex items-center gap-4 sm:gap-6">
               <a
-                href="#how-it-works"
+                href="#cara-kerja"
                 className="hidden text-sm font-semibold text-white/80 transition hover:text-white sm:inline"
               >
-                How it works
+                Cara kerja
               </a>
               <Link
                 href="/login"
                 className="text-sm font-semibold text-white/85 transition hover:text-white"
               >
-                Sign in
+                Masuk
               </Link>
             </nav>
           </header>
@@ -91,14 +92,15 @@ export default function Home() {
             </p>
             <div className="animate-rise-delay-2 mt-8 flex flex-wrap items-center gap-3">
               <Link href="/register" className="btn-primary min-w-[10rem]">
-                Start free
+                Daftar gratis
               </Link>
               <a
                 href={whatsappUrl()}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-w-[10rem] items-center justify-center rounded-[0.65rem] border border-white/25 bg-white/5 px-[1.15rem] py-[0.7rem] text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
+                className="inline-flex min-w-[10rem] items-center justify-center gap-2 rounded-[0.65rem] border border-white/25 bg-white/5 px-[1.15rem] py-[0.7rem] text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
               >
+                <MessageCircle className="h-4 w-4" aria-hidden />
                 WhatsApp
               </a>
             </div>
@@ -106,34 +108,35 @@ export default function Home() {
         </div>
       </section>
 
-      {/* —— PROBLEM —— */}
+      {/* —— MASALAH —— */}
       <section className="border-b border-line bg-surface px-5 py-16 sm:px-10 sm:py-20 lg:px-16">
         <div className="mx-auto max-w-3xl">
-          <p className="page-kicker">For recruiting agencies</p>
+          <p className="page-kicker">Untuk agency rekrutmen</p>
           <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Too many CVs. Not enough time.
+            CV menumpuk, waktu terbatas
           </h2>
           <p className="prose-read mt-4 text-ink-soft">
-            Agencies juggle many clients at once. Manual screening is slow,
-            interviews are inconsistent, and client reports still live in
-            spreadsheets. Cullr centralizes the multi-client pipeline with AI
-            that assists — never replaces — recruiter judgment.
+            Agency menangani banyak klien sekaligus — screening manual lambat,
+            interview tidak konsisten, dan laporan ke klien masih tersebar di
+            spreadsheet. Cullr memusatkan seluruh pipeline multi-klien dengan AI
+            yang membantu recruiter, bukan menggantikan penilaian mereka.
           </p>
         </div>
       </section>
 
-      {/* —— HOW IT WORKS —— */}
+      {/* —— CARA KERJA —— */}
       <section
-        id="how-it-works"
+        id="cara-kerja"
         className="border-b border-line bg-mist px-5 py-16 sm:px-10 sm:py-20 lg:px-16"
       >
         <div className="mx-auto max-w-6xl">
-          <p className="page-kicker">How it works</p>
+          <p className="page-kicker">Cara kerja</p>
           <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Three steps. One flow.
+            Tiga langkah dalam satu alur kerja
           </h2>
           <p className="mt-3 max-w-xl text-muted">
-            From CV intake to interview shortlist — without switching tools.
+            Dari CV masuk sampai shortlist interview, semua terjadi di satu
+            tempat tanpa perlu berpindah-pindah tools.
           </p>
           <ol className="mt-12 grid gap-10 sm:grid-cols-3 sm:gap-8">
             {STEPS.map((step) => (
@@ -151,15 +154,16 @@ export default function Home() {
         </div>
       </section>
 
-      {/* —— FEATURES —— */}
+      {/* —— FITUR —— */}
       <section className="border-b border-line bg-surface px-5 py-16 sm:px-10 sm:py-20 lg:px-16">
         <div className="mx-auto max-w-6xl">
-          <p className="page-kicker">What you get</p>
+          <p className="page-kicker">Yang Anda dapatkan</p>
           <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-            Built for the agency model.
+            Dibangun khusus untuk model bisnis agency
           </h2>
           <p className="mt-3 max-w-xl text-muted">
-            Not a generic in-house ATS — multi-client ops and vendor pace.
+            Bukan ATS generik untuk HRD internal, melainkan dirancang untuk
+            operasional multi-klien dan kecepatan kerja vendor.
           </p>
           <ul className="mt-12 grid gap-10 sm:grid-cols-2">
             {FEATURES.map((f) => (
@@ -176,45 +180,49 @@ export default function Home() {
 
       {/* —— CTA —— */}
       <section
-        id="contact"
+        id="kontak"
         className="bg-ink px-5 py-16 text-white sm:px-10 sm:py-20 lg:px-16"
       >
         <div className="mx-auto max-w-3xl">
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-white/55">
-            Partnership
+            Kemitraan
           </p>
           <h2 className="mt-3 font-display text-3xl font-bold tracking-tight sm:text-4xl">
-            Ready to cull faster?
+            Siap menyaring lebih cepat?
           </h2>
           <p className="mt-3 max-w-xl text-white/70">
-            Start an agency trial, or talk partnership. Direct contact — no long
-            forms.
+            Mulai uji coba untuk agency Anda atau diskusikan kemitraan — kontak
+            langsung, tanpa formulir panjang.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/register" className="btn-primary">
-              Start free
+              Daftar gratis
             </Link>
             <Link
               href="/login"
               className="inline-flex items-center justify-center rounded-[0.65rem] border border-white/25 px-[1.15rem] py-[0.7rem] text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              Agency sign in
+              Masuk sebagai agency
             </Link>
           </div>
-          <div className="mt-10 flex flex-col gap-3 text-sm sm:flex-row sm:gap-8">
+          <div className="mt-10 flex items-center gap-3">
             <a
               href={mailtoPartnership()}
-              className="font-semibold text-white underline decoration-white/30 underline-offset-4 transition hover:decoration-accent"
+              aria-label={`Email ${BRAND.contact.email}`}
+              title={BRAND.contact.email}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/25 text-white transition hover:border-accent hover:text-accent"
             >
-              {BRAND.contact.email}
+              <Mail className="h-4.5 w-4.5" aria-hidden />
             </a>
             <a
               href={whatsappUrl()}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-white underline decoration-white/30 underline-offset-4 transition hover:decoration-accent"
+              aria-label={`WhatsApp ${BRAND.contact.whatsappDisplay}`}
+              title={`WhatsApp ${BRAND.contact.whatsappDisplay}`}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/25 text-white transition hover:border-accent hover:text-accent"
             >
-              WA {BRAND.contact.whatsappDisplay}
+              <MessageCircle className="h-4.5 w-4.5" aria-hidden />
             </a>
           </div>
         </div>
@@ -223,15 +231,14 @@ export default function Home() {
       <footer className="border-t border-white/10 bg-ink px-5 py-8 text-sm text-white/50 sm:px-10 lg:px-16">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <BrandLogo variant="light" size="sm" />
-          <p>
-            © {new Date().getFullYear()} {BRAND.name}. Contact:{" "}
-            <a
-              href={mailtoPartnership()}
-              className="text-white/70 hover:text-white"
-            >
-              {BRAND.contact.email}
-            </a>
-          </p>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <Link href="/privacy" className="text-white/70 hover:text-white">
+              Kebijakan Privasi
+            </Link>
+            <p>
+              © {new Date().getFullYear()} {BRAND.name}
+            </p>
+          </div>
         </div>
       </footer>
     </div>

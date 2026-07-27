@@ -73,11 +73,17 @@ export function InterviewNotesSection({
   }
 
   return (
-    <div className="mt-8">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">
-          Catatan Interview
-        </h2>
+    <section className="mt-10">
+      <div className="page-header mb-4">
+        <div className="min-w-0">
+          <p className="page-kicker">Fase 2 · interview manusia</p>
+          <h2 className="font-display text-xl font-bold tracking-tight text-ink">
+            Catatan Interview
+          </h2>
+          <p className="page-sub">
+            Transkrip dan catatan interview manusia, dengan ringkasan AI.
+          </p>
+        </div>
         {canWrite && (
           <button
             type="button"
@@ -108,7 +114,7 @@ export function InterviewNotesSection({
       />
 
       {notes.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
+        <div className="rounded-xl border border-dashed border-line bg-surface p-8 text-center text-sm text-muted">
           Belum ada catatan interview. Paste transkrip atau tulis catatan
           setelah interview manusia.
         </div>
@@ -117,12 +123,12 @@ export function InterviewNotesSection({
           {notes.map((note) => (
             <div
               key={note.id}
-              className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
+              className="surface-panel p-5"
             >
               <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-semibold text-gray-900">{note.title}</h3>
-                  <p className="text-xs text-gray-400">
+                  <h3 className="font-semibold text-ink">{note.title}</h3>
+                  <p className="mt-0.5 text-xs text-muted">
                     {new Date(note.conducted_at).toLocaleString("id-ID")}
                   </p>
                 </div>
@@ -132,7 +138,7 @@ export function InterviewNotesSection({
                       type="button"
                       disabled={busyId === note.id}
                       onClick={() => handleRegen(note.id)}
-                      className="text-sm font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
+                      className="text-sm font-medium text-accent hover:text-accent-hover disabled:opacity-50"
                     >
                       {busyId === note.id ? "..." : "Re-AI Summary"}
                     </button>
@@ -163,20 +169,20 @@ export function InterviewNotesSection({
 
               {note.interviewer_notes && (
                 <div className="mb-3">
-                  <p className="text-xs font-semibold uppercase text-gray-500">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
                     Catatan Interviewer
                   </p>
-                  <p className="prose-read mt-1 whitespace-pre-wrap text-gray-700">
+                  <p className="prose-read mt-1 whitespace-pre-wrap text-ink-soft">
                     {note.interviewer_notes}
                   </p>
                 </div>
               )}
 
               <div>
-                <p className="text-xs font-semibold uppercase text-gray-500">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
                   Transkrip
                 </p>
-                <p className="prose-read mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap text-gray-700">
+                <p className="prose-read mt-1 max-h-48 overflow-y-auto whitespace-pre-wrap text-ink-soft">
                   {note.transcript}
                 </p>
               </div>
@@ -280,6 +286,6 @@ export function InterviewNotesSection({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

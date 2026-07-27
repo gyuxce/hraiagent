@@ -3,6 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { canWriteAgencyData } from "@/lib/auth/roles";
 import { requireAgencyContext } from "@/lib/auth/agency-context";
+import { sendEmail } from "@/lib/email/send";
+import { scheduleInviteEmail } from "@/lib/email/templates";
+import {
+  buildIcs,
+  googleCalendarUrl,
+  outlookCalendarUrl,
+  type CalendarEventInput,
+} from "@/lib/calendar/event";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -56,11 +64,18 @@ export async function createInterviewSchedule(formData: FormData) {
 
   const { data: candidate, error: cErr } = await supabase
     .from("candidates")
-    .select("id, job_id, agency_id, job_requisitions(client_id, title)")
+    .select(
+      "id, name, email, job_id, agency_id, job_requisitions(client_id, title)"
+    )
     .eq("id", candidateId)
     .single();
 
   if (cErr || !candidate) return { error: "Kandidat tidak ditemukan" };
+
+  const startAt = new Date(scheduledAt);
+  if (Number.isNaN(startAt.getTime())) {
+    return { error: "Format waktu tidak valid" };
+  }
 
   const jobRaw = candidate.job_requisitions as unknown;
   const job = Array.isArray(jobRaw) ? jobRaw[0] : jobRaw;
@@ -71,19 +86,23 @@ export async function createInterviewSchedule(formData: FormData) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { error } = await supabase.from("interview_schedules").insert({
-    agency_id: profile.agency_id,
-    candidate_id: candidateId,
-    job_id: candidate.job_id,
-    client_id: clientId,
-    title,
-    scheduled_at: new Date(scheduledAt).toISOString(),
-    duration_minutes: durationMinutes,
-    location,
-    meeting_url: meetingUrl,
-    notes,
-    created_by: user?.id || null,
-  });
+  const { data: inserted, error } = await supabase
+    .from("interview_schedules")
+    .insert({
+      agency_id: profile.agency_id,
+      candidate_id: candidateId,
+      job_id: candidate.job_id,
+      client_id: clientId,
+      title,
+      scheduled_at: startAt.toISOString(),
+      duration_minutes: durationMinutes,
+      location,
+      meeting_url: meetingUrl,
+      notes,
+      created_by: user?.id || null,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     return {
@@ -93,9 +112,63 @@ export async function createInterviewSchedule(formData: FormData) {
     };
   }
 
+  // Best-effort email undangan ke kandidat (detail + link kalender + .ics)
+  let emailSent = false;
+  let emailError: string | null = null;
+  const candidateEmail = (candidate.email as string) || "";
+  if (candidateEmail && inserted?.id) {
+    const jobTitle =
+      (job as { title?: string } | null)?.title || "Posisi";
+    const { data: agency } = await supabase
+      .from("agencies")
+      .select("name")
+      .eq("id", profile.agency_id)
+      .maybeSingle();
+
+    const descriptionLines = [
+      `Kandidat: ${candidate.name}`,
+      `Posisi: ${jobTitle}`,
+      meetingUrl ? `Meeting: ${meetingUrl}` : "",
+      notes || "",
+    ];
+    const event: CalendarEventInput = {
+      id: inserted.id as string,
+      title,
+      startAt,
+      durationMinutes: durationMinutes,
+      location,
+      meetingUrl,
+      descriptionLines,
+    };
+    const template = scheduleInviteEmail({
+      candidateName: candidate.name as string,
+      title,
+      jobTitle,
+      agencyName: (agency?.name as string) || "Tim rekrutmen",
+      startAt,
+      durationMinutes,
+      meetingUrl,
+      location,
+      googleUrl: googleCalendarUrl(event),
+      outlookUrl: outlookCalendarUrl(event),
+    });
+    const result = await sendEmail({
+      to: candidateEmail,
+      ...template,
+      attachments: [
+        {
+          filename: "interview.ics",
+          content: Buffer.from(buildIcs(event), "utf-8").toString("base64"),
+        },
+      ],
+    });
+    emailSent = result.sent;
+    emailError = result.sent ? null : result.error || null;
+  }
+
   revalidatePath("/schedule");
   revalidatePath(`/candidates/${candidateId}`);
-  return { success: true };
+  return { success: true, emailSent, emailError };
 }
 
 export async function updateInterviewScheduleStatus(

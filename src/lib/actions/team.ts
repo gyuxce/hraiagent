@@ -5,6 +5,8 @@ import { isValidEmail, normalizeEmail } from "@/lib/validation/email";
 import type { UserRole } from "@/types/database";
 import { requireAgencyContext } from "@/lib/auth/agency-context";
 import { getSupabase } from "@/lib/auth/session";
+import { sendEmail } from "@/lib/email/send";
+import { teamInviteEmail } from "@/lib/email/templates";
 
 function formatError(error: unknown): string {
   if (!error) return "Terjadi kesalahan";
@@ -142,12 +144,27 @@ export async function createTeamInvite(formData: FormData) {
   const origin = base.startsWith("http") ? base : `https://${base}`;
   const inviteUrl = `${origin.replace(/\/$/, "")}/register?invite=${invite.token}`;
 
+  const { data: agency } = await supabase
+    .from("agencies")
+    .select("name")
+    .eq("id", profile.agency_id)
+    .maybeSingle();
+
+  const template = teamInviteEmail({
+    agencyName: (agency?.name as string) || "Agency Anda",
+    role,
+    inviteUrl,
+  });
+  const emailResult = await sendEmail({ to: email, ...template });
+
   revalidatePath("/team");
   return {
     success: true,
     inviteUrl,
     token: invite.token as string,
     email: invite.email as string,
+    emailSent: emailResult.sent,
+    emailError: emailResult.sent ? null : emailResult.error || null,
   };
 }
 

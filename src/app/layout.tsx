@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import { BRAND } from "@/lib/brand";
 import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
@@ -8,12 +8,6 @@ const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
-});
-
-const space = Space_Grotesk({
-  variable: "--font-space",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -26,7 +20,7 @@ export const metadata: Metadata = {
     title: `${BRAND.name} — ${BRAND.slogan}`,
     description: BRAND.tagline,
     images: [{ url: BRAND.assets.og, width: 1200, height: 630, alt: BRAND.name }],
-    locale: "en_US",
+    locale: "id_ID",
     type: "website",
   },
   twitter: {
@@ -49,7 +43,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${jakarta.variable} ${space.variable} ${jakarta.className} h-full antialiased`}
+      className={`${jakarta.variable} ${jakarta.className} h-full antialiased`}
       style={{ colorScheme: "light" }}
     >
       <body

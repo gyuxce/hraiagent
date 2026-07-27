@@ -31,9 +31,9 @@ function LogoMark({
   size: number;
   variant: "dark" | "light";
 }) {
-  const tile = variant === "light" ? "#F1F3F6" : "#0E1116";
-  const ring = variant === "light" ? "#0E1116" : "#F1F3F6";
-  const cut = "#E85D4C";
+  const tile = variant === "light" ? "#F1F3F6" : "#0F1722";
+  const ring = variant === "light" ? "#0F1722" : "#F1F3F6";
+  const cut = variant === "light" ? "#1F5FBF" : "#8FB4E8";
 
   return (
     <svg

@@ -5,7 +5,9 @@ import {
   completePublicInterview,
   getPublicInterview,
   prepareInterviewVideoUpload,
+  savePublicConsent,
   submitPublicAnswer,
+  transcribePublicAnswer,
   uploadInterviewFaceFrame,
   uploadInterviewSelfie,
   uploadInterviewVideo,
@@ -71,6 +73,9 @@ export function PublicInterviewClient({ token }: { token: string }) {
   const [selfieBusy, setSelfieBusy] = useState(false);
   const [faceFrameSent, setFaceFrameSent] = useState(false);
   const [answerSaved, setAnswerSaved] = useState(false);
+  const [consented, setConsented] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [consentBusy, setConsentBusy] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const selfieVideoRef = useRef<HTMLVideoElement>(null);
@@ -328,6 +333,34 @@ export function PublicInterviewClient({ token }: { token: string }) {
     );
   }
 
+  /** Server-side Whisper fallback for browsers tanpa Web Speech API. */
+  async function requestServerTranscript(
+    questionId: string,
+    currentIdx: number
+  ): Promise<boolean> {
+    setUploadNote("Membuat transkrip dari audio…");
+    const result = await transcribePublicAnswer(token, questionId);
+    if (result?.transcript) {
+      const text = result.transcript;
+      transcriptRef.current = text;
+      setTranscript(text);
+      setData((prev) => {
+        if (!prev) return prev;
+        const questions = prev.questions.map((item, i) =>
+          i === currentIdx && item.answer
+            ? { ...item, answer: { ...item.answer, transcript: text } }
+            : item
+        );
+        return { ...prev, questions };
+      });
+      return true;
+    }
+    if (result?.error && !result?.notConfigured) {
+      setError(result.error);
+    }
+    return false;
+  }
+
   async function persistAnswer(
     questionId: string,
     videoPath: string,
@@ -425,6 +458,12 @@ export function PublicInterviewClient({ token }: { token: string }) {
         setUploading(false);
         setUploadNote("Video terunggah, tapi simpan jawaban gagal. Coba Lanjut lagi.");
         return videoPath;
+      }
+
+      // Tanpa live transcript (browser non-Chrome / SR gagal) → transkrip via server (Whisper)
+      if (!liveTranscript()) {
+        await requestServerTranscript(questionId, currentIdx);
+        if (gen !== uploadGenRef.current) return null;
       }
 
       setUploadNote("Tersimpan. Klik Lanjut.");
@@ -653,6 +692,9 @@ export function PublicInterviewClient({ token }: { token: string }) {
         prior.length < 24;
       if (live && priorWeak && live !== prior) {
         await persistAnswer(q.id, q.answer.video_path, currentIdx);
+      } else if (priorWeak && !live) {
+        // Retry server-side STT jika transkrip masih placeholder
+        await requestServerTranscript(q.id, currentIdx);
       }
       return true;
     }
@@ -730,6 +772,72 @@ export function PublicInterviewClient({ token }: { token: string }) {
   }
 
   if (!data) return null;
+
+  if (!consented) {
+    return (
+      <div className="relative flex min-h-screen items-center justify-center bg-atmosphere p-6">
+        <div className="pointer-events-none absolute inset-0 bg-grid-fade opacity-60" />
+        <div className="relative max-w-lg surface-panel p-8 animate-rise">
+          <BrandLogo variant="dark" size="sm" />
+          <h1 className="mt-4 font-display text-2xl font-bold text-ink">
+            Persetujuan perekaman interview
+          </h1>
+          <p className="mt-3 text-sm text-muted">
+            Halo {data.candidate.name}. Interview video untuk posisi{" "}
+            <strong className="text-ink">{data.job.title}</strong> ini akan:
+          </p>
+          <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-muted">
+            <li>Merekam <strong className="text-ink">video &amp; suara</strong> jawaban Anda lewat browser</li>
+            <li>Mengambil <strong className="text-ink">foto selfie</strong> untuk verifikasi identitas</li>
+            <li>Mengubah suara menjadi <strong className="text-ink">transkrip</strong> dan menganalisis jawaban dengan AI</li>
+            <li>Menyimpan data tersebut untuk keperluan proses rekrutmen, lalu <strong className="text-ink">menghapus video otomatis</strong> sesuai kebijakan retensi agency</li>
+          </ul>
+          <label className="mt-5 flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={consentChecked}
+              onChange={(e) => setConsentChecked(e.target.checked)}
+              className="mt-0.5 h-4 w-4"
+            />
+            <span>
+              Saya memahami dan <strong>memberikan persetujuan</strong> atas perekaman
+              dan pemrosesan data saya sesuai{" "}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-accent underline">
+                Kebijakan Privasi
+              </a>
+              . Saya bisa memilih interview dengan manusia sebagai alternatif.
+            </span>
+          </label>
+          {error && (
+            <div className="mt-3 rounded-lg bg-accent-soft p-3 text-sm text-accent-hover">
+              {error}
+            </div>
+          )}
+          <button
+            type="button"
+            disabled={!consentChecked || consentBusy}
+            onClick={async () => {
+              setConsentBusy(true);
+              setError(null);
+              const result = await savePublicConsent(token);
+              setConsentBusy(false);
+              if (result?.error) {
+                setError(result.error);
+                return;
+              }
+              setConsented(true);
+            }}
+            className="mt-5 w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-50"
+          >
+            {consentBusy ? "Menyimpan persetujuan…" : "Saya Setuju — Mulai Interview"}
+          </button>
+          <p className="mt-3 text-center text-xs text-muted">
+            Tidak bersedia? Hubungi tim rekrutmen untuk interview manual — pilihan Anda tidak memengaruhi penilaian.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (done) {
     return (

@@ -1,5 +1,6 @@
 import {
   detectProvider,
+  getScreeningModel,
   getVisionModelFallbacks,
   missingAiKeyMessage,
 } from "@/lib/ai/config";
@@ -42,7 +43,9 @@ export async function screenCandidateWithAI(params: {
   jobDescription: string;
   requirements: string[];
 }): Promise<ScreeningResult> {
-  const { baseUrl, model, apiKey } = detectProvider();
+  const { baseUrl, apiKey } = detectProvider();
+  // CV screening = task ekstraksi → model murah/cepat (override: AI_SCREENING_MODEL)
+  const model = getScreeningModel();
 
   if (!apiKey) {
     throw new Error(missingAiKeyMessage());

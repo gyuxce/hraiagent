@@ -79,6 +79,17 @@ export function missingAiKeyMessage(): string {
 }
 
 /**
+ * CV screening model — task ekstraksi mekanis, pakai model murah/cepat.
+ * Override via AI_SCREENING_MODEL. (Scoring interview tetap pakai AI_MODEL utama.)
+ */
+export function getScreeningModel(): string {
+  return (
+    cleanEnv(process.env.AI_SCREENING_MODEL) ||
+    "google/gemini-3-flash-preview"
+  );
+}
+
+/**
  * Vision model for selfie ↔ video face check (OpenRouter).
  * Fallback list is tried in order when the primary returns 404.
  */

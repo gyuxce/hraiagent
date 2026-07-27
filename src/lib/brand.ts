@@ -12,9 +12,8 @@ export const BRAND = {
   },
   assets: {
     logoMark: "/brand/logo.svg",
-    logoRaster: "/brand/logo-mark.png",
     hero: "/brand/hero.jpg",
-    og: "/brand/og.png",
+    og: "/brand/hero.jpg",
   },
 } as const;
 

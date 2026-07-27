@@ -13,7 +13,7 @@ const STEPS = [
   {
     n: "02",
     title: "Skor sesuai kebutuhan posisi",
-    body: "Setiap kandidat mendapat skor kecocokan lengkap dengan rincian rubrik — dan recruiter tetap bisa menyesuaikannya kapan pun.",
+    body: "Setiap kandidat mendapat skor kecocokan lengkap dengan rincian rubrik, dan recruiter tetap bisa menyesuaikannya kapan pun.",
   },
   {
     n: "03",
@@ -25,7 +25,7 @@ const STEPS = [
 const FEATURES = [
   {
     title: "Workspace multi-klien",
-    body: "Kelola banyak perusahaan klien dalam satu tempat, tanpa lagi spreadsheet yang berserakan di mana-mana.",
+    body: "Kelola banyak perusahaan klien dalam satu tempat, tanpa lagi spreadsheet yang berserakan.",
   },
   {
     title: "Screening CV berbasis AI",
@@ -33,7 +33,7 @@ const FEATURES = [
   },
   {
     title: "Interview async terverifikasi",
-    body: "Kombinasi selfie, video, dan kode tantangan ringan memberi sinyal identitas yang jauh lebih kuat dari sekadar jawaban teks.",
+    body: "Kombinasi selfie, video, dan kode tantangan ringan memberi kepastian bahwa yang interview memang kandidat aslinya.",
   },
   {
     title: "Ranking untuk keputusan",
@@ -116,7 +116,7 @@ export default function Home() {
             CV menumpuk, waktu terbatas
           </h2>
           <p className="prose-read mt-4 text-ink-soft">
-            Agency menangani banyak klien sekaligus — screening manual lambat,
+            Agency menangani banyak klien sekaligus. Screening manual lambat,
             interview tidak konsisten, dan laporan ke klien masih tersebar di
             spreadsheet. Cullr memusatkan seluruh pipeline multi-klien dengan AI
             yang membantu recruiter, bukan menggantikan penilaian mereka.
@@ -191,7 +191,7 @@ export default function Home() {
             Siap menyaring lebih cepat?
           </h2>
           <p className="mt-3 max-w-xl text-white/70">
-            Mulai uji coba untuk agency Anda atau diskusikan kemitraan — kontak
+            Mulai uji coba untuk agency Anda atau diskusikan kemitraan. Kontak
             langsung, tanpa formulir panjang.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">

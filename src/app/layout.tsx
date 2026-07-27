@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [{ url: BRAND.assets.logoMark, type: "image/svg+xml" }],
-    apple: BRAND.assets.logoRaster,
+    apple: BRAND.assets.logoMark,
   },
 };
 

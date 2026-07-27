@@ -46,7 +46,10 @@ async function getProfile() {
   return requireAgencyContext();
 }
 
-export async function createAsyncInterview(candidateId: string) {
+export async function createAsyncInterview(
+  candidateId: string,
+  options?: { conversational?: boolean }
+) {
   const { supabase, error: authError, profile } = await getProfile();
   if (authError || !profile) return { error: authError || "Unauthorized" };
 
@@ -133,6 +136,7 @@ export async function createAsyncInterview(candidateId: string) {
       challenge_code: challengeCode,
       face_match_status: "pending",
       needs_manual_review: false,
+      conversational: options?.conversational === true,
     })
     .select("id, invite_token")
     .single();
@@ -1049,7 +1053,7 @@ export async function getInterviewIdentityMedia(sessionId: string) {
   };
 }
 
-async function analyzePublicInterviewSession(token: string) {
+export async function analyzePublicInterviewSession(token: string) {
   const supabase = await createClient();
 
   const quota = await consumeAiQuotaForAsyncToken(supabase, {

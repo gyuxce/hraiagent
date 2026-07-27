@@ -4,7 +4,9 @@ export type AiEventType =
   | "cv_screen"
   | "interview_summary"
   | "async_question_gen"
-  | "async_analyze";
+  | "async_analyze"
+  | "interview_turn"
+  | "interview_tts";
 
 export type AiUsageSnapshot = {
   ok: boolean;

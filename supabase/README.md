@@ -18,6 +18,7 @@ Run migrations **in order** in the Supabase SQL Editor:
 12. `00011_interview_identity_guards.sql` — selfie / challenge / face match
 13. `00012_video_retention.sql` — retensi auto-hapus video interview
 14. `00013_interview_consent.sql` — persetujuan eksplisit kandidat (UU PDP)
+15. `00014_conversational_interview.sql` — conversational interview (turn log + flag + quota event)
 
 ### Steps:
 
